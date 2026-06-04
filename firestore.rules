@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /shops/{shopId} {
+      allow read: if isShopMember(shopId);
+      allow write: if false; // Cloud Functions only
+
+      // Products: any member can read; only admin can write
+      match /products/{productId} {
+        allow read: if isShopMember(shopId);
+        allow create, update, delete: if isShopAdmin(shopId);
+      }
+
+      // Sales: any member can read and create; no one can edit/delete
+      match /sales/{saleId} {
+        allow read: if isShopMember(shopId);
+        allow create: if isShopMember(shopId)
+          && validSale(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      // Shop user roster: readable by any member
+      match /users/{uid} {
+        allow read: if isShopMember(shopId);
+        allow write: if false; // Cloud Functions only
+      }
+    }
+
+    // --- helpers ---
+
+    function isShopMember(shopId) {
+      return request.auth != null
+        && request.auth.token.shopId == shopId;
+    }
+
+    function isShopAdmin(shopId) {
+      return isShopMember(shopId)
+        && request.auth.token.role == 'admin';
+    }
+
+    function validSale(data) {
+      return data.keys().hasAll(['items', 'total', 'paymentType', 'createdAt'])
+        && data.total is number
+        && data.total > 0
+        && (data.paymentType == 'cash' || data.paymentType == 'qr');
+    }
+  }
+}

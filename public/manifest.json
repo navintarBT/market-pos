@@ -1,13 +1,13 @@
 {
   "name": "Market POS",
   "short_name": "Market POS",
-  "description": "ระบบขายสินค้าตลาดนัด",
+  "description": "ລະບົບຂາຍສິນຄ້າຕະຫຼາດນາດ",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#3880ff",
   "background_color": "#ffffff",
-  "lang": "th",
+  "lang": "lo",
   "icons": [
     {
       "src": "/favicon.png",

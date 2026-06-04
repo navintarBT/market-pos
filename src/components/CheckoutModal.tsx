@@ -35,10 +35,10 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
     setBusy(true);
     try {
       await recordSale(shopId, items, total, paymentType);
-      setSuccessMsg(`รับเงินสำเร็จ ฿${total.toLocaleString()}`);
+      setSuccessMsg(`ຮັບເງິນສຳເລັດ ₭${total.toLocaleString()}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
-      setError(msg === "Insufficient stock" ? "สินค้าไม่พอขาย กรุณาตรวจสอบสต็อก" : msg);
+      const msg = err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
+      setError(msg === "Insufficient stock" ? "ສິນຄ້າບໍ່ພໍຂາຍ ກະລຸນາກວດສອບສະຕ໋ອກ" : msg);
     } finally {
       setBusy(false);
     }
@@ -55,18 +55,18 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
       <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6]}>
         <IonHeader>
           <IonToolbar>
-            <IonTitle>ชำระเงิน</IonTitle>
+            <IonTitle>ຊຳລະເງິນ</IonTitle>
             <IonButtons slot="start">
-              <IonButton onClick={onDismiss} disabled={busy}>ยกเลิก</IonButton>
+              <IonButton onClick={onDismiss} disabled={busy}>ຍົກເລີກ</IonButton>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
 
         <IonContent className="ion-padding">
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <p style={{ margin: 0, color: "var(--ion-color-medium)" }}>ยอดที่ต้องชำระ</p>
+            <p style={{ margin: 0, color: "var(--ion-color-medium)" }}>ຍອດທີ່ຕ້ອງຊຳລະ</p>
             <p style={{ margin: "8px 0 0", fontSize: "2.5rem", fontWeight: 700, color: "var(--ion-color-primary)" }}>
-              ฿{total.toLocaleString()}
+              ₭{total.toLocaleString()}
             </p>
           </div>
 
@@ -84,7 +84,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
               onClick={() => handlePay("cash")}
               style={{ minHeight: 72, fontSize: "1.1rem" }}
             >
-              {busy ? <IonSpinner name="crescent" /> : "💵 เงินสด"}
+              {busy ? <IonSpinner name="crescent" /> : "💵 ເງິນສົດ"}
             </IonButton>
             <IonButton
               expand="block"
@@ -93,7 +93,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
               onClick={() => handlePay("qr")}
               style={{ minHeight: 72, fontSize: "1.1rem" }}
             >
-              {busy ? <IonSpinner name="crescent" /> : "📱 QR พร้อมเพย์"}
+              {busy ? <IonSpinner name="crescent" /> : "📱 QR ໂອນ"}
             </IonButton>
           </div>
         </IonContent>
@@ -101,9 +101,9 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
 
       <IonAlert
         isOpen={!!successMsg}
-        header="✅ ขายสำเร็จ"
+        header="✅ ຂາຍສຳເລັດ"
         message={successMsg ?? ""}
-        buttons={[{ text: "ตกลง", handler: handleSuccessDismiss }]}
+        buttons={[{ text: "ຕົກລົງ", handler: handleSuccessDismiss }]}
       />
     </>
   );

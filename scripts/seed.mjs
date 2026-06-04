@@ -2,17 +2,26 @@
  * Seed script for local Firebase Emulator.
  * Creates a test shop admin user + sample products.
  *
- * Run AFTER `firebase emulators:start`:
+ * Run AFTER `firebase emulators:start --only auth,firestore`:
  *   node scripts/seed.mjs
  */
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { readFileSync, existsSync } from "fs";
 
-process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
-process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
+const USE_EMULATOR = process.env.USE_EMULATOR !== "false";
 
-const app = initializeApp({ projectId: "demo-market-pos" });
+if (USE_EMULATOR) {
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
+  process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
+}
+
+const SERVICE_ACCOUNT_PATH = "./scripts/service-account.json";
+
+const app = USE_EMULATOR
+  ? initializeApp({ projectId: "demo-market-pos" })
+  : initializeApp({ credential: cert(JSON.parse(readFileSync(SERVICE_ACCOUNT_PATH, "utf8"))) });
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -23,7 +32,6 @@ const PASSWORD = "password123";
 async function seed() {
   console.log("🌱 Seeding emulator...\n");
 
-  // 1. Create user
   let user;
   try {
     user = await auth.getUserByEmail(EMAIL);
@@ -33,62 +41,58 @@ async function seed() {
     console.log(`  ✓ Created user: ${EMAIL}`);
   }
 
-  // 2. Set custom claims (shopId + role)
   await auth.setCustomUserClaims(user.uid, { shopId: SHOP_ID, role: "admin" });
   console.log(`  ✓ Set claims: shopId=${SHOP_ID}, role=admin`);
 
-  // 3. Create shop document
   await db.doc(`shops/${SHOP_ID}`).set({
-    name: "ร้านเสื้อผ้าตลาดนัด",
+    name: "ຮ້ານເສື້ອຜ້າຕະຫຼາດນາດ",
     createdAt: new Date(),
   }, { merge: true });
   console.log(`  ✓ Created shop: ${SHOP_ID}`);
 
-  // 4. Create shop user record
   await db.doc(`shops/${SHOP_ID}/users/${user.uid}`).set({
     role: "admin",
     email: EMAIL,
   }, { merge: true });
 
-  // 5. Seed products
   const products = [
     {
-      name: "เสื้อยืด Oversize",
-      price: 250,
+      name: "ເສື້ອຍືດ Oversize",
+      price: 120000,
       variants: [
-        { size: "S", color: "ขาว", stock: 5 },
-        { size: "M", color: "ขาว", stock: 8 },
-        { size: "L", color: "ขาว", stock: 3 },
-        { size: "S", color: "ดำ", stock: 4 },
-        { size: "M", color: "ดำ", stock: 6 },
-        { size: "L", color: "ดำ", stock: 0 },
+        { size: "S", color: "ຂາວ", stock: 5 },
+        { size: "M", color: "ຂາວ", stock: 8 },
+        { size: "L", color: "ຂາວ", stock: 3 },
+        { size: "S", color: "ດຳ", stock: 4 },
+        { size: "M", color: "ດຳ", stock: 6 },
+        { size: "L", color: "ດຳ", stock: 0 },
       ],
     },
     {
-      name: "กางเกงขาสั้น",
-      price: 350,
+      name: "ກາງເກງຂາສັ້ນ",
+      price: 180000,
       variants: [
-        { size: "S", color: "กากี", stock: 3 },
-        { size: "M", color: "กากี", stock: 5 },
-        { size: "L", color: "กากี", stock: 2 },
-        { size: "M", color: "เทา", stock: 4 },
+        { size: "S", color: "ກາກີ", stock: 3 },
+        { size: "M", color: "ກາກີ", stock: 5 },
+        { size: "L", color: "ກາກີ", stock: 2 },
+        { size: "M", color: "ເທົາ", stock: 4 },
       ],
     },
     {
-      name: "เสื้อเชิ้ต Linen",
-      price: 490,
+      name: "ເສື້ອເຊີດ Linen",
+      price: 250000,
       variants: [
-        { size: "S", color: "ครีม", stock: 2 },
-        { size: "M", color: "ครีม", stock: 4 },
-        { size: "L", color: "ครีม", stock: 1 },
+        { size: "S", color: "ຄຣີມ", stock: 2 },
+        { size: "M", color: "ຄຣີມ", stock: 4 },
+        { size: "L", color: "ຄຣີມ", stock: 1 },
       ],
     },
     {
-      name: "กระโปรงผ้าฝ้าย",
-      price: 320,
+      name: "ກະໂປງຜ້າຝ້າຍ",
+      price: 160000,
       variants: [
-        { size: "Free size", color: "ลาย A", stock: 6 },
-        { size: "Free size", color: "ลาย B", stock: 0 },
+        { size: "Free size", color: "ລາຍ A", stock: 6 },
+        { size: "Free size", color: "ລາຍ B", stock: 0 },
       ],
     },
   ];

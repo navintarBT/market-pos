@@ -28,9 +28,9 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
     <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.85} breakpoints={[0, 0.85, 1]}>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>ตะกร้า</IonTitle>
+          <IonTitle>ກະຕ່າ</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={onDismiss}>ปิด</IonButton>
+            <IonButton onClick={onDismiss}>ປິດ</IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -38,7 +38,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
       <IonContent>
         {items.length === 0 && (
           <IonText color="medium">
-            <p style={{ textAlign: "center", padding: 32 }}>ตะกร้าว่างเปล่า</p>
+            <p style={{ textAlign: "center", padding: 32 }}>ກະຕ່າຫວ່າງເປົ່າ</p>
           </IonText>
         )}
 
@@ -51,7 +51,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                   <h3>{item.productName}</h3>
                   <p>{item.variant.size} / {item.variant.color}</p>
                   <p style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
-                    ฿{(item.unitPrice * item.quantity).toLocaleString()}
+                    ₭{(item.unitPrice * item.quantity).toLocaleString()}
                   </p>
                 </IonLabel>
 
@@ -98,13 +98,13 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
         {items.length > 0 && (
           <div className="ion-padding">
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: "1.1rem" }}>
-              <span>ยอดรวม</span>
+              <span>ຍອດລວມ</span>
               <span style={{ fontWeight: 700, color: "var(--ion-color-primary)" }}>
-                ฿{total.toLocaleString()}
+                ₭{total.toLocaleString()}
               </span>
             </div>
             <IonButton expand="block" onClick={onCheckout} style={{ minHeight: 52 }}>
-              ชำระเงิน
+              ຊຳລະເງິນ
             </IonButton>
           </div>
         )}

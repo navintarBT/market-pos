@@ -48,10 +48,7 @@ const Products: React.FC = () => {
     }
   }, [shopId]);
 
-  // Reload whenever the tab becomes visible
-  useIonViewWillEnter(() => {
-    load();
-  });
+  useIonViewWillEnter(() => { load(); });
 
   async function handleRefresh(e: CustomEvent) {
     await load();
@@ -89,7 +86,7 @@ const Products: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>สินค้า</IonTitle>
+          <IonTitle>ສິນຄ້າ</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={signOut}>
               <IonIcon slot="icon-only" icon={logOutOutline} />
@@ -112,7 +109,7 @@ const Products: React.FC = () => {
         {!loading && products.length === 0 && (
           <IonText color="medium">
             <p style={{ textAlign: "center", padding: 32 }}>
-              {isAdmin ? "กด + เพื่อเพิ่มสินค้าแรก" : "ยังไม่มีสินค้าในระบบ"}
+              {isAdmin ? "ກົດ + ເພື່ອເພີ່ມສິນຄ້າທຳອິດ" : "ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ"}
             </p>
           </IonText>
         )}
@@ -152,11 +149,11 @@ const Products: React.FC = () => {
 
       <IonAlert
         isOpen={!!deleteTarget}
-        header="ลบสินค้า"
-        message={`ต้องการลบ "${deleteTarget?.name}" ใช่ไหม?`}
+        header="ລຶບສິນຄ້າ"
+        message={`ຕ້ອງການລຶບ "${deleteTarget?.name}" ແມ່ນບໍ່?`}
         buttons={[
-          { text: "ยกเลิก", role: "cancel", handler: () => setDeleteTarget(null) },
-          { text: "ลบ", role: "destructive", handler: handleDelete },
+          { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
+          { text: "ລຶບ", role: "destructive", handler: handleDelete },
         ]}
         onDidDismiss={() => setDeleteTarget(null)}
       />

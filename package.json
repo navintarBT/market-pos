@@ -11,10 +11,12 @@
     "test.unit": "vitest",
     "test.rules": "vitest run --config tests/vitest.config.ts tests/firestore.rules.test.ts",
     "seed": "node scripts/seed.mjs",
+    "seed:prod": "cross-env USE_EMULATOR=false node scripts/seed.mjs",
     "lint": "eslint"
   },
   "dependencies": {
     "@capacitor/app": "8.1.0",
+    "@capacitor/camera": "^8.2.0",
     "@capacitor/core": "8.4.0",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/keyboard": "8.0.3",
@@ -41,6 +43,7 @@
     "@types/react-dom": "19.0.4",
     "@vitejs/plugin-legacy": "^5.0.0",
     "@vitejs/plugin-react": "^4.0.1",
+    "cross-env": "^10.1.0",
     "cypress": "^13.5.0",
     "eslint": "^9.20.1",
     "eslint-plugin-react": "^7.32.2",

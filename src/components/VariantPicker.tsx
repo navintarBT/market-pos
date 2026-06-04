@@ -48,24 +48,23 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
         <IonToolbar>
           <IonTitle style={{ fontSize: "1rem" }}>{product.name}</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={onDismiss}>ปิด</IonButton>
+            <IonButton onClick={onDismiss}>ປິດ</IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="ion-padding">
         <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "1.25rem", color: "var(--ion-color-primary)" }}>
-          ฿{product.price.toLocaleString()}
+          ₭{product.price.toLocaleString()}
         </p>
 
         <p style={{ margin: "0 0 12px", color: "var(--ion-color-medium)", fontSize: "0.85rem" }}>
-          เลือก variant
+          ເລືອກ variant
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
           {product.variants.map((v, i) => {
-            const isSelected =
-              selected?.size === v.size && selected?.color === v.color;
+            const isSelected = selected?.size === v.size && selected?.color === v.color;
             const outOfStock = v.stock === 0;
             return (
               <button
@@ -88,7 +87,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
               >
                 <div>{v.size} / {v.color}</div>
                 <div style={{ fontSize: "0.75rem", marginTop: 2 }}>
-                  {outOfStock ? "หมด" : `เหลือ ${v.stock}`}
+                  {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock}`}
                 </div>
               </button>
             );
@@ -97,7 +96,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
 
         {selected && (
           <>
-            <p style={{ margin: "0 0 12px", fontWeight: 500 }}>จำนวน</p>
+            <p style={{ margin: "0 0 12px", fontWeight: 500 }}>ຈຳນວນ</p>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
               <IonButton
                 fill="outline"
@@ -117,12 +116,12 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                 <IonIcon slot="icon-only" icon={addOutline} />
               </IonButton>
               <IonText color="medium" style={{ fontSize: "0.85rem" }}>
-                รวม ฿{(product.price * qty).toLocaleString()}
+                ລວມ ₭{(product.price * qty).toLocaleString()}
               </IonText>
             </div>
 
             <IonButton expand="block" onClick={handleAdd} style={{ minHeight: 52 }}>
-              เพิ่มลงตะกร้า
+              ເພີ່ມໃສ່ກະຕ່າ
             </IonButton>
           </>
         )}

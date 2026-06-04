@@ -28,7 +28,7 @@ import type { Product, ProductVariant } from "../data/types";
 
 const Sell: React.FC = () => {
   const { shopId } = useAuth();
-  const { count, addItem } = useCart();
+  const { count, total, addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
@@ -38,11 +38,8 @@ const Sell: React.FC = () => {
   const load = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
-    try {
-      setProducts(await getProducts(shopId));
-    } finally {
-      setLoading(false);
-    }
+    try { setProducts(await getProducts(shopId)); }
+    finally { setLoading(false); }
   }, [shopId]);
 
   useIonViewWillEnter(() => { load(); });
@@ -54,13 +51,7 @@ const Sell: React.FC = () => {
 
   function handleAddToCart(variant: ProductVariant, quantity: number) {
     if (!pickerProduct) return;
-    addItem({
-      productId: pickerProduct.id,
-      productName: pickerProduct.name,
-      variant,
-      quantity,
-      unitPrice: pickerProduct.price,
-    });
+    addItem({ productId: pickerProduct.id, productName: pickerProduct.name, variant, quantity, unitPrice: pickerProduct.price });
   }
 
   function openCheckout() {
@@ -68,24 +59,26 @@ const Sell: React.FC = () => {
     setTimeout(() => setCheckoutOpen(true), 300);
   }
 
-  function handleSaleSuccess() {
-    setCheckoutOpen(false);
-    load(); // refresh stock
-  }
-
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>ขาย</IonTitle>
-          <div slot="end" style={{ paddingRight: 8, position: "relative" }}>
-            <IonButton fill="clear" onClick={() => setCartOpen(true)} style={{ minHeight: 44, minWidth: 44 }}>
+          <IonTitle style={{ fontWeight: 700 }}>ຂາຍ</IonTitle>
+          <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
+            {count > 0 && (
+              <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>
+                ₭{total.toLocaleString()}
+              </span>
+            )}
+            <IonButton fill="clear" onClick={() => setCartOpen(true)}
+              style={{ minHeight: 44, minWidth: 44, "--color": "#ffffff", position: "relative" }}>
               <IonIcon slot="icon-only" icon={cartOutline} style={{ fontSize: 26 }} />
               {count > 0 && (
-                <IonBadge
-                  color="danger"
-                  style={{ position: "absolute", top: 4, right: 4, fontSize: "0.7rem", minWidth: 18, height: 18, borderRadius: 9 }}
-                >
+                <IonBadge color="danger" style={{
+                  position: "absolute", top: 4, right: 2,
+                  fontSize: "0.65rem", minWidth: 18, height: 18,
+                  borderRadius: 9, padding: "0 4px",
+                }}>
                   {count}
                 </IonBadge>
               )}
@@ -100,52 +93,65 @@ const Sell: React.FC = () => {
         </IonRefresher>
 
         {loading && (
-          <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
-            <IonSpinner name="crescent" />
+          <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+            <IonSpinner name="crescent" color="primary" />
           </div>
         )}
 
         {!loading && products.length === 0 && (
-          <IonText color="medium">
-            <p style={{ textAlign: "center", padding: 32 }}>ยังไม่มีสินค้า</p>
-          </IonText>
+          <div style={{ textAlign: "center", padding: "64px 32px" }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🛍️</div>
+            <IonText color="medium"><p>ຍັງບໍ່ມີສິນຄ້າ</p></IonText>
+          </div>
         )}
 
-        {!loading && (
-          <IonGrid>
+        {!loading && products.length > 0 && (
+          <IonGrid style={{ padding: "12px 8px" }}>
             <IonRow>
               {products.map((p) => {
                 const totalStock = p.variants.reduce((s, v) => s + v.stock, 0);
                 const outOfStock = totalStock === 0;
                 return (
-                  <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
+                  <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3" style={{ padding: 6 }}>
                     <button
                       disabled={outOfStock}
                       onClick={() => setPickerProduct(p)}
                       style={{
                         width: "100%",
-                        minHeight: 120,
-                        borderRadius: 12,
+                        minHeight: 140,
+                        borderRadius: 16,
                         border: "none",
-                        background: "var(--ion-card-background, var(--ion-item-background))",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                        padding: 12,
+                        background: outOfStock ? "#f5f5f4" : "#ffffff",
+                        boxShadow: outOfStock ? "none" : "0 3px 14px rgba(224,123,57,0.14)",
+                        padding: "14px 12px",
                         cursor: outOfStock ? "not-allowed" : "pointer",
-                        opacity: outOfStock ? 0.5 : 1,
+                        opacity: outOfStock ? 0.55 : 1,
                         textAlign: "left",
+                        transition: "transform 0.1s, box-shadow 0.1s",
                       }}
                     >
-                      <div style={{ fontSize: 36, marginBottom: 4 }}>
-                        {p.photoUrl ? (
-                          <img src={p.photoUrl} alt={p.name} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6 }} />
-                        ) : "👕"}
+                      <div style={{ fontSize: 38, marginBottom: 6, lineHeight: 1 }}>
+                        {p.photoUrl
+                          ? <img src={p.photoUrl} alt={p.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                          : "👕"
+                        }
                       </div>
-                      <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: 2 }}>{p.name}</div>
-                      <div style={{ color: "var(--ion-color-primary)", fontWeight: 700 }}>
-                        ฿{p.price.toLocaleString()}
+                      <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917", marginBottom: 3, lineHeight: 1.3 }}>
+                        {p.name}
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: outOfStock ? "var(--ion-color-danger)" : "var(--ion-color-medium)", marginTop: 2 }}>
-                        {outOfStock ? "หมด" : `สต็อก ${totalStock}`}
+                      <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
+                        ₭{p.price.toLocaleString()}
+                      </div>
+                      <div style={{
+                        display: "inline-block",
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: 20,
+                        background: outOfStock ? "#fee2e2" : totalStock <= 3 ? "#fef3c7" : "#dcfce7",
+                        color: outOfStock ? "#dc2626" : totalStock <= 3 ? "#92400e" : "#166534",
+                      }}>
+                        {outOfStock ? "ໝົດ" : `${totalStock} ຊິ້ນ`}
                       </div>
                     </button>
                   </IonCol>
@@ -156,24 +162,11 @@ const Sell: React.FC = () => {
         )}
       </IonContent>
 
-      <VariantPicker
-        product={pickerProduct}
-        isOpen={!!pickerProduct}
-        onAdd={handleAddToCart}
-        onDismiss={() => setPickerProduct(null)}
-      />
-
-      <CartSheet
-        isOpen={cartOpen}
-        onCheckout={openCheckout}
-        onDismiss={() => setCartOpen(false)}
-      />
-
-      <CheckoutModal
-        isOpen={checkoutOpen}
-        onDismiss={() => setCheckoutOpen(false)}
-        onSuccess={handleSaleSuccess}
-      />
+      <VariantPicker product={pickerProduct} isOpen={!!pickerProduct}
+        onAdd={handleAddToCart} onDismiss={() => setPickerProduct(null)} />
+      <CartSheet isOpen={cartOpen} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
+      <CheckoutModal isOpen={checkoutOpen} onDismiss={() => setCheckoutOpen(false)}
+        onSuccess={() => { setCheckoutOpen(false); load(); }} />
     </IonPage>
   );
 };

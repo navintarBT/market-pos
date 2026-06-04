@@ -27,15 +27,15 @@ const MainTabs: React.FC = () => (
       <IonTabBar slot="bottom">
         <IonTabButton tab="sell" href="/tabs/sell">
           <IonIcon icon={cartOutline} />
-          <IonLabel>ขาย</IonLabel>
+          <IonLabel>ຂາຍ</IonLabel>
         </IonTabButton>
         <IonTabButton tab="products" href="/tabs/products">
           <IonIcon icon={shirtOutline} />
-          <IonLabel>สินค้า</IonLabel>
+          <IonLabel>ສິນຄ້າ</IonLabel>
         </IonTabButton>
         <IonTabButton tab="summary" href="/tabs/summary">
           <IonIcon icon={barChartOutline} />
-          <IonLabel>สรุปยอด</IonLabel>
+          <IonLabel>ສະຫຼຸບຍອດ</IonLabel>
         </IonTabButton>
       </IonTabBar>
     </IonTabs>

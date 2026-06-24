@@ -10,6 +10,7 @@ interface CartState {
 type CartAction =
   | { type: "ADD"; item: CartItem }
   | { type: "SET_QTY"; key: string; qty: number }
+  | { type: "SET_PRICE"; key: string; price: number }
   | { type: "REMOVE"; key: string }
   | { type: "CLEAR" };
 
@@ -37,6 +38,12 @@ function reducer(state: CartState, action: CartAction): CartState {
           itemKey(i) === action.key ? { ...i, quantity: action.qty } : i
         ),
       };
+    case "SET_PRICE":
+      return {
+        items: state.items.map((i) =>
+          itemKey(i) === action.key ? { ...i, unitPrice: action.price } : i
+        ),
+      };
     case "REMOVE":
       return { items: state.items.filter((i) => itemKey(i) !== action.key) };
     case "CLEAR":
@@ -50,6 +57,7 @@ interface CartContextValue {
   count: number;
   addItem: (item: CartItem) => void;
   setQty: (key: string, qty: number) => void;
+  setPrice: (key: string, price: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
   itemKey: typeof itemKey;
@@ -71,6 +79,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         count,
         addItem: (item) => dispatch({ type: "ADD", item }),
         setQty: (key, qty) => dispatch({ type: "SET_QTY", key, qty }),
+        setPrice: (key, price) => dispatch({ type: "SET_PRICE", key, price }),
         removeItem: (key) => dispatch({ type: "REMOVE", key }),
         clear: () => dispatch({ type: "CLEAR" }),
         itemKey,

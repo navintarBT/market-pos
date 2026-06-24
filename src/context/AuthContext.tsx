@@ -5,12 +5,13 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { auth } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
 interface AuthState {
   user: User | null;
   shopId: string | null;
-  role: "admin" | "staff" | null;
+  role: "customer" | "staff" | null;
   loading: boolean;
 }
 
@@ -32,12 +33,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     return onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Custom claims are in the ID token
-        const token = await user.getIdTokenResult();
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const data = snap.data();
         setState({
           user,
-          shopId: (token.claims.shopId as string) ?? null,
-          role: (token.claims.role as "admin" | "staff") ?? null,
+          shopId: (data?.shopId as string) ?? null,
+          role: (data?.role as "customer" | "staff") ?? null,
           loading: false,
         });
       } else {
@@ -48,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged fires and updates state automatically
   }
 
   async function signOut() {

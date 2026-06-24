@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -18,6 +18,8 @@ import {
   useIonViewWillEnter,
 } from "@ionic/react";
 import { cartOutline } from "ionicons/icons";
+import { IonMenuButton } from "@ionic/react";
+import { fmtK } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { getProducts } from "../data/productRepository";
@@ -31,6 +33,7 @@ const Sell: React.FC = () => {
   const { count, total, addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
   const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -43,15 +46,31 @@ const Sell: React.FC = () => {
   }, [shopId]);
 
   useIonViewWillEnter(() => { load(); });
+  useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {
     await load();
     (e.target as HTMLIonRefresherElement).complete();
   }
 
-  function handleAddToCart(variant: ProductVariant, quantity: number) {
+  const categories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
+  const filtered = activeCategory === "all"
+    ? products
+    : products.filter((p) => p.category === activeCategory);
+
+  function handleAddToCart(items: { variant: ProductVariant; quantity: number }[]) {
     if (!pickerProduct) return;
-    addItem({ productId: pickerProduct.id, productName: pickerProduct.name, variant, quantity, unitPrice: pickerProduct.price });
+    items.forEach(({ variant, quantity }) => {
+      addItem({
+        productId: pickerProduct.id,
+        productName: pickerProduct.name,
+        variant,
+        quantity,
+        originalPrice: pickerProduct.price,
+        unitPrice: pickerProduct.price,
+        costPrice: pickerProduct.costPrice,
+      });
+    });
   }
 
   function openCheckout() {
@@ -67,7 +86,7 @@ const Sell: React.FC = () => {
           <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
             {count > 0 && (
               <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>
-                ₭{total.toLocaleString()}
+                ₭{fmtK(total)}
               </span>
             )}
             <IonButton fill="clear" onClick={() => setCartOpen(true)}
@@ -83,6 +102,7 @@ const Sell: React.FC = () => {
                 </IonBadge>
               )}
             </IonButton>
+            <IonMenuButton autoHide={false} style={{ "--color": "#ffffff" }} />
           </div>
         </IonToolbar>
       </IonHeader>
@@ -91,6 +111,36 @@ const Sell: React.FC = () => {
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent />
         </IonRefresher>
+
+        {!loading && categories.length > 0 && (
+          <div style={{
+            display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px 6px",
+            scrollbarWidth: "none",
+          }}>
+            {["all", ...categories].map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "7px 18px", borderRadius: 24,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "#e5e7eb"}`,
+                    background: isActive ? "var(--ion-color-primary)" : "#ffffff",
+                    color: isActive ? "#ffffff" : "#57534e",
+                    fontSize: "0.85rem", fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {cat === "all" ? "ທັງໝົດ" : cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {loading && (
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
@@ -105,10 +155,17 @@ const Sell: React.FC = () => {
           </div>
         )}
 
-        {!loading && products.length > 0 && (
+        {!loading && products.length > 0 && filtered.length === 0 && (
+          <div style={{ textAlign: "center", padding: "64px 32px" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+            <IonText color="medium"><p>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p></IonText>
+          </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
           <IonGrid style={{ padding: "12px 8px" }}>
             <IonRow>
-              {products.map((p) => {
+              {filtered.map((p) => {
                 const totalStock = p.variants.reduce((s, v) => s + v.stock, 0);
                 const outOfStock = totalStock === 0;
                 return (
@@ -140,7 +197,7 @@ const Sell: React.FC = () => {
                         {p.name}
                       </div>
                       <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
-                        ₭{p.price.toLocaleString()}
+                        ₭{fmtK(p.price)}
                       </div>
                       <div style={{
                         display: "inline-block",

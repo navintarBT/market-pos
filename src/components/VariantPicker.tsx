@@ -7,43 +7,67 @@ import {
   IonButtons,
   IonButton,
   IonContent,
-  IonText,
+  IonFooter,
   IonIcon,
 } from "@ionic/react";
 import { addOutline, removeOutline } from "ionicons/icons";
 import type { Product, ProductVariant } from "../data/types";
+import { fmtK } from "../utils/format";
+
+interface PickedItem {
+  variant: ProductVariant;
+  quantity: number;
+}
 
 interface Props {
   product: Product | null;
   isOpen: boolean;
-  onAdd: (variant: ProductVariant, quantity: number) => void;
+  onAdd: (items: PickedItem[]) => void;
   onDismiss: () => void;
 }
 
+function variantKey(v: ProductVariant) {
+  return `${v.size}|${v.color}`;
+}
+
 const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) => {
-  const [selected, setSelected] = useState<ProductVariant | null>(null);
-  const [qty, setQty] = useState(1);
+  const [qtys, setQtys] = useState<Record<string, number>>({});
 
   function handleOpen() {
-    setSelected(null);
-    setQty(1);
+    setQtys({});
   }
 
-  function selectVariant(v: ProductVariant) {
-    setSelected(v);
-    setQty(1);
+  function setQty(v: ProductVariant, delta: number) {
+    const key = variantKey(v);
+    setQtys((prev) => {
+      const next = Math.max(0, Math.min(v.stock, (prev[key] ?? 0) + delta));
+      return { ...prev, [key]: next };
+    });
   }
 
   function handleAdd() {
-    if (!selected) return;
-    onAdd(selected, qty);
+    if (!product) return;
+    const items = product.variants
+      .filter((v) => (qtys[variantKey(v)] ?? 0) > 0)
+      .map((v) => ({ variant: v, quantity: qtys[variantKey(v)] }));
+    if (items.length === 0) return;
+    onAdd(items);
     onDismiss();
   }
 
   if (!product) return null;
 
+  const totalQty = Object.values(qtys).reduce((s, q) => s + q, 0);
+  const totalPrice = product.variants.reduce((s, v) => s + (qtys[variantKey(v)] ?? 0) * product.price, 0);
+
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} onWillPresent={handleOpen} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
+    <IonModal
+      isOpen={isOpen}
+      onDidDismiss={onDismiss}
+      onWillPresent={handleOpen}
+      initialBreakpoint={1}
+      breakpoints={[0, 1]}
+    >
       <IonHeader>
         <IonToolbar>
           <IonTitle style={{ fontSize: "1rem" }}>{product.name}</IonTitle>
@@ -53,79 +77,144 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="ion-padding">
-        <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "1.25rem", color: "var(--ion-color-primary)" }}>
-          ₭{product.price.toLocaleString()}
-        </p>
+      <IonContent>
+        <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
+            ₭{fmtK(product.price)} / ຊິ້ນ
+          </span>
+          <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
+            ເລືອກໄດ້ຫຼາຍ variant
+          </span>
+        </div>
 
-        <p style={{ margin: "0 0 12px", color: "var(--ion-color-medium)", fontSize: "0.85rem" }}>
-          ເລືອກ variant
-        </p>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
+        <div style={{ padding: "8px 16px 16px" }}>
           {product.variants.map((v, i) => {
-            const isSelected = selected?.size === v.size && selected?.color === v.color;
+            const key = variantKey(v);
+            const qty = qtys[key] ?? 0;
             const outOfStock = v.stock === 0;
+            const selected = qty > 0;
+
             return (
-              <button
+              <div
                 key={i}
-                disabled={outOfStock}
-                onClick={() => selectVariant(v)}
                 style={{
-                  minHeight: 56,
-                  minWidth: 80,
-                  padding: "8px 16px",
-                  borderRadius: 12,
-                  border: `2px solid ${isSelected ? "var(--ion-color-primary)" : "var(--ion-color-light)"}`,
-                  background: isSelected ? "var(--ion-color-primary)" : "var(--ion-color-light)",
-                  color: isSelected ? "#fff" : outOfStock ? "var(--ion-color-medium)" : "var(--ion-color-dark)",
-                  cursor: outOfStock ? "not-allowed" : "pointer",
-                  opacity: outOfStock ? 0.45 : 1,
-                  fontSize: "0.9rem",
-                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 14px",
+                  marginBottom: 8,
+                  borderRadius: 14,
+                  border: `2px solid ${selected ? "var(--ion-color-primary)" : "#e5e7eb"}`,
+                  background: selected ? "rgba(224,123,57,0.06)" : outOfStock ? "#fafaf9" : "#ffffff",
+                  opacity: outOfStock ? 0.5 : 1,
+                  transition: "border-color 0.15s, background 0.15s",
                 }}
               >
-                <div>{v.size} / {v.color}</div>
-                <div style={{ fontSize: "0.75rem", marginTop: 2 }}>
-                  {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock}`}
+                {/* Left: variant info */}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>
+                    {v.size} / {v.color}
+                  </div>
+                  <div style={{
+                    display: "inline-block", marginTop: 4,
+                    fontSize: "0.72rem", fontWeight: 600,
+                    padding: "2px 8px", borderRadius: 20,
+                    background: outOfStock ? "#fee2e2" : v.stock <= 3 ? "#fef3c7" : "#dcfce7",
+                    color: outOfStock ? "#dc2626" : v.stock <= 3 ? "#92400e" : "#166534",
+                  }}>
+                    {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock} ຊິ້ນ`}
+                  </div>
                 </div>
-              </button>
+
+                {/* Right: stepper */}
+                {outOfStock ? (
+                  <span style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>ໝົດ</span>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <button
+                      onClick={() => setQty(v, -1)}
+                      disabled={qty === 0}
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        border: "1.5px solid #e5e7eb",
+                        background: qty === 0 ? "#f5f5f4" : "#fff",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: qty === 0 ? "not-allowed" : "pointer",
+                        color: qty === 0 ? "#d4d4d0" : "#1c1917",
+                      }}
+                    >
+                      <IonIcon icon={removeOutline} style={{ fontSize: 18 }} />
+                    </button>
+
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={qty > 0 ? fmtK(qty) : ""}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^0-9]/g, "");
+                        const n = parseInt(digits) || 0;
+                        const clamped = Math.max(0, Math.min(v.stock, n));
+                        const k = variantKey(v);
+                        setQtys((prev) => ({ ...prev, [k]: clamped }));
+                      }}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="0"
+                      style={{
+                        width: 52, height: 36, textAlign: "center",
+                        fontSize: "1.1rem", fontWeight: 700,
+                        color: qty > 0 ? "var(--ion-color-primary)" : "#a8a29e",
+                        border: "1.5px solid #e5e7eb", borderRadius: 10,
+                        outline: "none", background: "#fff",
+                      }}
+                    />
+
+                    <button
+                      onClick={() => setQty(v, +1)}
+                      disabled={qty >= v.stock}
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        border: `1.5px solid ${qty >= v.stock ? "#e5e7eb" : "var(--ion-color-primary)"}`,
+                        background: qty >= v.stock ? "#f5f5f4" : "var(--ion-color-primary)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: qty >= v.stock ? "not-allowed" : "pointer",
+                        color: qty >= v.stock ? "#d4d4d0" : "#fff",
+                      }}
+                    >
+                      <IonIcon icon={addOutline} style={{ fontSize: 18 }} />
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
-
-        {selected && (
-          <>
-            <p style={{ margin: "0 0 12px", fontWeight: 500 }}>ຈຳນວນ</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-              <IonButton
-                fill="outline"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                style={{ minHeight: 44, minWidth: 44 }}
-              >
-                <IonIcon slot="icon-only" icon={removeOutline} />
-              </IonButton>
-              <span style={{ fontSize: "1.5rem", fontWeight: 600, minWidth: 32, textAlign: "center" }}>
-                {qty}
-              </span>
-              <IonButton
-                fill="outline"
-                onClick={() => setQty((q) => Math.min(selected.stock, q + 1))}
-                style={{ minHeight: 44, minWidth: 44 }}
-              >
-                <IonIcon slot="icon-only" icon={addOutline} />
-              </IonButton>
-              <IonText color="medium" style={{ fontSize: "0.85rem" }}>
-                ລວມ ₭{(product.price * qty).toLocaleString()}
-              </IonText>
-            </div>
-
-            <IonButton expand="block" onClick={handleAdd} style={{ minHeight: 52 }}>
-              ເພີ່ມໃສ່ກະຕ່າ
-            </IonButton>
-          </>
-        )}
       </IonContent>
+
+      <IonFooter>
+        <div style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "1px solid #e5e7eb" }}>
+          {totalQty > 0 && (
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              marginBottom: 10, fontSize: "0.9rem", fontWeight: 600,
+            }}>
+              <span style={{ color: "#57534e" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
+              <span style={{ color: "var(--ion-color-primary)", fontWeight: 800 }}>
+                ₭{fmtK(totalPrice)}
+              </span>
+            </div>
+          )}
+          <IonButton
+            expand="block"
+            disabled={totalQty === 0}
+            onClick={handleAdd}
+            style={{ minHeight: 52, "--border-radius": "14px" }}
+          >
+            {totalQty === 0
+              ? "ເລືອກສິນຄ້າກ່ອນ"
+              : `ເພີ່ມໃສ່ກະຕ່າ (${totalQty} ລາຍການ)`}
+          </IonButton>
+        </div>
+      </IonFooter>
     </IonModal>
   );
 };

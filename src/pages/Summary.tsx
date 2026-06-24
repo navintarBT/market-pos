@@ -1,17 +1,16 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonGrid, IonRow, IonCol, IonList, IonItem, IonLabel,
-  IonBadge, IonRefresher, IonRefresherContent,
-  IonSpinner, IonText, useIonViewWillEnter,
+  IonGrid, IonRow, IonCol,
+  IonRefresher, IonRefresherContent,
+  IonSpinner, IonText, IonButtons, IonMenuButton, useIonViewWillEnter,
 } from "@ionic/react";
 import { useAuth } from "../context/AuthContext";
 import { getSalesToday } from "../data/saleRepository";
+import { getExpensesToday } from "../data/expenseRepository";
 import type { Sale } from "../data/types";
+import { fmtK } from "../utils/format";
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString("lo-LA", { hour: "2-digit", minute: "2-digit" });
-}
 function formatDate(date: Date) {
   return date.toLocaleDateString("lo-LA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
@@ -41,13 +40,19 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, bg, color }) =>
 const Summary: React.FC = () => {
   const { shopId } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
-    try { setSales(await getSalesToday(shopId)); }
-    finally { setLoading(false); }
+    try {
+      const [s, exps] = await Promise.all([getSalesToday(shopId), getExpensesToday(shopId)]);
+      setSales(s);
+      setTotalExpenses(exps.reduce((sum, e) => sum + e.amount, 0));
+    } finally {
+      setLoading(false);
+    }
   }, [shopId]);
 
   useIonViewWillEnter(() => { load(); });
@@ -60,12 +65,23 @@ const Summary: React.FC = () => {
   const totalRevenue = sales.reduce((s, t) => s + t.total, 0);
   const cashTotal = sales.filter((s) => s.paymentType === "cash").reduce((s, t) => s + t.total, 0);
   const qrTotal = sales.filter((s) => s.paymentType === "qr").reduce((s, t) => s + t.total, 0);
+  const totalDiscount = sales.reduce((s, sale) =>
+    s + sale.items.reduce((is, item) =>
+      is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity, 0), 0);
+  const totalCost = sales.reduce((s, sale) =>
+    s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
+  const grossProfit = totalRevenue - totalCost;
+  const netProfit = grossProfit - totalExpenses;
+  const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
           <IonTitle style={{ fontWeight: 700 }}>ສະຫຼຸບຍອດ</IonTitle>
+          <IonButtons slot="end">
+            <IonMenuButton autoHide={false} />
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 
@@ -85,80 +101,102 @@ const Summary: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Total revenue — big card */}
+              {/* Total revenue */}
               <div style={{
                 background: "linear-gradient(135deg, #e07b39, #c25e1e)",
-                borderRadius: 20,
-                padding: "20px 24px",
-                marginBottom: 12,
-                boxShadow: "0 6px 20px rgba(224,123,57,0.35)",
-                color: "#fff",
+                borderRadius: 20, padding: "20px 24px", marginBottom: 12,
+                boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
               }}>
                 <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
                 <p style={{ margin: "6px 0 0", fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                  ₭{totalRevenue.toLocaleString()}
+                  ₭{fmtK(totalRevenue)}
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: "0.8rem", opacity: 0.8 }}>
                   {sales.length} ລາຍການ
                 </p>
               </div>
 
-              {/* Sub stats */}
-              <IonGrid style={{ padding: 0, marginBottom: 20 }}>
+              {/* Cash / QR */}
+              <IonGrid style={{ padding: 0, marginBottom: 12 }}>
                 <IonRow>
                   <IonCol style={{ paddingLeft: 0, paddingRight: 6 }}>
-                    <StatCard label="ເງິນສົດ" value={`₭${cashTotal.toLocaleString()}`}
+                    <StatCard label="ເງິນສົດ" value={`₭${fmtK(cashTotal)}`}
                       icon="💵" bg="#f0fdf4" color="#16a34a" />
                   </IonCol>
                   <IonCol style={{ paddingRight: 0, paddingLeft: 6 }}>
-                    <StatCard label="QR ໂອນ" value={`₭${qrTotal.toLocaleString()}`}
+                    <StatCard label="QR ໂອນ" value={`₭${fmtK(qrTotal)}`}
                       icon="📱" bg="#eff6ff" color="#2563eb" />
                   </IonCol>
                 </IonRow>
               </IonGrid>
 
-              {/* Sale list */}
-              <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>
-                ລາຍການຂາຍມື້ນີ້
-              </p>
+              {/* Discount */}
+              {totalDiscount > 0 && (
+                <div style={{
+                  background: "#fdf4ff", borderRadius: 16, padding: "14px 16px",
+                  marginBottom: 12, boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "0.72rem", color: "#78716c", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#9333ea" }}>
+                      −₭{fmtK(totalDiscount)}
+                    </p>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#a78bfa", textAlign: "right" }}>
+                    <div>ລາຄາຕາມລາຍການ</div>
+                    <div style={{ fontWeight: 700 }}>₭{(fmtK(totalRevenue + totalDiscount))}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cost / Gross profit */}
+              {hasCostData && (
+                <IonGrid style={{ padding: 0, marginBottom: 12 }}>
+                  <IonRow>
+                    <IonCol style={{ paddingLeft: 0, paddingRight: 6 }}>
+                      <StatCard label="ຕົ້ນທຶນສິນຄ້າ" value={`₭${fmtK(totalCost)}`}
+                        icon="🏷️" bg="#fef3c7" color="#92400e" />
+                    </IonCol>
+                    <IonCol style={{ paddingRight: 0, paddingLeft: 6 }}>
+                      <StatCard
+                        label="ກຳໄລຂັ້ນຕົ້ນ"
+                        value={`₭${fmtK(grossProfit)}`}
+                        icon={grossProfit >= 0 ? "📈" : "📉"}
+                        bg={grossProfit >= 0 ? "#f0fdf4" : "#fef2f2"}
+                        color={grossProfit >= 0 ? "#16a34a" : "#dc2626"}
+                      />
+                    </IonCol>
+                  </IonRow>
+                </IonGrid>
+              )}
+
+              {/* Net profit */}
+              {hasCostData && (
+                <div style={{
+                  background: netProfit >= 0 ? "linear-gradient(135deg, #16a34a, #15803d)" : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                  borderRadius: 16, padding: "16px 20px", marginBottom: 20,
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)", color: "#fff",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "1.6rem", fontWeight: 800 }}>
+                      ₭{fmtK(netProfit)}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right", opacity: 0.85, fontSize: "0.78rem", lineHeight: 1.8 }}>
+                    <div>ກຳໄລຂັ້ນຕົ້ນ ₭{fmtK(grossProfit)}</div>
+                    <div>ລາຍຈ່າຍ −₭{fmtK(totalExpenses)}</div>
+                  </div>
+                </div>
+              )}
 
               {sales.length === 0 && (
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
                   <div style={{ fontSize: 48, marginBottom: 8 }}>📋</div>
                   <IonText color="medium"><p>ຍັງບໍ່ມີລາຍການຂາຍມື້ນີ້</p></IonText>
                 </div>
-              )}
-
-              {sales.length > 0 && (
-                <IonList style={{ borderRadius: 16, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-                  {sales.map((sale) => {
-                    const itemCount = sale.items.reduce((s, i) => s + i.quantity, 0);
-                    const isCash = sale.paymentType === "cash";
-                    return (
-                      <IonItem key={sale.id} lines="inset" style={{ "--background": "#ffffff" }}>
-                        <IonLabel>
-                          <h3 style={{ fontWeight: 800, color: "#1c1917", fontSize: "1rem" }}>
-                            ₭{sale.total.toLocaleString()}
-                          </h3>
-                          <p style={{ color: "#78716c", fontSize: "0.82rem" }}>
-                            {itemCount} ຊິ້ນ · {sale.items.map((i) => i.productName).join(", ")}
-                          </p>
-                          <p style={{ color: "#a8a29e", fontSize: "0.75rem" }}>
-                            🕐 {formatTime(sale.createdAt)}
-                            {(sale as any).provisional ? " · 🔄 ລໍຖ້າຊິງ" : ""}
-                          </p>
-                        </IonLabel>
-                        <IonBadge slot="end" style={{
-                          background: isCash ? "#dcfce7" : "#eff6ff",
-                          color: isCash ? "#166534" : "#1d4ed8",
-                          borderRadius: 8, padding: "4px 10px", fontWeight: 700,
-                        }}>
-                          {isCash ? "💵 ສົດ" : "📱 QR"}
-                        </IonBadge>
-                      </IonItem>
-                    );
-                  })}
-                </IonList>
               )}
             </>
           )}

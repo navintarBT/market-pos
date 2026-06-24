@@ -34,20 +34,37 @@ export async function recordSale(
 ): Promise<string> {
   try {
     return await runTransaction(db, async (tx) => {
+      // Group items by productId so each product is read exactly once
+      const byProduct = new Map<string, SaleItem[]>();
       for (const item of items) {
-        const productRef = doc(productsCol(shopId), item.productId);
-        const snap = await tx.get(productRef);
-        if (!snap.exists()) throw new Error(`Product ${item.productId} not found`);
+        const arr = byProduct.get(item.productId) ?? [];
+        arr.push(item);
+        byProduct.set(item.productId, arr);
+      }
 
-        const variants: any[] = snap.data().variants ?? [];
-        const idx = variants.findIndex(
-          (v) => v.size === item.variant.size && v.color === item.variant.color
-        );
-        if (idx === -1) throw new Error("Variant not found");
-        if (variants[idx].stock < item.quantity) throw new Error("Insufficient stock");
+      // Phase 1: all reads
+      const snaps = new Map<string, any>();
+      for (const productId of byProduct.keys()) {
+        const ref = doc(productsCol(shopId), productId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error(`Product ${productId} not found`);
+        snaps.set(productId, snap);
+      }
 
-        variants[idx] = { ...variants[idx], stock: variants[idx].stock - item.quantity };
-        tx.update(productRef, { variants });
+      // Phase 2: validate + all writes
+      for (const [productId, productItems] of byProduct) {
+        const snap = snaps.get(productId)!;
+        const ref = doc(productsCol(shopId), productId);
+        const variants: any[] = [...(snap.data().variants ?? [])];
+        for (const item of productItems) {
+          const idx = variants.findIndex(
+            (v) => v.size === item.variant.size && v.color === item.variant.color
+          );
+          if (idx === -1) throw new Error("Variant not found");
+          if (variants[idx].stock < item.quantity) throw new Error("Insufficient stock");
+          variants[idx] = { ...variants[idx], stock: variants[idx].stock - item.quantity };
+        }
+        tx.update(ref, { variants });
       }
 
       const saleRef = doc(salesCol(shopId));
@@ -102,6 +119,27 @@ async function recordSaleProvisional(
 
   await batch.commit();
   return saleRef.id;
+}
+
+export async function getSalesByDateRange(shopId: string, from: Date, to: Date): Promise<Sale[]> {
+  const end = new Date(to);
+  end.setHours(23, 59, 59, 999);
+
+  const q = query(
+    salesCol(shopId),
+    where("createdAt", ">=", Timestamp.fromDate(from)),
+    where("createdAt", "<=", Timestamp.fromDate(end)),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate(),
+    } as Sale;
+  });
 }
 
 export async function getSalesToday(shopId: string): Promise<Sale[]> {

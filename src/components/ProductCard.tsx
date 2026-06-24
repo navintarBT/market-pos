@@ -9,6 +9,7 @@ import {
 } from "@ionic/react";
 import { createOutline, trashOutline } from "ionicons/icons";
 import type { Product } from "../data/types";
+import { fmtK } from "../utils/format";
 
 interface Props {
   product: Product;
@@ -44,7 +45,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, onEdit, onDelete }) =>
           {product.name}
         </p>
         <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
-          ₭{product.price.toLocaleString()}
+          ₭{fmtK(product.price)}
         </p>
 
         {/* Variants */}

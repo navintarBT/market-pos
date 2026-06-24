@@ -12,6 +12,7 @@
     "test.rules": "vitest run --config tests/vitest.config.ts tests/firestore.rules.test.ts",
     "seed": "node scripts/seed.mjs",
     "seed:prod": "cross-env USE_EMULATOR=false node scripts/seed.mjs",
+    "clear": "node scripts/clear.mjs",
     "lint": "eslint"
   },
   "dependencies": {

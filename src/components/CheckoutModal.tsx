@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { recordSale } from "../data/saleRepository";
+import { fmtK } from "../utils/format";
 import type { Sale } from "../data/types";
 
 interface Props {
@@ -35,7 +36,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
     setBusy(true);
     try {
       await recordSale(shopId, items, total, paymentType);
-      setSuccessMsg(`ຮັບເງິນສຳເລັດ ₭${total.toLocaleString()}`);
+      setSuccessMsg(`ຮັບເງິນສຳເລັດ ₭${fmtK(total)}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
       setError(msg === "Insufficient stock" ? "ສິນຄ້າບໍ່ພໍຂາຍ ກະລຸນາກວດສອບສະຕ໋ອກ" : msg);
@@ -66,7 +67,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <p style={{ margin: 0, color: "var(--ion-color-medium)" }}>ຍອດທີ່ຕ້ອງຊຳລະ</p>
             <p style={{ margin: "8px 0 0", fontSize: "2.5rem", fontWeight: 700, color: "var(--ion-color-primary)" }}>
-              ₭{total.toLocaleString()}
+              ₭{fmtK(total)}
             </p>
           </div>
 

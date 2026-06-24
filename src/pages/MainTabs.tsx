@@ -1,18 +1,44 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  IonBadge, IonIcon, IonLabel, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs,
-  IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem,
+  IonBadge,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenu,
+  IonMenuToggle,
+  IonRouterOutlet,
+  IonTabBar,
+  IonTabButton,
+  IonTabs,
+  IonTitle,
+  IonToolbar,
 } from "@ionic/react";
 import { Redirect, Route } from "react-router-dom";
-import { cartOutline, shirtOutline, barChartOutline, receiptOutline, timeOutline, logOutOutline } from "ionicons/icons";
+import {
+  barChartOutline,
+  businessOutline,
+  cartOutline,
+  logOutOutline,
+  peopleOutline,
+  receiptOutline,
+  shirtOutline,
+  timeOutline,
+} from "ionicons/icons";
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
+import { getShopProfile } from "../data/shopRepository";
+import type { ShopProfile } from "../data/types";
 import Sell from "./Sell";
 import Products from "./Products";
 import Summary from "./Summary";
 import Expenses from "./Expenses";
 import SalesHistory from "./SalesHistory";
+import ShopProfileSettings from "./ShopProfileSettings";
+import StaffSettings from "./StaffSettings";
 
 function useStockAlertCount(shopId: string | null) {
   const [count, setCount] = useState(0);
@@ -32,8 +58,17 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, signOut } = useAuth();
+  const { shopId, role, signOut } = useAuth();
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
+  const [shop, setShop] = useState<ShopProfile | null>(null);
+
+  useEffect(() => {
+    if (!shopId) {
+      setShop(null);
+      return;
+    }
+    getShopProfile(shopId).then(setShop).catch(() => setShop(null));
+  }, [shopId]);
 
   return (
     <CartProvider>
@@ -44,16 +79,55 @@ const MainTabs: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
+          <div style={{ padding: "18px 16px 12px", background: "linear-gradient(135deg, #fff7ed, #ffffff)" }}>
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: 16,
+              background: "#ffedd5",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 10,
+            }}>
+              {shop?.profileUrl ? (
+                <img src={shop.profileUrl} alt={shop.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "#e07b39" }} />
+              )}
+            </div>
+            <h2 style={{ margin: 0, color: "#1c1917", fontSize: "1.05rem", fontWeight: 800 }}>
+              {shop?.name ?? "Market POS"}
+            </h2>
+            <p style={{ margin: "3px 0 0", color: "#78716c", fontSize: "0.78rem", fontWeight: 600 }}>
+              {role === "customer" ? "Owner" : "Staff"}
+            </p>
+          </div>
+
           <IonList lines="none" style={{ paddingTop: 8 }}>
-            <IonItem
-              button
-              detail={false}
-              onClick={signOut}
-              style={{ "--background-hover": "#fee2e2", marginTop: 8 }}
-            >
-              <IonIcon slot="start" icon={logOutOutline} color="danger" />
-              <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
-            </IonItem>
+            {role === "customer" && (
+              <>
+                <IonMenuToggle autoHide={false}>
+                  <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "#fff7ed" }}>
+                    <IonIcon slot="start" icon={businessOutline} color="primary" />
+                    <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                  </IonItem>
+                </IonMenuToggle>
+                <IonMenuToggle autoHide={false}>
+                  <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "#f0fdfa" }}>
+                    <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
+                    <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
+                  </IonItem>
+                </IonMenuToggle>
+              </>
+            )}
+            <IonMenuToggle autoHide={false}>
+              <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "#fee2e2", marginTop: 8 }}>
+                <IonIcon slot="start" icon={logOutOutline} color="danger" />
+                <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
+              </IonItem>
+            </IonMenuToggle>
           </IonList>
         </IonContent>
       </IonMenu>
@@ -65,6 +139,8 @@ const MainTabs: React.FC = () => {
           <Route exact path="/tabs/summary"><Summary /></Route>
           <Route exact path="/tabs/expenses"><Expenses /></Route>
           <Route exact path="/tabs/history"><SalesHistory /></Route>
+          <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShop} /></Route>
+          <Route exact path="/tabs/staff"><StaffSettings /></Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>
 
@@ -76,9 +152,7 @@ const MainTabs: React.FC = () => {
           <IonTabButton tab="products" href="/tabs/products">
             <IonIcon icon={shirtOutline} />
             <IonLabel>ສິນຄ້າ</IonLabel>
-            {alertCount > 0 && (
-              <IonBadge color="danger">{alertCount}</IonBadge>
-            )}
+            {alertCount > 0 && <IonBadge color="danger">{alertCount}</IonBadge>}
           </IonTabButton>
           <IonTabButton tab="expenses" href="/tabs/expenses">
             <IonIcon icon={receiptOutline} />

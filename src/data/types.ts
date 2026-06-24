@@ -30,6 +30,20 @@ export interface Category {
   name: string;
 }
 
+export interface ShopProfile {
+  id: string;
+  name: string;
+  profileUrl?: string;
+}
+
+export interface ShopUser {
+  id: string;
+  email: string;
+  role: "customer" | "staff";
+  displayName?: string;
+  createdAt?: Date;
+}
+
 export type PaymentType = "cash" | "qr";
 
 export interface Expense {

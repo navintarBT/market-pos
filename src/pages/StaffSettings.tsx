@@ -1,0 +1,347 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenuButton,
+  IonPage,
+  IonSpinner,
+  IonText,
+  IonTitle,
+  IonToolbar,
+  useIonViewWillEnter,
+} from "@ionic/react";
+import { addOutline, closeOutline, createOutline, peopleOutline, trashOutline } from "ionicons/icons";
+import { useAuth } from "../context/AuthContext";
+import { createStaffUser, deleteStaffUser, getShopUsers, updateStaffUser } from "../data/shopRepository";
+import type { ShopUser } from "../data/types";
+
+const cardStyle: React.CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 16,
+  padding: 16,
+  boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
+  marginBottom: 14,
+};
+
+const StaffSettings: React.FC = () => {
+  const { shopId, role } = useAuth();
+  const [staff, setStaff] = useState<ShopUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [staffName, setStaffName] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const isOwner = role === "customer";
+
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 3000);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 4000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  const load = useCallback(async () => {
+    if (!shopId) return;
+    setLoading(true);
+    try {
+      setStaff(await getShopUsers(shopId));
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [shopId]);
+
+  useIonViewWillEnter(() => {
+    load();
+    setShowForm(false);
+    setEditingId(null);
+  });
+
+  function handleOpenForm() {
+    setStaffName(""); setStaffEmail(""); setStaffPassword("");
+    setError(null); setMessage(null);
+    setEditingId(null);
+    setShowForm(true);
+  }
+
+  function handleCloseForm() {
+    setShowForm(false); setError(null);
+  }
+
+  function handleStartEdit(user: ShopUser) {
+    setEditingId(user.id);
+    setEditName(user.displayName ?? "");
+    setShowForm(false);
+    setError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null); setError(null);
+  }
+
+  async function handleCreateStaff(e: React.FormEvent) {
+    e.preventDefault();
+    if (!shopId || !staffEmail.trim() || staffPassword.length < 6) return;
+    setCreating(true); setError(null); setMessage(null);
+    try {
+      await createStaffUser(shopId, {
+        email: staffEmail.trim(),
+        password: staffPassword,
+        displayName: staffName.trim(),
+      });
+      setShowForm(false);
+      setMessage("ເພີ່ມພະນັກງານແລ້ວ");
+      setStaff(await getShopUsers(shopId));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "ສ້າງພະນັກງານບໍ່ສຳເລັດ";
+      setError(msg.includes("already") ? "ອີເມວນີ້ຖືກໃຊ້ແລ້ວ" : msg);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleSaveEdit(uid: string) {
+    if (!shopId) return;
+    setSaving(true); setError(null);
+    try {
+      await updateStaffUser(shopId, uid, { displayName: editName });
+      setStaff(prev => prev.map(u => u.id === uid ? { ...u, displayName: editName.trim() } : u));
+      setEditingId(null);
+      setMessage("ແກ້ໄຂຂໍ້ມູນແລ້ວ");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ແກ້ໄຂບໍ່ສຳເລັດ");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(user: ShopUser) {
+    if (!shopId) return;
+    if (!window.confirm(`ລຶບ "${user.displayName || user.email}" ອອກຈາກຮ້ານ?`)) return;
+    setDeletingId(user.id); setError(null);
+    try {
+      await deleteStaffUser(shopId, user.id);
+      setStaff(prev => prev.filter(u => u.id !== user.id));
+      setMessage("ລຶບພະນັກງານແລ້ວ");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ລຶບບໍ່ສຳເລັດ");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle style={{ fontWeight: 700 }}>ພະນັກງານ</IonTitle>
+          <IonButtons slot="end">
+            <IonMenuButton autoHide={false} />
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent>
+        <div style={{ padding: "16px 16px 28px" }}>
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+              <IonSpinner name="crescent" color="primary" />
+            </div>
+          ) : !isOwner ? (
+            <div style={{ ...cardStyle, textAlign: "center", padding: "42px 24px" }}>
+              <IonIcon icon={peopleOutline} style={{ fontSize: 48, color: "#0f766e" }} />
+              <h2 style={{ margin: "12px 0 6px", fontSize: "1.2rem" }}>ສຳລັບເຈົ້າຂອງຮ້ານ</h2>
+              <IonText color="medium">
+                <p style={{ margin: 0 }}>staff ບໍ່ສາມາດສ້າງພະນັກງານໃໝ່ໄດ້</p>
+              </IonText>
+            </div>
+          ) : (
+            <>
+              {(message || error) && (
+                <div style={{
+                  ...cardStyle,
+                  borderLeft: `4px solid ${error ? "#dc2626" : "#16a34a"}`,
+                  color: error ? "#991b1b" : "#166534",
+                  fontWeight: 700,
+                }}>
+                  {error ?? message}
+                </div>
+              )}
+
+              <section style={cardStyle}>
+                {/* Header row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <IonIcon icon={peopleOutline} style={{ fontSize: 22, color: "#0f766e" }} />
+                    <h2 style={{ margin: 0, fontSize: "1rem" }}>ຜູ້ໃຊ້ໃນຮ້ານ</h2>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#78716c", fontSize: "0.78rem", fontWeight: 700 }}>{staff.length} ຄົນ</span>
+                    {!showForm && (
+                      <IonButton fill="solid" size="small" onClick={handleOpenForm}
+                        style={{ "--border-radius": "10px" }}>
+                        <IonIcon slot="start" icon={addOutline} />
+                        ເພີ່ມ
+                      </IonButton>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add form */}
+                {showForm && (
+                  <div style={{
+                    background: "#f0fdf4", border: "1.5px solid #bbf7d0",
+                    borderRadius: 12, padding: 14, marginBottom: 14,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#166534" }}>ເພີ່ມພະນັກງານໃໝ່</span>
+                      <button onClick={handleCloseForm} disabled={creating}
+                        style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+                        <IonIcon icon={closeOutline} style={{ fontSize: 20 }} />
+                      </button>
+                    </div>
+                    <form onSubmit={handleCreateStaff}>
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <IonInput label="ຊື່ ພະນັກງານ" labelPlacement="stacked"
+                          value={staffName} onIonInput={(e) => setStaffName(e.detail.value ?? "")}
+                          fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                        <IonInput label="ອີເມວ" labelPlacement="stacked" type="email"
+                          value={staffEmail} onIonInput={(e) => setStaffEmail(e.detail.value ?? "")}
+                          fill="outline" required style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                        <IonInput label="ລະຫັດຜ່ານ (ຢ່າງໜ້ອຍ 6 ຕົວ)" labelPlacement="stacked" type="password"
+                          value={staffPassword} onIonInput={(e) => setStaffPassword(e.detail.value ?? "")}
+                          fill="outline" minlength={6} required style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        <IonButton fill="outline" expand="block" onClick={handleCloseForm} disabled={creating}
+                          style={{ flex: 1, "--border-radius": "10px", height: 44 }}>
+                          ຍົກເລີກ
+                        </IonButton>
+                        <IonButton expand="block" type="submit"
+                          disabled={creating || !staffEmail.trim() || staffPassword.length < 6}
+                          style={{ flex: 2, "--border-radius": "10px", height: 44 }}>
+                          {creating ? <IonSpinner name="crescent" /> : <IonIcon slot="start" icon={addOutline} />}
+                          ສ້າງ
+                        </IonButton>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Staff list */}
+                <IonList style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #fed7aa" }}>
+                  {staff.length === 0 ? (
+                    <IonItem lines="none" style={{ "--background": "#ffffff" }}>
+                      <IonLabel style={{ textAlign: "center", color: "#78716c", fontSize: "0.85rem", padding: "16px 0" }}>
+                        ຍັງບໍ່ມີພະນັກງານ
+                      </IonLabel>
+                    </IonItem>
+                  ) : staff.map((user) => (
+                    <div key={user.id}>
+                      <IonItem lines="none" style={{ "--background": "#ffffff", "--padding-bottom": "6px", "--padding-top": "6px" }}>
+                        <div slot="start" style={{
+                          width: 38, height: 38, borderRadius: 12,
+                          background: user.role === "customer" ? "#ffedd5" : "#ccfbf1",
+                          color: user.role === "customer" ? "#c2410c" : "#0f766e",
+                          display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
+                        }}>
+                          {(user.displayName || user.email).slice(0, 1).toUpperCase()}
+                        </div>
+                        <IonLabel>
+                          <h3 style={{ fontWeight: 800 }}>{user.displayName || user.email}</h3>
+                          <p style={{ fontSize: "0.78rem" }}>{user.email}</p>
+                        </IonLabel>
+                        {/* Edit/Delete — only for staff, not the owner */}
+                        {user.role === "staff" && (
+                          <div slot="end" style={{ display: "flex", gap: 4 }}>
+                            <IonButton
+                              fill="clear" size="small"
+                              onClick={() => editingId === user.id ? handleCancelEdit() : handleStartEdit(user)}
+                              style={{ "--color": "#0f766e" }}
+                            >
+                              <IonIcon icon={editingId === user.id ? closeOutline : createOutline} />
+                            </IonButton>
+                            <IonButton
+                              fill="clear" size="small"
+                              disabled={deletingId === user.id}
+                              onClick={() => handleDelete(user)}
+                              style={{ "--color": "#dc2626" }}
+                            >
+                              {deletingId === user.id
+                                ? <IonSpinner name="crescent" style={{ width: 18, height: 18 }} />
+                                : <IonIcon icon={trashOutline} />}
+                            </IonButton>
+                          </div>
+                        )}
+                        {user.role === "customer" && (
+                          <span slot="end" style={{ fontSize: "0.72rem", fontWeight: 800, color: "#c2410c" }}>
+                            owner
+                          </span>
+                        )}
+                      </IonItem>
+
+                      {/* Inline edit form */}
+                      {editingId === user.id && (
+                        <div style={{
+                          background: "#fffbeb", border: "1.5px solid #fde68a",
+                          borderRadius: 10, margin: "0 8px 8px", padding: 12,
+                        }}>
+                          <p style={{ margin: "0 0 8px", fontSize: "0.78rem", color: "#78716c" }}>
+                            ອີເມວ: {user.email} (ບໍ່ສາມາດປ່ຽນໄດ້)
+                          </p>
+                          <IonInput
+                            label="ຊື່ ພະນັກງານ"
+                            labelPlacement="stacked"
+                            value={editName}
+                            onIonInput={(e) => setEditName(e.detail.value ?? "")}
+                            fill="outline"
+                            style={{ "--border-radius": "10px", "--background": "#fff", marginBottom: 10 }}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <IonButton fill="outline" expand="block" onClick={handleCancelEdit} disabled={saving}
+                              style={{ flex: 1, "--border-radius": "10px", height: 40 }}>
+                              ຍົກເລີກ
+                            </IonButton>
+                            <IonButton expand="block" onClick={() => handleSaveEdit(user.id)} disabled={saving}
+                              style={{ flex: 2, "--border-radius": "10px", height: 40 }}>
+                              {saving ? <IonSpinner name="crescent" /> : "ບັນທຶກ"}
+                            </IonButton>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </IonList>
+              </section>
+            </>
+          )}
+        </div>
+      </IonContent>
+    </IonPage>
+  );
+};
+
+export default StaffSettings;

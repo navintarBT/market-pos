@@ -19,7 +19,7 @@ import {
 } from "@ionic/react";
 import { addOutline, closeOutline, createOutline, peopleOutline, trashOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import { createStaffUser, deleteStaffUser, getShopUsers, updateStaffUser } from "../data/shopRepository";
+import { createStaffUser, deleteStaffUser, getShopUsers, resetStaffPassword, updateStaffEmail, updateStaffUser } from "../data/shopRepository";
 import type { ShopUser } from "../data/types";
 
 const cardStyle: React.CSSProperties = {
@@ -42,8 +42,10 @@ const StaffSettings: React.FC = () => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,7 @@ const StaffSettings: React.FC = () => {
   function handleStartEdit(user: ShopUser) {
     setEditingId(user.id);
     setEditName(user.displayName ?? "");
+    setEditEmail(user.email);
     setShowForm(false);
     setError(null);
   }
@@ -123,18 +126,42 @@ const StaffSettings: React.FC = () => {
     }
   }
 
-  async function handleSaveEdit(uid: string) {
+  async function handleSaveEdit(user: ShopUser) {
     if (!shopId) return;
     setSaving(true); setError(null);
     try {
-      await updateStaffUser(shopId, uid, { displayName: editName });
-      setStaff(prev => prev.map(u => u.id === uid ? { ...u, displayName: editName.trim() } : u));
+      const newEmail = editEmail.trim().toLowerCase();
+      const emailChanged = newEmail !== user.email.toLowerCase();
+      if (emailChanged) {
+        await updateStaffEmail(shopId, user.id, {
+          newEmail,
+          displayName: editName.trim(),
+          createdAt: user.createdAt,
+        });
+        setStaff(await getShopUsers(shopId));
+        setMessage("ແກ້ໄຂອີເມວແລ້ວ — ສົ່ງລິ້ງ reset ລະຫັດໄປທີ່ email ໃໝ່ແລ້ວ");
+      } else {
+        await updateStaffUser(shopId, user.id, { displayName: editName });
+        setStaff(prev => prev.map(u => u.id === user.id ? { ...u, displayName: editName.trim() } : u));
+        setMessage("ແກ້ໄຂຂໍ້ມູນແລ້ວ");
+      }
       setEditingId(null);
-      setMessage("ແກ້ໄຂຂໍ້ມູນແລ້ວ");
     } catch (err) {
       setError(err instanceof Error ? err.message : "ແກ້ໄຂບໍ່ສຳເລັດ");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleResetPassword(user: ShopUser) {
+    setResettingId(user.id); setError(null);
+    try {
+      await resetStaffPassword(user.email);
+      setMessage(`ສົ່ງລິ້ງ reset ລະຫັດໄປທີ່ ${user.email} ແລ້ວ`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ສົ່ງ reset ລະຫັດບໍ່ສຳເລັດ");
+    } finally {
+      setResettingId(null);
     }
   }
 
@@ -309,23 +336,39 @@ const StaffSettings: React.FC = () => {
                           background: "#fffbeb", border: "1.5px solid #fde68a",
                           borderRadius: 10, margin: "0 8px 8px", padding: 12,
                         }}>
-                          <p style={{ margin: "0 0 8px", fontSize: "0.78rem", color: "#78716c" }}>
-                            ອີເມວ: {user.email} (ບໍ່ສາມາດປ່ຽນໄດ້)
-                          </p>
-                          <IonInput
-                            label="ຊື່ ພະນັກງານ"
-                            labelPlacement="stacked"
-                            value={editName}
-                            onIonInput={(e) => setEditName(e.detail.value ?? "")}
-                            fill="outline"
-                            style={{ "--border-radius": "10px", "--background": "#fff", marginBottom: 10 }}
-                          />
+                          <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
+                            <IonInput
+                              label="ອີເມວ"
+                              labelPlacement="stacked"
+                              type="email"
+                              value={editEmail}
+                              onIonInput={(e) => setEditEmail(e.detail.value ?? "")}
+                              fill="outline"
+                              style={{ "--border-radius": "10px", "--background": "#fff" }}
+                            />
+                            <IonInput
+                              label="ຊື່ ພະນັກງານ"
+                              labelPlacement="stacked"
+                              value={editName}
+                              onIonInput={(e) => setEditName(e.detail.value ?? "")}
+                              fill="outline"
+                              style={{ "--border-radius": "10px", "--background": "#fff" }}
+                            />
+                          </div>
+                          <IonButton
+                            expand="block" fill="outline" size="small"
+                            disabled={resettingId === user.id || saving}
+                            onClick={() => handleResetPassword(user)}
+                            style={{ "--border-radius": "10px", "--color": "#b45309", "--border-color": "#fcd34d", marginBottom: 10, height: 38 }}
+                          >
+                            {resettingId === user.id ? <IonSpinner name="crescent" style={{ width: 16, height: 16 }} /> : "📧 Reset ລະຫັດຜ່ານ (ສົ່ງ email)"}
+                          </IonButton>
                           <div style={{ display: "flex", gap: 8 }}>
                             <IonButton fill="outline" expand="block" onClick={handleCancelEdit} disabled={saving}
                               style={{ flex: 1, "--border-radius": "10px", height: 40 }}>
                               ຍົກເລີກ
                             </IonButton>
-                            <IonButton expand="block" onClick={() => handleSaveEdit(user.id)} disabled={saving}
+                            <IonButton expand="block" onClick={() => handleSaveEdit(user)} disabled={saving || !editEmail.trim()}
                               style={{ flex: 2, "--border-radius": "10px", height: 40 }}>
                               {saving ? <IonSpinner name="crescent" /> : "ບັນທຶກ"}
                             </IonButton>

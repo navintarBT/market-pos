@@ -23,7 +23,7 @@ service cloud.firestore {
           && resource.data.role == 'staff'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'updatedAt'])
         );
-      allow delete: if isSuperAdmin()
+      allow delete: if isControlAdmin()
         || (
           isShopOwner(resource.data.shopId)
           && resource.data.role == 'staff'

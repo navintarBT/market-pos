@@ -8,7 +8,8 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { db, auth } from "../firebase";
 import type { ShopProfile, ShopUser } from "./types";
 
 function shopDoc(shopId: string) {
@@ -99,6 +100,64 @@ export async function updateStaffUser(
   batch.update(doc(db, "users", uid), { displayName, updatedAt: now });
   batch.update(doc(db, "shops", shopId, "users", uid), { displayName, updatedAt: now });
   await batch.commit();
+}
+
+// Change staff email: creates new Auth user, migrates Firestore, sends password-reset email.
+// Old Auth account becomes an orphan — Firestore records removed so it can't access data.
+export async function updateStaffEmail(
+  shopId: string,
+  oldUid: string,
+  data: { newEmail: string; displayName: string; createdAt?: Date },
+): Promise<string> {
+  const newEmail = data.newEmail.trim().toLowerCase();
+
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const rand = new Uint8Array(16);
+  crypto.getRandomValues(rand);
+  const tempPassword = Array.from(rand, b => chars[b % 62]).join("") + "Aa1!";
+
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${import.meta.env.VITE_FIREBASE_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: newEmail, password: tempPassword, returnSecureToken: false }),
+    },
+  );
+  const json = await res.json();
+  if (!res.ok) {
+    const code: string = json.error?.message ?? "FAILED";
+    if (code === "EMAIL_EXISTS") throw new Error("ອີເມວນີ້ຖືກໃຊ້ແລ້ວ");
+    throw new Error(code);
+  }
+  const newUid: string = json.localId;
+
+  const now = serverTimestamp();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users", newUid), {
+    role: "staff", shopId,
+    email: newEmail,
+    displayName: data.displayName,
+    createdAt: data.createdAt ? Timestamp.fromDate(data.createdAt) : now,
+    updatedAt: now,
+  });
+  batch.set(doc(db, "shops", shopId, "users", newUid), {
+    role: "staff",
+    email: newEmail,
+    displayName: data.displayName,
+    createdAt: data.createdAt ? Timestamp.fromDate(data.createdAt) : now,
+    updatedAt: now,
+  });
+  batch.delete(doc(db, "users", oldUid));
+  batch.delete(doc(db, "shops", shopId, "users", oldUid));
+  await batch.commit();
+
+  await sendPasswordResetEmail(auth, newEmail);
+  return newUid;
+}
+
+export async function resetStaffPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }
 
 export async function deleteStaffUser(shopId: string, uid: string): Promise<void> {

@@ -16,8 +16,8 @@ initializeApp({
 const auth = getAuth();
 const db = getFirestore();
 
-const EMAIL    = "superadmin@market-pos.com";
-const PASSWORD = "SuperAdmin@2026";
+const EMAIL    = "marketposshop@gmail.com";
+const PASSWORD = "12345678";
 
 async function run() {
   console.log("Creating superadmin...\n");

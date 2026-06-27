@@ -22,6 +22,21 @@ import { uploadProductImage } from "../data/imageRepository";
 import { getShopProfile, updateShopProfile } from "../data/shopRepository";
 import type { ShopProfile } from "../data/types";
 
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  active:    { label: "ໃຊ້ງານ",    color: "#16a34a", bg: "#f0fdf4" },
+  trial:     { label: "ທົດລອງໃຊ້", color: "#d97706", bg: "#fffbeb" },
+  suspended: { label: "ລະງັບ",     color: "#dc2626", bg: "#fef2f2" },
+  cancelled: { label: "ຍົກເລີກ",   color: "#6b7280", bg: "#f3f4f6" },
+};
+function PlanBadge({ status }: { status: string }) {
+  const cfg = STATUS_LABELS[status] ?? STATUS_LABELS.cancelled;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30` }}>
+      {cfg.label}
+    </span>
+  );
+}
+
 const cardStyle: React.CSSProperties = {
   background: "#ffffff",
   borderRadius: 16,
@@ -35,7 +50,7 @@ interface Props {
 }
 
 const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
-  const { shopId, role } = useAuth();
+  const { shopId, role, tenant } = useAuth();
   const [shop, setShop] = useState<ShopProfile | null>(null);
   const [name, setName] = useState("");
   const [profileUrl, setProfileUrl] = useState("");
@@ -152,7 +167,14 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                 overflow: "hidden",
                 background: "linear-gradient(135deg, #fff7ed, #ffffff)",
               }}>
-                <div style={{ height: 118, background: "linear-gradient(135deg, #0f766e, #e07b39)" }} />
+                <div style={{
+                  height: 118,
+                  background: `
+                    radial-gradient(circle, rgba(255,255,255,0.13) 1px, transparent 1px),
+                    linear-gradient(135deg, #c25e1e 0%, #e07b39 55%, #f59e0b 100%)
+                  `,
+                  backgroundSize: "22px 22px, 100% 100%",
+                }} />
                 <div style={{ padding: "0 16px 16px", marginTop: -42 }}>
                   <div style={{
                     width: 84, height: 84, borderRadius: 18,
@@ -186,6 +208,25 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                   </div>
                 </div>
               </div>
+
+              {tenant && (
+                <div style={{ ...cardStyle, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>ແພັກເກດ</span>
+                    <PlanBadge status={tenant.status} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#78716c" }}>
+                    <span>{{ trial: "ທົດລອງໃຊ້ 30 ວັນ", monthly: "ລາຍເດືອນ", yearly: "ລາຍປີ" }[tenant.plan]}</span>
+                    {tenant.expiresAt && (
+                      <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "#dc2626" : "#78716c" }}>
+                        {(tenant.daysLeft ?? 0) <= 0
+                          ? "ໝົດອາຍຸແລ້ວ"
+                          : `ເຫຼືອ ${tenant.daysLeft} ວັນ (ໝົດ ${tenant.expiresAt.toLocaleDateString("en-GB")})`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Alert — auto-dismisses after 3 s */}
               {(message || error) && (

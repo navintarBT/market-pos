@@ -33,7 +33,7 @@ function digitsOnly(s: string) { return s.replace(/[^0-9]/g, ""); }
 const today = new Date();
 
 const Expenses: React.FC = () => {
-  const { shopId } = useAuth();
+  const { shopId, permissions } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState(toDateInputValue(today));
@@ -215,14 +215,18 @@ const Expenses: React.FC = () => {
                       <span slot="end" style={{ fontWeight: 700, color: "#dc2626", marginRight: 4 }}>
                         ₭{fmtK(exp.amount)}
                       </span>
-                      <IonButton fill="clear" slot="end" onClick={() => setEditTarget(exp)}
-                        style={{ minHeight: 44, minWidth: 44 }}>
-                        <IonIcon slot="icon-only" icon={createOutline} />
-                      </IonButton>
-                      <IonButton fill="clear" color="danger" slot="end" onClick={() => setDeleteTarget(exp)}
-                        style={{ minHeight: 44, minWidth: 44 }}>
-                        <IonIcon slot="icon-only" icon={trashOutline} />
-                      </IonButton>
+                      {permissions.canAddExpenses && (
+                        <>
+                          <IonButton fill="clear" slot="end" onClick={() => setEditTarget(exp)}
+                            style={{ minHeight: 44, minWidth: 44 }}>
+                            <IonIcon slot="icon-only" icon={createOutline} />
+                          </IonButton>
+                          <IonButton fill="clear" color="danger" slot="end" onClick={() => setDeleteTarget(exp)}
+                            style={{ minHeight: 44, minWidth: 44 }}>
+                            <IonIcon slot="icon-only" icon={trashOutline} />
+                          </IonButton>
+                        </>
+                      )}
                     </IonItem>
                   ))}
                 </IonList>
@@ -231,11 +235,13 @@ const Expenses: React.FC = () => {
           )}
         </div>
 
-        <IonFab vertical="bottom" horizontal="end" slot="fixed">
-          <IonFabButton onClick={() => setAddOpen(true)}>
-            <IonIcon icon={addOutline} />
-          </IonFabButton>
-        </IonFab>
+        {permissions.canAddExpenses && (
+          <IonFab vertical="bottom" horizontal="end" slot="fixed">
+            <IonFabButton onClick={() => setAddOpen(true)}>
+              <IonIcon icon={addOutline} />
+            </IonFabButton>
+          </IonFab>
+        )}
       </IonContent>
 
       {/* Add / Edit modal */}

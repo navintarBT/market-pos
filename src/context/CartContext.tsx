@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from "react";
+import React, { createContext, useContext, useReducer, useEffect } from "react";
 import type { SaleItem } from "../data/types";
 
 type CartItem = SaleItem;
@@ -65,8 +65,23 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+const STORAGE_KEY = "mpos_cart";
+
+function loadCart(): CartState {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : { items: [] };
+  } catch {
+    return { items: [] };
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { items: [] });
+  const [state, dispatch] = useReducer(reducer, undefined, loadCart);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
 
   const total = state.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   const count = state.items.reduce((sum, i) => sum + i.quantity, 0);

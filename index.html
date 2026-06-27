@@ -14,7 +14,7 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
     <meta name="theme-color" content="#3880ff" />
-    <meta name="description" content="ລະບົບຂາຍສິນຄ້າຕະຫຼາດນາດ" />
+    <meta name="description" content="ລະບົບຂາຍສິນຄ້າ" />
 
     <!-- PWA manifest -->
     <link rel="manifest" href="/manifest.json" />
@@ -35,5 +35,10 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Block pinch-zoom on iOS (Safari ignores user-scalable=no)
+      document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('touchmove', function(e) { if (e.touches.length > 1) { e.preventDefault(); } }, { passive: false });
+    </script>
   </body>
 </html>

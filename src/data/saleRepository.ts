@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -140,6 +141,10 @@ export async function getSalesByDateRange(shopId: string, from: Date, to: Date):
       createdAt: (data.createdAt as Timestamp).toDate(),
     } as Sale;
   });
+}
+
+export async function deleteSale(shopId: string, saleId: string): Promise<void> {
+  await deleteDoc(doc(salesCol(shopId), saleId));
 }
 
 export async function getSalesToday(shopId: string): Promise<Sale[]> {

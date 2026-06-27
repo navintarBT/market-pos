@@ -1,7 +1,7 @@
 {
   "name": "Market POS",
   "short_name": "Market POS",
-  "description": "ລະບົບຂາຍສິນຄ້າຕະຫຼາດນາດ",
+  "description": "ລະບົບຂາຍສິນຄ້າ",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

@@ -10,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { db, auth } from "../firebase";
-import type { ShopProfile, ShopUser } from "./types";
+import type { ShopProfile, ShopUser, StaffPermissions } from "./types";
 
 function shopDoc(shopId: string) {
   return doc(db, "shops", shopId);
@@ -46,19 +46,26 @@ export async function getShopUsers(shopId: string): Promise<ShopUser[]> {
   return snap.docs.map((d) => {
     const data = d.data();
     const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : undefined;
+    const p = data.permissions as Partial<StaffPermissions> | undefined;
     return {
       id: d.id,
       email: data.email as string,
       role: data.role as "customer" | "staff",
       displayName: data.displayName as string | undefined,
       createdAt,
+      permissions: p ? {
+        canManageProducts: p.canManageProducts ?? false,
+        canEditCartPrice: p.canEditCartPrice ?? false,
+        canDeleteSales: p.canDeleteSales ?? false,
+        canAddExpenses: p.canAddExpenses ?? false,
+      } : undefined,
     };
   }).sort((a, b) => `${a.role}-${a.email}`.localeCompare(`${b.role}-${b.email}`));
 }
 
 export async function createStaffUser(
   shopId: string,
-  data: { email: string; password: string; displayName?: string },
+  data: { email: string; password: string; displayName?: string; permissions?: StaffPermissions },
 ): Promise<void> {
   const email = data.email.trim().toLowerCase();
 
@@ -82,10 +89,16 @@ export async function createStaffUser(
   const uid: string = json.localId;
   const displayName = data.displayName?.trim() ?? "";
   const now = serverTimestamp();
+  const permissions: StaffPermissions = data.permissions ?? {
+    canManageProducts: false,
+    canEditCartPrice: false,
+    canDeleteSales: false,
+    canAddExpenses: false,
+  };
 
   const batch = writeBatch(db);
-  batch.set(doc(db, "users", uid), { role: "staff", shopId, email, displayName, createdAt: now });
-  batch.set(doc(db, "shops", shopId, "users", uid), { role: "staff", email, displayName, createdAt: now });
+  batch.set(doc(db, "users", uid), { role: "staff", shopId, email, displayName, createdAt: now, permissions });
+  batch.set(doc(db, "shops", shopId, "users", uid), { role: "staff", email, displayName, createdAt: now, permissions });
   await batch.commit();
 }
 
@@ -165,4 +178,14 @@ export async function deleteStaffUser(shopId: string, uid: string): Promise<void
   batch.delete(doc(db, "users", uid));
   batch.delete(doc(db, "shops", shopId, "users", uid));
   await batch.commit();
+}
+
+export async function updateStaffPermissions(
+  shopId: string,
+  uid: string,
+  permissions: StaffPermissions,
+): Promise<void> {
+  // Write only to the shop's subcollection — owner has write access here.
+  // users/{uid} is protected so only the user themselves can update it.
+  await updateDoc(doc(db, "shops", shopId, "users", uid), { permissions });
 }

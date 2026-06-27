@@ -94,7 +94,7 @@ const Login: React.FC = () => {
               Market POS
             </h1>
             <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "1rem" }}>
-              ລະບົບຂາຍສິນຄ້າຕະຫຼາດນາດ
+              ລະບົບຂາຍສິນຄ້າ
             </p>
           </div>
 

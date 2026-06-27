@@ -19,8 +19,8 @@ import {
 } from "@ionic/react";
 import { addOutline, closeOutline, createOutline, peopleOutline, trashOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import { createStaffUser, deleteStaffUser, getShopUsers, resetStaffPassword, updateStaffEmail, updateStaffUser } from "../data/shopRepository";
-import type { ShopUser } from "../data/types";
+import { createStaffUser, deleteStaffUser, getShopUsers, resetStaffPassword, updateStaffEmail, updateStaffPermissions, updateStaffUser } from "../data/shopRepository";
+import type { ShopUser, StaffPermissions } from "../data/types";
 
 const cardStyle: React.CSSProperties = {
   background: "#ffffff",
@@ -29,6 +29,52 @@ const cardStyle: React.CSSProperties = {
   boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
   marginBottom: 14,
 };
+
+const PERM_LABELS: { key: keyof StaffPermissions; label: string; icon: string }[] = [
+  { key: "canManageProducts", label: "ຈັດການສິນຄ້າ (ເພີ່ມ / ແກ້ໄຂ / ລຶບ)", icon: "📦" },
+  { key: "canEditCartPrice", label: "ແກ້ໄຂລາຄາໃນກະຕ່າ", icon: "✏️" },
+  { key: "canDeleteSales", label: "ລຶບປະຫວັດການຂາຍ", icon: "🗑️" },
+  { key: "canAddExpenses", label: "ຈັດການລາຍຈ່າຍ (ເພີ່ມ / ແກ້ໄຂ / ລຶບ)", icon: "💸" },
+];
+
+const DEFAULT_PERMS: StaffPermissions = {
+  canManageProducts: false,
+  canEditCartPrice: false,
+  canDeleteSales: false,
+  canAddExpenses: false,
+};
+
+function PermCheckbox({
+  perms,
+  onChange,
+}: {
+  perms: StaffPermissions;
+  onChange: (perms: StaffPermissions) => void;
+}) {
+  return (
+    <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
+      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "#57534e" }}>
+        ສິດທິການເຂົ້າເຖິງ
+      </p>
+      {PERM_LABELS.map(({ key, label, icon }) => (
+        <label
+          key={key}
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={perms[key]}
+            onChange={(e) => onChange({ ...perms, [key]: e.target.checked })}
+            style={{ width: 17, height: 17, accentColor: "#0f766e", cursor: "pointer", flexShrink: 0 }}
+          />
+          <span style={{ fontSize: "0.82rem", color: "#374151" }}>
+            {icon} {label}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
 
 const StaffSettings: React.FC = () => {
   const { shopId, role } = useAuth();
@@ -39,10 +85,12 @@ const StaffSettings: React.FC = () => {
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [staffPassword, setStaffPassword] = useState("");
+  const [newPerms, setNewPerms] = useState<StaffPermissions>(DEFAULT_PERMS);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editPerms, setEditPerms] = useState<StaffPermissions>(DEFAULT_PERMS);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
@@ -84,6 +132,7 @@ const StaffSettings: React.FC = () => {
 
   function handleOpenForm() {
     setStaffName(""); setStaffEmail(""); setStaffPassword("");
+    setNewPerms(DEFAULT_PERMS);
     setError(null); setMessage(null);
     setEditingId(null);
     setShowForm(true);
@@ -97,6 +146,7 @@ const StaffSettings: React.FC = () => {
     setEditingId(user.id);
     setEditName(user.displayName ?? "");
     setEditEmail(user.email);
+    setEditPerms(user.permissions ?? DEFAULT_PERMS);
     setShowForm(false);
     setError(null);
   }
@@ -114,6 +164,7 @@ const StaffSettings: React.FC = () => {
         email: staffEmail.trim(),
         password: staffPassword,
         displayName: staffName.trim(),
+        permissions: newPerms,
       });
       setShowForm(false);
       setMessage("ເພີ່ມພະນັກງານແລ້ວ");
@@ -133,16 +184,22 @@ const StaffSettings: React.FC = () => {
       const newEmail = editEmail.trim().toLowerCase();
       const emailChanged = newEmail !== user.email.toLowerCase();
       if (emailChanged) {
-        await updateStaffEmail(shopId, user.id, {
+        const newUid = await updateStaffEmail(shopId, user.id, {
           newEmail,
           displayName: editName.trim(),
           createdAt: user.createdAt,
         });
+        await updateStaffPermissions(shopId, newUid, editPerms);
         setStaff(await getShopUsers(shopId));
         setMessage("ແກ້ໄຂອີເມວແລ້ວ — ສົ່ງລິ້ງ reset ລະຫັດໄປທີ່ email ໃໝ່ແລ້ວ");
       } else {
-        await updateStaffUser(shopId, user.id, { displayName: editName });
-        setStaff(prev => prev.map(u => u.id === user.id ? { ...u, displayName: editName.trim() } : u));
+        await Promise.all([
+          updateStaffUser(shopId, user.id, { displayName: editName }),
+          updateStaffPermissions(shopId, user.id, editPerms),
+        ]);
+        setStaff(prev => prev.map(u =>
+          u.id === user.id ? { ...u, displayName: editName.trim(), permissions: editPerms } : u
+        ));
         setMessage("ແກ້ໄຂຂໍ້ມູນແລ້ວ");
       }
       setEditingId(null);
@@ -262,7 +319,8 @@ const StaffSettings: React.FC = () => {
                           value={staffPassword} onIonInput={(e) => setStaffPassword(e.detail.value ?? "")}
                           fill="outline" minlength={6} required style={{ "--border-radius": "10px", "--background": "#fff" }} />
                       </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <PermCheckbox perms={newPerms} onChange={setNewPerms} />
+                      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                         <IonButton fill="outline" expand="block" onClick={handleCloseForm} disabled={creating}
                           style={{ flex: 1, "--border-radius": "10px", height: 44 }}>
                           ຍົກເລີກ
@@ -300,6 +358,23 @@ const StaffSettings: React.FC = () => {
                         <IonLabel>
                           <h3 style={{ fontWeight: 800 }}>{user.displayName || user.email}</h3>
                           <p style={{ fontSize: "0.78rem" }}>{user.email}</p>
+                          {/* Permission badges */}
+                          {user.role === "staff" && user.permissions && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                              {PERM_LABELS.filter(p => user.permissions![p.key]).map(p => (
+                                <span key={p.key} style={{
+                                  fontSize: "0.6rem", fontWeight: 700,
+                                  background: "#ccfbf1", color: "#0f766e",
+                                  padding: "2px 6px", borderRadius: 6,
+                                }}>
+                                  {p.icon}
+                                </span>
+                              ))}
+                              {PERM_LABELS.every(p => !user.permissions![p.key]) && (
+                                <span style={{ fontSize: "0.65rem", color: "#a8a29e" }}>ບໍ່ມີສິດທິພິເສດ</span>
+                              )}
+                            </div>
+                          )}
                         </IonLabel>
                         {/* Edit/Delete — only for staff, not the owner */}
                         {user.role === "staff" && (
@@ -338,28 +413,22 @@ const StaffSettings: React.FC = () => {
                         }}>
                           <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
                             <IonInput
-                              label="ອີເມວ"
-                              labelPlacement="stacked"
-                              type="email"
-                              value={editEmail}
-                              onIonInput={(e) => setEditEmail(e.detail.value ?? "")}
-                              fill="outline"
-                              style={{ "--border-radius": "10px", "--background": "#fff" }}
+                              label="ອີເມວ" labelPlacement="stacked" type="email"
+                              value={editEmail} onIonInput={(e) => setEditEmail(e.detail.value ?? "")}
+                              fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }}
                             />
                             <IonInput
-                              label="ຊື່ ພະນັກງານ"
-                              labelPlacement="stacked"
-                              value={editName}
-                              onIonInput={(e) => setEditName(e.detail.value ?? "")}
-                              fill="outline"
-                              style={{ "--border-radius": "10px", "--background": "#fff" }}
+                              label="ຊື່ ພະນັກງານ" labelPlacement="stacked"
+                              value={editName} onIonInput={(e) => setEditName(e.detail.value ?? "")}
+                              fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }}
                             />
                           </div>
+                          <PermCheckbox perms={editPerms} onChange={setEditPerms} />
                           <IonButton
                             expand="block" fill="outline" size="small"
                             disabled={resettingId === user.id || saving}
                             onClick={() => handleResetPassword(user)}
-                            style={{ "--border-radius": "10px", "--color": "#b45309", "--border-color": "#fcd34d", marginBottom: 10, height: 38 }}
+                            style={{ "--border-radius": "10px", "--color": "#b45309", "--border-color": "#fcd34d", marginTop: 12, marginBottom: 10, height: 38 }}
                           >
                             {resettingId === user.id ? <IonSpinner name="crescent" style={{ width: 16, height: 16 }} /> : "📧 Reset ລະຫັດຜ່ານ (ສົ່ງ email)"}
                           </IonButton>

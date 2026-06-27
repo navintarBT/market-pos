@@ -1,8 +1,6 @@
 import {
   IonCard,
   IonCardContent,
-  IonChip,
-  IonLabel,
   IonButton,
   IonIcon,
   IonImg,
@@ -16,55 +14,78 @@ interface Props {
   isAdmin: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onDetail: (product: Product) => void;
 }
 
-const ProductCard: React.FC<Props> = ({ product, isAdmin, onEdit, onDelete }) => {
+const ProductCard: React.FC<Props> = ({ product, isAdmin, onEdit, onDelete, onDetail }) => {
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   const outOfStock = totalStock === 0;
 
   return (
     <IonCard style={{ margin: 0, borderRadius: 16, overflow: "hidden" }}>
-      {/* Image / placeholder */}
-      {product.photoUrl ? (
-        <IonImg src={product.photoUrl} alt={product.name} style={{ height: 130, objectFit: "cover" }} />
-      ) : (
-        <div style={{
-          height: 100,
-          background: "linear-gradient(135deg, #fed7aa, #fdba74)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 44,
-        }}>
-          👕
-        </div>
-      )}
+      {/* Image / placeholder — tap to view detail */}
+      <div onClick={() => onDetail(product)} style={{ cursor: "pointer" }}>
+        {product.photoUrl ? (
+          <IonImg src={product.photoUrl} alt={product.name} style={{ height: 130, objectFit: "cover" }} />
+        ) : (
+          <div style={{
+            height: 100,
+            background: "linear-gradient(135deg, #fed7aa, #fdba74)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 44,
+          }}>
+            👕
+          </div>
+        )}
+      </div>
 
       <IonCardContent style={{ padding: "10px 12px 12px" }}>
         <p style={{ margin: "0 0 2px", fontWeight: 700, fontSize: "0.95rem", color: "#1c1917", lineHeight: 1.3 }}>
           {product.name}
         </p>
-        <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
+        <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
           ₭{fmtK(product.price)}
         </p>
+        {product.costPrice != null && product.costPrice > 0 && (
+          <p style={{ margin: "0 0 6px", fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
+            ກຳໄລ ₭{fmtK(product.price - product.costPrice)}
+          </p>
+        )}
 
-        {/* Variants */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-          {product.variants.slice(0, 4).map((v, i) => (
-            <IonChip
-              key={i}
-              color={v.stock === 0 ? "medium" : v.stock <= 2 ? "warning" : "success"}
-              style={{ fontSize: "0.7rem", height: 22, "--background": v.stock === 0 ? "#e5e7eb" : v.stock <= 2 ? "#fef3c7" : "#dcfce7" }}
-            >
-              <IonLabel style={{ color: v.stock === 0 ? "#9ca3af" : v.stock <= 2 ? "#92400e" : "#166534" }}>
+        {/* Variants — compact tags, fixed 2-row height so all cards align */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8, minHeight: 39, alignContent: "flex-start" }}>
+          {product.variants.slice(0, 4).map((v, i) => {
+            const empty = v.stock === 0;
+            const low = !empty && v.stock <= 2;
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  padding: "2px 6px",
+                  borderRadius: 5,
+                  fontSize: "0.62rem",
+                  fontWeight: 600,
+                  lineHeight: "14px",
+                  whiteSpace: "nowrap",
+                  background: empty ? "#e5e7eb" : low ? "#fef3c7" : "#dcfce7",
+                  color: empty ? "#9ca3af" : low ? "#92400e" : "#166534",
+                }}
+              >
                 {v.size}/{v.color}
-              </IonLabel>
-            </IonChip>
-          ))}
+              </span>
+            );
+          })}
           {product.variants.length > 4 && (
-            <IonChip style={{ fontSize: "0.7rem", height: 22 }}>
-              <IonLabel>+{product.variants.length - 4}</IonLabel>
-            </IonChip>
+            <span style={{
+              display: "inline-block", padding: "2px 6px", borderRadius: 5,
+              fontSize: "0.62rem", fontWeight: 700, lineHeight: "14px",
+              background: "#f3f4f6", color: "#6b7280",
+            }}>
+              +{product.variants.length - 4}
+            </span>
           )}
         </div>
 

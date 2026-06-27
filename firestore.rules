@@ -32,7 +32,7 @@ service cloud.firestore {
 
     // ── Tenants (Control Panel) ───────────────────────────────────────────
     match /tenants/{tenantId} {
-      allow read: if isControlAdmin();
+      allow read: if isControlAdmin() || isShopMember(tenantId);
       allow write: if isControlAdmin();
 
       match /invoices/{invoiceId} {

@@ -22,13 +22,33 @@ import "./theme/variables.css";
 setupIonicReact();
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, blocked, tenant, signOut } = useAuth();
 
   if (loading) {
     return (
       <IonApp>
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
           <IonSpinner name="crescent" />
+        </div>
+      </IonApp>
+    );
+  }
+
+  if (user && blocked) {
+    const statusMsg =
+      tenant?.status === "suspended" ? "ບັນຊີຖືກລະງັບໂດຍຜູ້ດູແລ" :
+      tenant?.status === "cancelled"  ? "ສັນຍາຖືກຍົກເລີກ" :
+      "ໝົດອາຍຸການໃຊ້ງານ";
+    return (
+      <IonApp>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", padding: 32, background: "#fafafa", gap: 12 }}>
+          <div style={{ fontSize: 56 }}>🔒</div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#1c1917" }}>ໝົດສິດໃຊ້ງານ</h2>
+          <p style={{ color: "#78716c", textAlign: "center", margin: 0, fontSize: "0.9rem" }}>{statusMsg}</p>
+          <p style={{ color: "#a8a29e", textAlign: "center", margin: 0, fontSize: "0.82rem" }}>ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບເພື່ອຕໍ່ອາຍຸ</p>
+          <button onClick={() => signOut()} style={{ marginTop: 8, padding: "10px 28px", border: "1.5px solid #e2e8f0", borderRadius: 10, background: "#fff", fontSize: "0.9rem", cursor: "pointer", color: "#57534e" }}>
+            ອອກຈາກລະບົບ
+          </button>
         </div>
       </IonApp>
     );

@@ -36,12 +36,20 @@ export interface ShopProfile {
   profileUrl?: string;
 }
 
+export interface StaffPermissions {
+  canManageProducts: boolean;
+  canEditCartPrice: boolean;
+  canDeleteSales: boolean;
+  canAddExpenses: boolean;
+}
+
 export interface ShopUser {
   id: string;
   email: string;
   role: "customer" | "staff";
   displayName?: string;
   createdAt?: Date;
+  permissions?: StaffPermissions;
 }
 
 export type PaymentType = "cash" | "qr";

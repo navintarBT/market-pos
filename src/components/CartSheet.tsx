@@ -16,6 +16,7 @@ import {
 } from "@ionic/react";
 import { trashOutline, addOutline, removeOutline, createOutline } from "ionicons/icons";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { fmtK } from "../utils/format";
 import type { SaleItem } from "../data/types";
 
@@ -27,7 +28,9 @@ interface Props {
 
 const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
   const { items, total, setQty, setPrice, removeItem, itemKey } = useCart();
+  const { permissions } = useAuth();
   const [priceEditItem, setPriceEditItem] = useState<SaleItem | null>(null);
+  const [pendingPrice, setPendingPrice] = useState<{ key: string; price: number } | null>(null);
 
   return (
     <>
@@ -60,14 +63,16 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                       <span style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
                         ₭{fmtK(item.unitPrice)}
                       </span>
-                      <IonButton
-                        fill="clear"
-                        size="small"
-                        onClick={() => setPriceEditItem(item)}
-                        style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
-                      >
-                        <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 15 }} />
-                      </IonButton>
+                      {permissions.canEditCartPrice && (
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          onClick={() => setPriceEditItem(item)}
+                          style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
+                        >
+                          <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 15 }} />
+                        </IonButton>
+                      )}
                       {item.quantity > 1 && (
                         <span style={{ color: "var(--ion-color-medium)", fontSize: "0.8rem" }}>
                           × {item.quantity} = ₭{fmtK(item.unitPrice * item.quantity)}
@@ -147,13 +152,40 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
             handler: (data: Record<string, string>) => {
               const newPrice = Number(data[0]);
               if (newPrice > 0 && priceEditItem) {
-                setPrice(itemKey(priceEditItem), newPrice);
+                const costPrice = priceEditItem.costPrice ?? 0;
+                if (costPrice > 0 && newPrice < costPrice) {
+                  setPendingPrice({ key: itemKey(priceEditItem), price: newPrice });
+                } else {
+                  setPrice(itemKey(priceEditItem), newPrice);
+                }
               }
               setPriceEditItem(null);
             },
           },
         ]}
         onDidDismiss={() => setPriceEditItem(null)}
+      />
+
+      <IonAlert
+        isOpen={!!pendingPrice}
+        header="⚠ ລາຄາຕໍ່າກວ່າຕົ້ນທຶນ"
+        message="ລາຄາຂາຍຕໍ່າກວ່າລາຄາຕົ້ນທຶນ ທ່ານຕ້ອງການດຳເນີນຕໍ່ຫຼືບໍ່?"
+        buttons={[
+          {
+            text: "ຍົກເລີກ",
+            role: "cancel",
+            handler: () => setPendingPrice(null),
+          },
+          {
+            text: "ຢືນຢັນ",
+            cssClass: "alert-button-confirm",
+            handler: () => {
+              if (pendingPrice) setPrice(pendingPrice.key, pendingPrice.price);
+              setPendingPrice(null);
+            },
+          },
+        ]}
+        onDidDismiss={() => setPendingPrice(null)}
       />
     </>
   );

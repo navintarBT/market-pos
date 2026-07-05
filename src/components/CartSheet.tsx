@@ -57,8 +57,21 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
               return (
                 <IonItem key={key}>
                   <IonLabel>
-                    <h3>{item.productName}</h3>
-                    <p>{item.variant.size} / {item.variant.color}</p>
+                    <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {item.productName}
+                      {item.isBundle && (
+                        <span style={{
+                          fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px",
+                          borderRadius: 20, background: "#fff7ed", color: "#e07b39",
+                          border: "1px solid #fed7aa", flexShrink: 0,
+                        }}>ຊຸດ</span>
+                      )}
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#78716c" }}>
+                      {item.isBundle
+                        ? (item.bundleItems ?? []).map((bi) => `${bi.productName} ×${bi.quantity}`).join(" + ")
+                        : `${item.variant.size} / ${item.variant.color}`}
+                    </p>
                     <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
                         ₭{fmtK(item.unitPrice)}

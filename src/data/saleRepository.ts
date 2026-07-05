@@ -14,6 +14,27 @@ import {
 import { db } from "../firebase";
 import type { Sale, SaleItem } from "./types";
 
+interface StockChange {
+  productId: string;
+  size: string;
+  color: string;
+  qty: number;
+}
+
+function buildStockChanges(items: SaleItem[]): StockChange[] {
+  const changes: StockChange[] = [];
+  for (const item of items) {
+    if (item.isBundle && item.bundleItems?.length) {
+      for (const bi of item.bundleItems) {
+        changes.push({ productId: bi.productId, size: bi.variantSize ?? "", color: bi.variantColor ?? "", qty: bi.quantity * item.quantity });
+      }
+    } else {
+      changes.push({ productId: item.productId, size: item.variant.size, color: item.variant.color, qty: item.quantity });
+    }
+  }
+  return changes;
+}
+
 function salesCol(shopId: string) {
   return collection(db, "shops", shopId, "sales");
 }
@@ -35,12 +56,14 @@ export async function recordSale(
 ): Promise<string> {
   try {
     return await runTransaction(db, async (tx) => {
-      // Group items by productId so each product is read exactly once
-      const byProduct = new Map<string, SaleItem[]>();
-      for (const item of items) {
-        const arr = byProduct.get(item.productId) ?? [];
-        arr.push(item);
-        byProduct.set(item.productId, arr);
+      const changes = buildStockChanges(items);
+
+      // Group stock changes by productId so each product is read exactly once
+      const byProduct = new Map<string, StockChange[]>();
+      for (const ch of changes) {
+        const arr = byProduct.get(ch.productId) ?? [];
+        arr.push(ch);
+        byProduct.set(ch.productId, arr);
       }
 
       // Phase 1: all reads
@@ -53,17 +76,17 @@ export async function recordSale(
       }
 
       // Phase 2: validate + all writes
-      for (const [productId, productItems] of byProduct) {
+      for (const [productId, productChanges] of byProduct) {
         const snap = snaps.get(productId)!;
         const ref = doc(productsCol(shopId), productId);
         const variants: any[] = [...(snap.data().variants ?? [])];
-        for (const item of productItems) {
+        for (const ch of productChanges) {
           const idx = variants.findIndex(
-            (v) => v.size === item.variant.size && v.color === item.variant.color
+            (v) => v.size === ch.size && v.color === ch.color
           );
           if (idx === -1) throw new Error("Variant not found");
-          if (variants[idx].stock < item.quantity) throw new Error("Insufficient stock");
-          variants[idx] = { ...variants[idx], stock: variants[idx].stock - item.quantity };
+          if (variants[idx].stock < ch.qty) throw new Error("Insufficient stock");
+          variants[idx] = { ...variants[idx], stock: variants[idx].stock - ch.qty };
         }
         tx.update(ref, { variants });
       }
@@ -90,22 +113,28 @@ async function recordSaleProvisional(
   paymentType: Sale["paymentType"]
 ): Promise<string> {
   const batch = writeBatch(db);
+  const changes = buildStockChanges(items);
 
-  for (const item of items) {
-    const productRef = doc(productsCol(shopId), item.productId);
-    const snap = await getDoc(productRef); // served from offline cache
+  // Group by productId to batch-update each product once
+  const byProduct = new Map<string, StockChange[]>();
+  for (const ch of changes) {
+    const arr = byProduct.get(ch.productId) ?? [];
+    arr.push(ch);
+    byProduct.set(ch.productId, arr);
+  }
+
+  for (const [productId, productChanges] of byProduct) {
+    const productRef = doc(productsCol(shopId), productId);
+    const snap = await getDoc(productRef);
     if (snap.exists()) {
       const variants: any[] = [...(snap.data().variants ?? [])];
-      const idx = variants.findIndex(
-        (v) => v.size === item.variant.size && v.color === item.variant.color
-      );
-      if (idx !== -1) {
-        variants[idx] = {
-          ...variants[idx],
-          stock: Math.max(0, variants[idx].stock - item.quantity),
-        };
-        batch.update(productRef, { variants });
+      for (const ch of productChanges) {
+        const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
+        if (idx !== -1) {
+          variants[idx] = { ...variants[idx], stock: Math.max(0, variants[idx].stock - ch.qty) };
+        }
       }
+      batch.update(productRef, { variants });
     }
   }
 

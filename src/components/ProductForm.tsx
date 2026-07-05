@@ -4,10 +4,10 @@ import {
   IonContent, IonItem, IonLabel, IonInput, IonIcon,
   IonList, IonListHeader, IonText, IonSpinner, IonAlert,
 } from "@ionic/react";
-import { addOutline, trashOutline, chevronDownOutline, checkmarkOutline } from "ionicons/icons";
+import { addOutline, trashOutline, chevronDownOutline, checkmarkOutline, closeOutline, createOutline } from "ionicons/icons";
 import type { Product, ProductVariant, Category } from "../data/types";
 import { uploadProductImage } from "../data/imageRepository";
-import { addCategory } from "../data/categoryRepository";
+import { addCategory, updateCategory, deleteCategory } from "../data/categoryRepository";
 import ImagePicker from "./ImagePicker";
 import { fmtK } from "../utils/format";
 
@@ -40,6 +40,9 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
   const [localCats, setLocalCats] = useState<Category[]>(categories);
   const [newCatAlertOpen, setNewCatAlertOpen] = useState(false);
   const [catPickerOpen, setCatPickerOpen] = useState(false);
+  const [manageCatMode, setManageCatMode] = useState(false);
+  const [editCatTarget, setEditCatTarget] = useState<Category | null>(null);
+  const [deleteCatTarget, setDeleteCatTarget] = useState<Category | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,6 +78,23 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
     const newCat: Category = { id, name: trimmed };
     setLocalCats((prev) => [...prev, newCat]);
     setCategory(trimmed);
+  }
+
+  async function handleEditCategory(data: Record<string, string>) {
+    const name = (data[0] ?? "").trim();
+    if (!name || !editCatTarget || !shopId) return;
+    await updateCategory(shopId, editCatTarget.id, name);
+    setLocalCats((prev) => prev.map((c) => c.id === editCatTarget.id ? { ...c, name } : c));
+    if (category === editCatTarget.name) setCategory(name);
+    setEditCatTarget(null);
+  }
+
+  async function handleDeleteCategory() {
+    if (!deleteCatTarget || !shopId) return;
+    await deleteCategory(shopId, deleteCatTarget.id);
+    setLocalCats((prev) => prev.filter((c) => c.id !== deleteCatTarget.id));
+    if (category === deleteCatTarget.name) setCategory("");
+    setDeleteCatTarget(null);
   }
 
   async function handleSave() {
@@ -120,7 +140,9 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
         <IonToolbar>
           <IonTitle>{product ? "ແກ້ໄຂສິນຄ້າ" : "ເພີ່ມສິນຄ້າ"}</IonTitle>
           <IonButtons slot="start">
-            <IonButton onClick={onDismiss}>ຍົກເລີກ</IonButton>
+            <IonButton onClick={onDismiss}>
+              <IonIcon slot="icon-only" icon={closeOutline} />
+            </IonButton>
           </IonButtons>
           <IonButtons slot="end">
             <IonButton strong onClick={handleSave} disabled={busy || uploading}>
@@ -257,10 +279,32 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
       onDidDismiss={() => setNewCatAlertOpen(false)}
     />
 
+    <IonAlert
+      isOpen={!!editCatTarget}
+      header="ແກ້ໄຂໝວດໝູ່"
+      inputs={[{ type: "text", value: editCatTarget?.name, placeholder: "ຊື່ໝວດ" }]}
+      buttons={[
+        { text: "ຍົກເລີກ", role: "cancel", handler: () => setEditCatTarget(null) },
+        { text: "ບັນທຶກ", handler: (data) => handleEditCategory(data) },
+      ]}
+      onDidDismiss={() => setEditCatTarget(null)}
+    />
+
+    <IonAlert
+      isOpen={!!deleteCatTarget}
+      header="ລຶບໝວດໝູ່"
+      message={`ລຶບ "${deleteCatTarget?.name}" ແມ່ນບໍ? ສິນຄ້າໃນໝວດນີ້ຈະບໍ່ມີໝວດ`}
+      buttons={[
+        { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteCatTarget(null) },
+        { text: "ລຶບ", role: "destructive", handler: handleDeleteCategory },
+      ]}
+      onDidDismiss={() => setDeleteCatTarget(null)}
+    />
+
     {/* Category picker sheet */}
     <IonModal
       isOpen={catPickerOpen}
-      onDidDismiss={() => setCatPickerOpen(false)}
+      onDidDismiss={() => { setCatPickerOpen(false); setManageCatMode(false); }}
       initialBreakpoint={0.6}
       breakpoints={[0, 0.6, 1]}
     >
@@ -274,30 +318,67 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
       </IonHeader>
       <IonContent>
         {shopId && (
-          <IonItem
-            button detail={false}
-            onClick={() => { setCatPickerOpen(false); setNewCatAlertOpen(true); }}
-            style={{ "--background": "#fff8f5" }}
-          >
-            <IonIcon slot="start" icon={addOutline} color="primary" />
-            <IonLabel color="primary" style={{ fontWeight: 700 }}>ສ້າງໝວດໝູ່ໃໝ່</IonLabel>
+          <IonItem detail={false} style={{ "--background": "#fff8f5", "--inner-padding-end": "8px" }}>
+            <IonButton
+              fill="clear" size="small"
+              onClick={() => { setCatPickerOpen(false); setNewCatAlertOpen(true); }}
+              style={{ fontWeight: 700, fontSize: "0.88rem", "--padding-start": "4px", "--padding-end": "8px" }}
+            >
+              <IonIcon slot="start" icon={addOutline} />
+              ສ້າງໝວດໝູ່ໃໝ່
+            </IonButton>
+            {localCats.length > 0 && (
+              <IonButton
+                fill={manageCatMode ? "solid" : "clear"}
+                size="small"
+                color={manageCatMode ? "warning" : "medium"}
+                slot="end"
+                onClick={() => setManageCatMode((m) => !m)}
+                style={{ fontWeight: 600, fontSize: "0.82rem", "--padding-start": "8px", "--padding-end": "8px" }}
+              >
+                <IonIcon slot="start" icon={createOutline} />
+                {manageCatMode ? "ເສຣັດ" : "ຈັດການ"}
+              </IonButton>
+            )}
           </IonItem>
         )}
-        <IonItem
-          button detail={false}
-          onClick={() => { setCategory(""); setCatPickerOpen(false); }}
-        >
-          <IonLabel style={{ color: "#78716c" }}>— ບໍ່ລະບຸ —</IonLabel>
-          {category === "" && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}
-        </IonItem>
+        {!manageCatMode && (
+          <IonItem
+            button detail={false}
+            onClick={() => { setCategory(""); setCatPickerOpen(false); }}
+          >
+            <IonLabel style={{ color: "#78716c" }}>— ບໍ່ລະບຸ —</IonLabel>
+            {category === "" && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}
+          </IonItem>
+        )}
         {localCats.map((cat) => (
           <IonItem
             key={cat.id}
-            button detail={false}
-            onClick={() => { setCategory(cat.name); setCatPickerOpen(false); }}
+            button={!manageCatMode}
+            detail={false}
+            onClick={() => { if (!manageCatMode) { setCategory(cat.name); setCatPickerOpen(false); } }}
+            style={{ "--background": "#ffffff" }}
           >
-            <IonLabel style={{ fontWeight: category === cat.name ? 700 : 400 }}>{cat.name}</IonLabel>
-            {category === cat.name && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}
+            <IonLabel style={{ fontWeight: category === cat.name ? 700 : 400 }}>
+              {cat.name}
+            </IonLabel>
+            {!manageCatMode && category === cat.name && (
+              <IonIcon slot="end" icon={checkmarkOutline} color="primary" />
+            )}
+            {manageCatMode && (
+              <>
+                <IonButton fill="clear" size="small" slot="end"
+                  onClick={(e) => { e.stopPropagation(); setEditCatTarget(cat); }}
+                  style={{ minHeight: 40, minWidth: 40 }}>
+                  <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 17 }} />
+                </IonButton>
+                <IonButton fill="clear" size="small" color="danger" slot="end"
+                  onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
+                  style={{ minHeight: 40, minWidth: 40 }}>
+                  <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 17 }} />
+                </IonButton>
+              </>
+            )}
           </IonItem>
         ))}
       </IonContent>

@@ -21,16 +21,17 @@ import {
   IonBadge,
   IonMenuButton,
 } from "@ionic/react";
-import { addOutline, pricetagsOutline, notificationsOutline, cubeOutline } from "ionicons/icons";
+import { addOutline, notificationsOutline, cubeOutline, giftOutline, returnUpBackOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getProducts, addProduct, updateProduct, deleteProduct } from "../data/productRepository";
 import { getCategories } from "../data/categoryRepository";
 import ProductCard from "../components/ProductCard";
 import ProductForm from "../components/ProductForm";
-import CategoryManager from "../components/CategoryManager";
 import StockAlertSheet from "../components/StockAlertSheet";
 import InventoryReportSheet from "../components/InventoryReportSheet";
 import ProductDetailSheet from "../components/ProductDetailSheet";
+import BundleManager from "../components/BundleManager";
+import ReturnForm from "../components/ReturnForm";
 import type { Product, Category } from "../data/types";
 import { useIonViewWillEnter } from "@ionic/react";
 
@@ -39,16 +40,17 @@ interface Props {
 }
 
 const Products: React.FC<Props> = ({ onStockChanged }) => {
-  const { shopId, permissions } = useAuth();
+  const { shopId, permissions, features } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-  const [catManagerOpen, setCatManagerOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [bundleOpen, setBundleOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
 
@@ -114,12 +116,10 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         <IonToolbar>
           <IonTitle>ສິນຄ້າ</IonTitle>
           <IonButtons slot="end">
-            {/* Inventory report */}
             <IonButton onClick={() => setInventoryOpen(true)}>
               <IonIcon slot="icon-only" icon={cubeOutline} />
             </IonButton>
 
-            {/* Stock alert bell */}
             <IonButton onClick={() => setAlertOpen(true)} style={{ position: "relative" }}>
               <IonIcon slot="icon-only" icon={notificationsOutline} />
               {alertCount > 0 && (
@@ -128,9 +128,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                     position: "absolute", top: 4, right: 2,
                     fontSize: "0.6rem", minWidth: 16, height: 16,
                     borderRadius: 8, padding: "0 3px",
-                    background: "#ff3b30",
-                    color: "#ffffff",
-                    fontWeight: 700,
+                    background: "#ff3b30", color: "#ffffff", fontWeight: 700,
                   }}
                 >
                   {alertCount}
@@ -139,8 +137,8 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
             </IonButton>
 
             {isAdmin && (
-              <IonButton onClick={() => setCatManagerOpen(true)}>
-                <IonIcon slot="icon-only" icon={pricetagsOutline} />
+              <IonButton onClick={() => setBundleOpen(true)}>
+                <IonIcon slot="icon-only" icon={giftOutline} />
               </IonButton>
             )}
             <IonMenuButton autoHide={false} />
@@ -210,13 +208,31 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         )}
 
         {isAdmin && (
-          <IonFab vertical="bottom" horizontal="end" slot="fixed">
-            <IonFabButton onClick={openAdd}>
-              <IonIcon icon={addOutline} />
-            </IonFabButton>
-          </IonFab>
+          <>
+            {features.returnEnabled && (
+              <IonFab vertical="bottom" horizontal="start" slot="fixed">
+                <IonFabButton color="medium" onClick={() => setReturnOpen(true)}>
+                  <IonIcon icon={returnUpBackOutline} />
+                </IonFabButton>
+              </IonFab>
+            )}
+            <IonFab vertical="bottom" horizontal="end" slot="fixed">
+              <IonFabButton onClick={openAdd}>
+                <IonIcon icon={addOutline} />
+              </IonFabButton>
+            </IonFab>
+          </>
         )}
       </IonContent>
+
+      {shopId && (
+        <BundleManager
+          isOpen={bundleOpen}
+          products={products}
+          shopId={shopId}
+          onDismiss={() => setBundleOpen(false)}
+        />
+      )}
 
       <ProductDetailSheet
         product={detailProduct}
@@ -245,15 +261,15 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
       />
 
       {shopId && (
-        <CategoryManager
-          isOpen={catManagerOpen}
+        <ReturnForm
+          isOpen={returnOpen}
+          products={products}
           shopId={shopId}
-          onDismiss={() => setCatManagerOpen(false)}
-          onChanged={async () => {
-            if (shopId) setCategories(await getCategories(shopId));
-          }}
+          onDismiss={() => setReturnOpen(false)}
+          onSaved={() => { setReturnOpen(false); load(); onStockChanged?.(); }}
         />
       )}
+
 
       <IonAlert
         isOpen={!!deleteTarget}

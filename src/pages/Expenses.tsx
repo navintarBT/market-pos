@@ -136,42 +136,30 @@ const Expenses: React.FC = () => {
 
           {/* Date range filter */}
           <div style={{
-            background: "#fff", borderRadius: 16, padding: "14px 16px", marginBottom: 16,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
+            background: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 16,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            display: "flex", alignItems: "center", gap: 8,
           }}>
-            <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>
-              📅 ເລືອກຊ່ວງວັນທີ
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: "0.78rem", color: "#78716c", fontWeight: 600, minWidth: 32 }}>ຈາກ</span>
-                <input
-                  type="date"
-                  value={fromDate}
-                  max={toDate}
-                  onChange={(e) => handleFromChange(e.target.value)}
-                  style={{
-                    flex: 1, padding: "9px 12px", borderRadius: 10,
-                    border: "1.5px solid #e5e7eb", fontSize: "0.9rem",
-                    background: "#fafaf9", outline: "none", minWidth: 0,
-                  }}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: "0.78rem", color: "#78716c", fontWeight: 600, minWidth: 32 }}>ຫາ</span>
-                <input
-                  type="date"
-                  value={toDate}
-                  min={fromDate}
-                  onChange={(e) => handleToChange(e.target.value)}
-                  style={{
-                    flex: 1, padding: "9px 12px", borderRadius: 10,
-                    border: "1.5px solid #e5e7eb", fontSize: "0.9rem",
-                    background: "#fafaf9", outline: "none", minWidth: 0,
-                  }}
-                />
-              </div>
-            </div>
+            <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
+            <input
+              type="date" value={fromDate} max={toDate}
+              onChange={(e) => handleFromChange(e.target.value)}
+              style={{
+                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
+                border: "1.5px solid #e5e7eb", fontSize: "0.82rem",
+                background: "#fafaf9", outline: "none", color: "#1c1917",
+              }}
+            />
+            <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
+            <input
+              type="date" value={toDate} min={fromDate}
+              onChange={(e) => handleToChange(e.target.value)}
+              style={{
+                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
+                border: "1.5px solid #e5e7eb", fontSize: "0.82rem",
+                background: "#fafaf9", outline: "none", color: "#1c1917",
+              }}
+            />
           </div>
 
           {loading ? (

@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import type { StaffPermissions } from "../data/types";
+import type { StaffPermissions, ShopFeatures } from "../data/types";
 
 export interface TenantInfo {
   plan: "trial" | "monthly" | "yearly";
@@ -24,6 +24,12 @@ const OWNER_PERMISSIONS: StaffPermissions = {
   canAddExpenses: true,
 };
 
+const DEFAULT_FEATURES: ShopFeatures = {
+  returnEnabled: false,
+  returnSummaryEnabled: false,
+  monthlySummaryEnabled: false,
+};
+
 interface AuthState {
   user: User | null;
   shopId: string | null;
@@ -32,6 +38,7 @@ interface AuthState {
   blocked: boolean;
   loading: boolean;
   permissions: StaffPermissions;
+  features: ShopFeatures;
 }
 
 interface AuthContextValue extends AuthState {
@@ -68,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null, shopId: null, role: null,
     tenant: null, blocked: false, loading: true,
-    permissions: NO_PERMISSIONS,
+    permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
   });
 
   useEffect(() => {
@@ -80,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!data || !["customer", "staff"].includes(role ?? "")) {
           await firebaseSignOut(auth);
-          setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS });
+          setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
           return;
         }
 
@@ -99,7 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (role === "customer") {
           permissions = OWNER_PERMISSIONS;
         } else {
-          // Read permissions from shop's subcollection (owner writes there; not users/{uid})
           try {
             const shopUserSnap = await getDoc(doc(db, "shops", shopId, "users", user.uid));
             const sp = shopUserSnap.data()?.permissions as Partial<StaffPermissions> | undefined;
@@ -114,9 +120,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        setState({ user, shopId, role: role as "customer" | "staff", tenant, blocked, loading: false, permissions });
+        let features: ShopFeatures = DEFAULT_FEATURES;
+        try {
+          const shopSnap = await getDoc(doc(db, "shops", shopId));
+          const f = shopSnap.data()?.features as Partial<ShopFeatures> | undefined;
+          features = {
+            returnEnabled: f?.returnEnabled ?? false,
+            returnSummaryEnabled: f?.returnSummaryEnabled ?? false,
+            monthlySummaryEnabled: f?.monthlySummaryEnabled ?? false,
+          };
+        } catch { /* shop might not be readable yet */ }
+
+        setState({ user, shopId, role: role as "customer" | "staff", tenant, blocked, loading: false, permissions, features });
       } else {
-        setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS });
+        setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
       }
     });
   }, []);

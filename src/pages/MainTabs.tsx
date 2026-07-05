@@ -9,6 +9,7 @@ import {
   IonList,
   IonMenu,
   IonMenuToggle,
+  IonModal,
   IonRouterOutlet,
   IonTabBar,
   IonTabButton,
@@ -21,6 +22,7 @@ import {
   barChartOutline,
   businessOutline,
   cartOutline,
+  warningOutline,
   logOutOutline,
   peopleOutline,
   receiptOutline,
@@ -58,9 +60,16 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, signOut } = useAuth();
+  const { shopId, role, signOut, features, tenant } = useAuth();
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
   const [shop, setShop] = useState<ShopProfile | null>(null);
+  const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+
+  useEffect(() => {
+    if (tenant && !tenant.isExpired && tenant.daysLeft !== null && tenant.daysLeft <= 7) {
+      setShowExpiryAlert(true);
+    }
+  }, [tenant]);
 
   useEffect(() => {
     if (!shopId) {
@@ -132,6 +141,65 @@ const MainTabs: React.FC = () => {
         </IonContent>
       </IonMenu>
 
+      <IonModal
+        isOpen={showExpiryAlert}
+        onDidDismiss={() => setShowExpiryAlert(false)}
+        initialBreakpoint={1}
+        breakpoints={[0, 1]}
+        style={{ "--height": "auto" }}
+      >
+        <div style={{ padding: "32px 24px 40px", textAlign: "center" }}>
+          {/* Icon */}
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 20px",
+            boxShadow: "0 4px 16px rgba(217,119,6,0.25)",
+          }}>
+            <IonIcon icon={warningOutline} style={{ fontSize: 36, color: "#d97706" }} />
+          </div>
+
+          {/* Title */}
+          <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem", fontWeight: 800, color: "#92400e" }}>
+            ແພັກເກດໃກ້ໝົດອາຍຸ
+          </h2>
+
+          {/* Days badge */}
+          <div style={{
+            display: "inline-block",
+            background: (tenant?.daysLeft ?? 0) <= 3
+              ? "linear-gradient(135deg, #dc2626, #b91c1c)"
+              : "linear-gradient(135deg, #d97706, #b45309)",
+            color: "#fff", borderRadius: 20,
+            padding: "4px 16px", marginBottom: 16,
+            fontSize: "0.9rem", fontWeight: 700,
+          }}>
+            ເຫຼືອ {tenant?.daysLeft} ວັນ
+          </div>
+
+          {/* Message */}
+          <p style={{ margin: "0 0 28px", fontSize: "0.88rem", color: "#78716c", lineHeight: 1.6 }}>
+            ກະລຸນາຕິດຕໍ່ຜູ້ໃຫ້ບໍລິການ<br />ເພື່ອຕໍ່ subscription ຂອງທ່ານ
+          </p>
+
+          {/* Button */}
+          <button
+            onClick={() => setShowExpiryAlert(false)}
+            style={{
+              width: "100%", padding: "13px",
+              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              border: "none", borderRadius: 12,
+              color: "#fff", fontSize: "0.95rem", fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 4px 14px rgba(224,123,57,0.4)",
+            }}
+          >
+            ຮັບຊາບ
+          </button>
+        </div>
+      </IonModal>
+
       <IonTabs>
         <IonRouterOutlet id="main-content">
           <Route exact path="/tabs/sell"><Sell /></Route>
@@ -162,10 +230,12 @@ const MainTabs: React.FC = () => {
             <IonIcon icon={timeOutline} />
             <IonLabel>ປະຫວັດ</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="summary" href="/tabs/summary">
-            <IonIcon icon={barChartOutline} />
-            <IonLabel>ສະຫຼຸບຍອດ</IonLabel>
-          </IonTabButton>
+          {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && (
+            <IonTabButton tab="summary" href="/tabs/summary">
+              <IonIcon icon={barChartOutline} />
+              <IonLabel>ສະຫຼຸບ</IonLabel>
+            </IonTabButton>
+          )}
         </IonTabBar>
       </IonTabs>
     </CartProvider>

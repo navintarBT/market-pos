@@ -1,3 +1,21 @@
+export interface ShopFeatures {
+  returnEnabled: boolean;
+  returnSummaryEnabled: boolean;
+  monthlySummaryEnabled: boolean;
+}
+
+export interface ReturnRecord {
+  id: string;
+  productId: string;
+  productName: string;
+  variantSize: string;
+  variantColor: string;
+  quantity: number;
+  costPrice: number;
+  sellingPrice: number;
+  createdAt: Date;
+}
+
 export interface ProductVariant {
   size: string;
   color: string;
@@ -15,6 +33,23 @@ export interface Product {
   variants: ProductVariant[];
 }
 
+export interface BundleItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  costPrice?: number;
+  variantSize?: string;
+  variantColor?: string;
+}
+
+export interface Bundle {
+  id: string;
+  name: string;
+  price: number;
+  items: BundleItem[];
+  photoUrl?: string;
+}
+
 export interface SaleItem {
   productId: string;
   productName: string;
@@ -23,6 +58,8 @@ export interface SaleItem {
   originalPrice: number;
   unitPrice: number;
   costPrice?: number;
+  isBundle?: boolean;
+  bundleItems?: BundleItem[];
 }
 
 export interface Category {

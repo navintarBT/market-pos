@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  IonAlert,
   IonButton,
   IonButtons,
   IonContent,
@@ -94,6 +95,7 @@ const StaffSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ShopUser | null>(null);
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,9 +224,9 @@ const StaffSettings: React.FC = () => {
     }
   }
 
-  async function handleDelete(user: ShopUser) {
+  async function doDelete(user: ShopUser) {
     if (!shopId) return;
-    if (!window.confirm(`ລຶບ "${user.displayName || user.email}" ອອກຈາກຮ້ານ?`)) return;
+    setDeleteTarget(null);
     setDeletingId(user.id); setError(null);
     try {
       await deleteStaffUser(shopId, user.id);
@@ -389,7 +391,7 @@ const StaffSettings: React.FC = () => {
                             <IonButton
                               fill="clear" size="small"
                               disabled={deletingId === user.id}
-                              onClick={() => handleDelete(user)}
+                              onClick={() => setDeleteTarget(user)}
                               style={{ "--color": "#dc2626" }}
                             >
                               {deletingId === user.id
@@ -452,6 +454,17 @@ const StaffSettings: React.FC = () => {
           )}
         </div>
       </IonContent>
+
+      <IonAlert
+        isOpen={!!deleteTarget}
+        header="ລຶບພະນັກງານ"
+        message={`ຕ້ອງການລຶບ "${deleteTarget?.displayName || deleteTarget?.email}" ອອກຈາກຮ້ານ?`}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
+          { text: "ລຶບ", role: "destructive", handler: () => { if (deleteTarget) doDelete(deleteTarget); } },
+        ]}
+        onDidDismiss={() => setDeleteTarget(null)}
+      />
     </IonPage>
   );
 };

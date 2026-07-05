@@ -30,6 +30,29 @@ service cloud.firestore {
         );
     }
 
+    // ── Customers (personal info, control panel only) ─────────────────────
+    match /customers/{customerId} {
+      allow read:   if isControlAdmin();
+      allow create: if isControlAdmin();
+      allow update: if isControlAdmin();
+      allow delete: if false;
+
+      match /payments/{paymentId} {
+        allow read:   if isControlAdmin();
+        allow create: if isControlAdmin();
+        allow update: if isControlAdmin();
+        allow delete: if isControlAdmin();
+      }
+    }
+
+    // ── Packages (Control Panel only) ────────────────────────────────────
+    match /packages/{packageId} {
+      allow read:   if isControlAdmin();
+      allow create: if isControlAdmin();
+      allow update: if isControlAdmin();
+      allow delete: if isControlAdmin();
+    }
+
     // ── Tenants (Control Panel) ───────────────────────────────────────────
     match /tenants/{tenantId} {
       allow read: if isControlAdmin() || isShopMember(tenantId);
@@ -89,6 +112,18 @@ service cloud.firestore {
         allow delete: if isShopOwner(shopId);
       }
 
+      match /bundles/{bundleId} {
+        allow read:           if isControlAdmin() || isShopMember(shopId);
+        allow create, update: if isShopOwner(shopId);
+        allow delete:         if isShopOwner(shopId);
+      }
+
+      match /returns/{returnId} {
+        allow read:           if isControlAdmin() || isShopMember(shopId);
+        allow create:         if isShopOwner(shopId) && validReturn(request.resource.data);
+        allow update, delete: if false;
+      }
+
       match /users/{uid} {
         allow read:  if isControlAdmin() || isShopMember(shopId);
         allow write: if isControlAdmin() || isShopOwner(shopId);
@@ -129,6 +164,21 @@ service cloud.firestore {
         && data.total is number
         && data.total > 0
         && (data.paymentType == 'cash' || data.paymentType == 'qr');
+    }
+
+    function validReturn(data) {
+      return data.keys().hasAll([
+          'productId', 'productName', 'variantSize', 'variantColor',
+          'quantity', 'costPrice', 'sellingPrice', 'createdAt'
+        ])
+        && data.quantity is int
+        && data.quantity > 0
+        && data.costPrice is number
+        && data.costPrice >= 0
+        && data.sellingPrice is number
+        && data.sellingPrice >= 0
+        && data.productId is string
+        && data.productName is string;
     }
   }
 }

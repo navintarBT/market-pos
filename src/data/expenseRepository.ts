@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import type { Expense } from "./types";
+import type { Expense, ExpenseCategory } from "./types";
 
 function expensesCol(shopId: string) {
   return collection(db, "shops", shopId, "expenses");
@@ -23,6 +23,7 @@ function mapExpense(d: any): Expense {
     id: d.id,
     description: data.description,
     amount: data.amount,
+    category: data.category ?? "general",
     createdAt: (data.createdAt as Timestamp).toDate(),
   };
 }
@@ -61,11 +62,13 @@ export async function getExpensesByDateRange(
 export async function addExpense(
   shopId: string,
   description: string,
-  amount: number
+  amount: number,
+  category: ExpenseCategory
 ): Promise<string> {
   const ref = await addDoc(expensesCol(shopId), {
     description,
     amount,
+    category,
     createdAt: Timestamp.now(),
   });
   return ref.id;
@@ -75,9 +78,10 @@ export async function updateExpense(
   shopId: string,
   expenseId: string,
   description: string,
-  amount: number
+  amount: number,
+  category: ExpenseCategory
 ): Promise<void> {
-  await updateDoc(doc(expensesCol(shopId), expenseId), { description, amount });
+  await updateDoc(doc(expensesCol(shopId), expenseId), { description, amount, category });
 }
 
 export async function deleteExpense(shopId: string, expenseId: string): Promise<void> {

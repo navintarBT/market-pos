@@ -3,12 +3,14 @@ import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonGrid, IonRow, IonCol,
   IonRefresher, IonRefresherContent, IonSpinner, IonText, IonAlert,
-  IonButtons, IonMenuButton, IonModal, IonButton, IonIcon, useIonViewWillEnter,
+  IonButtons, IonMenuButton, IonModal, IonButton, IonIcon,
+  IonSegment, IonSegmentButton, useIonViewWillEnter,
 } from "@ionic/react";
-import { trashOutline } from "ionicons/icons";
+import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange, deleteSale } from "../data/saleRepository";
-import type { Sale } from "../data/types";
+import { getShopUsers } from "../data/shopRepository";
+import type { Sale, ShopUser } from "../data/types";
 import { fmtK } from "../utils/format";
 
 function toDateInputValue(date: Date) {
@@ -57,11 +59,15 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, bg, color }) =>
 const today = new Date();
 
 const SalesHistory: React.FC = () => {
-  const { shopId, permissions } = useAuth();
+  const { shopId, role, permissions } = useAuth();
+  const isOwner = role === "customer";
+  const [view, setView] = useState<"all" | "staff">("all");
   const [sales, setSales] = useState<Sale[]>([]);
+  const [users, setUsers] = useState<ShopUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState(toDateInputValue(today));
   const [toDate, setToDate] = useState(toDateInputValue(today));
+  const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
 
@@ -69,7 +75,12 @@ const SalesHistory: React.FC = () => {
     if (!shopId) return;
     setLoading(true);
     try {
-      setSales(await getSalesByDateRange(shopId, new Date(fromDate), new Date(toDate)));
+      const [s, u] = await Promise.all([
+        getSalesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
+        getShopUsers(shopId),
+      ]);
+      setSales(s);
+      setUsers(u);
     } finally {
       setLoading(false);
     }
@@ -85,7 +96,7 @@ const SalesHistory: React.FC = () => {
 
   async function handleDeleteSale() {
     if (!shopId || !deleteTarget) return;
-    await deleteSale(shopId, deleteTarget.id);
+    await deleteSale(shopId, deleteTarget);
     setSales(prev => prev.filter(s => s.id !== deleteTarget.id));
     setDeleteTarget(null);
   }
@@ -117,6 +128,20 @@ const SalesHistory: React.FC = () => {
       return is;
     }, 0), 0);
 
+  const staffRows = users.map((u) => {
+    const mine = sales.filter((s) => s.sellerUid === u.id);
+    return {
+      uid: u.id,
+      name: u.displayName || u.email,
+      isOwner: u.role === "customer",
+      count: mine.length,
+      total: mine.reduce((sum, s) => sum + s.total, 0),
+      sales: [...mine].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    };
+  }).sort((a, b) => b.total - a.total);
+  const unattributed = sales.filter((s) => !s.sellerUid);
+  const selectedStaff = staffRows.find((r) => r.uid === selectedUid) ?? null;
+
   return (
     <IonPage>
       <IonHeader>
@@ -134,6 +159,17 @@ const SalesHistory: React.FC = () => {
         </IonRefresher>
 
         <div style={{ padding: "16px 16px 24px" }}>
+
+          {isOwner && (
+            <IonSegment
+              value={view}
+              onIonChange={(e) => { setView(e.detail.value as "all" | "staff"); setSelectedUid(null); }}
+              style={{ marginBottom: 14 }}
+            >
+              <IonSegmentButton value="all">ປະຫວັດຂາຍທັງໝົດ</IonSegmentButton>
+              <IonSegmentButton value="staff">ປະຫວັດພະນັກງານຂາຍ</IonSegmentButton>
+            </IonSegment>
+          )}
 
           {/* Date range filter — compact single row */}
           <div style={{
@@ -167,6 +203,158 @@ const SalesHistory: React.FC = () => {
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
               <IonSpinner name="crescent" color="primary" />
             </div>
+          ) : view === "staff" ? (
+            <>
+              {selectedStaff ? (
+                <>
+                  <div
+                    onClick={() => setSelectedUid(null)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8, marginBottom: 14, cursor: "pointer",
+                    }}
+                  >
+                    <IonIcon icon={chevronBackOutline} style={{ color: "#78716c" }} />
+                    <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>{selectedStaff.name}</span>
+                  </div>
+
+                  <div style={{
+                    background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                    borderRadius: 20, padding: "18px 20px", marginBottom: 16,
+                    boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
+                  }}>
+                    <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>
+                      ₭{fmtK(selectedStaff.total)}
+                    </p>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.78rem", opacity: 0.8 }}>
+                      {selectedStaff.count} ລາຍການ
+                    </p>
+                  </div>
+
+                  {selectedStaff.sales.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "32px 0" }}>
+                      <div style={{ fontSize: 48, marginBottom: 8 }}>📋</div>
+                      <IonText color="medium"><p>ບໍ່ມີການຂາຍໃນຊ່ວງວັນທີນີ້</p></IonText>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      {selectedStaff.sales.map((sale) => {
+                        const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
+                        const isCash = sale.paymentType === "cash";
+                        const names = sale.items.map((i) => i.productName).join(", ");
+                        return (
+                          <div
+                            key={sale.id}
+                            onClick={() => setSelectedSale(sale)}
+                            style={{
+                              background: "#fff", borderRadius: 12, padding: "10px 12px",
+                              boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+                              display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+                            }}
+                          >
+                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
+                                {formatTime(sale.createdAt)}
+                              </div>
+                              <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
+                                {formatShortDate(sale.createdAt)}
+                              </div>
+                            </div>
+                            <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: "0.8rem", color: "#44403c", fontWeight: 600,
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              }}>
+                                {names}
+                              </div>
+                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊິ້ນ</span>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
+                                ₭{fmtK(sale.total)}
+                              </div>
+                              <div style={{
+                                fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
+                                color: isCash ? "#166534" : "#1d4ed8",
+                                background: isCash ? "#dcfce7" : "#eff6ff",
+                                padding: "1px 6px", borderRadius: 4, display: "inline-block",
+                              }}>
+                                {isCash ? "💵 ສົດ" : "📱 QR"}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : staffRows.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "32px 0" }}>
+                  <div style={{ fontSize: 48, marginBottom: 8 }}>👤</div>
+                  <IonText color="medium"><p>ຍັງບໍ່ມີຜູ້ໃຊ້ໃນຮ້ານ</p></IonText>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {staffRows.map((row) => (
+                    <div
+                      key={row.uid}
+                      onClick={() => setSelectedUid(row.uid)}
+                      style={{
+                        background: "#fff", borderRadius: 14, padding: "12px 14px",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                        display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+                      }}
+                    >
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                        background: row.isOwner ? "#ffedd5" : "#ccfbf1",
+                        color: row.isOwner ? "#c2410c" : "#0f766e",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
+                      }}>
+                        {row.name.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c1917" }}>{row.name}</div>
+                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                          {row.isOwner ? "owner" : "staff"} · {row.count} ລາຍການ
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#e07b39" }}>
+                          ₭{fmtK(row.total)}
+                        </div>
+                      </div>
+                      <IonIcon icon={chevronForwardOutline} style={{ color: "#d6d3d1", flexShrink: 0 }} />
+                    </div>
+                  ))}
+
+                  {unattributed.length > 0 && (
+                    <div style={{
+                      background: "#fafaf9", borderRadius: 14, padding: "12px 14px",
+                      display: "flex", alignItems: "center", gap: 12,
+                    }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                        background: "#e7e5e4", color: "#78716c",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <IonIcon icon={personOutline} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#57534e" }}>ບໍ່ລະບຸ</div>
+                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                          ຂາຍກ່ອນມີການບັນທຶກຄົນຂາຍ · {unattributed.length} ລາຍການ
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#78716c" }}>
+                        ₭{fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {/* Summary cards */}
@@ -340,6 +528,9 @@ const SalesHistory: React.FC = () => {
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                             <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊ
                             </span>
+                            {sale.sellerName && (
+                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>· 👤 {sale.sellerName}</span>
+                            )}
                             {hasLoss && (
                               <span style={{
                                 fontSize: "0.6rem", fontWeight: 700,
@@ -408,7 +599,7 @@ const SalesHistory: React.FC = () => {
         {selectedSale && (
           <IonContent className="ion-padding">
             {/* Meta */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <span style={{ fontSize: "0.82rem", color: "#78716c" }}>
                 📅 {formatDateTime(selectedSale.createdAt)}
               </span>
@@ -420,6 +611,12 @@ const SalesHistory: React.FC = () => {
                 {selectedSale.paymentType === "cash" ? "💵 ເງິນສົດ" : "📱 QR ໂອນ"}
               </span>
             </div>
+
+            {selectedSale.sellerName && (
+              <div style={{ marginBottom: 16, fontSize: "0.82rem", color: "#78716c" }}>
+                👤 ຜູ້ຂາຍ: <span style={{ fontWeight: 700, color: "#1c1917" }}>{selectedSale.sellerName}</span>
+              </div>
+            )}
 
             {/* Items */}
             <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>

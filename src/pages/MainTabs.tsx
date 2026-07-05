@@ -228,7 +228,7 @@ const MainTabs: React.FC = () => {
           </IonTabButton>
           <IonTabButton tab="history" href="/tabs/history">
             <IonIcon icon={timeOutline} />
-            <IonLabel>ປະຫວັດ</IonLabel>
+            <IonLabel>ປະຫວັດການຂາຍ</IonLabel>
           </IonTabButton>
           {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && (
             <IonTabButton tab="summary" href="/tabs/summary">

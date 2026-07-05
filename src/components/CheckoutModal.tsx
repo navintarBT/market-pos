@@ -24,18 +24,18 @@ interface Props {
 }
 
 const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
-  const { shopId } = useAuth();
+  const { shopId, user, displayName } = useAuth();
   const { items, total, clear } = useCart();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handlePay(paymentType: Sale["paymentType"]) {
-    if (!shopId || !items.length) return;
+    if (!shopId || !items.length || !user) return;
     setError(null);
     setBusy(true);
     try {
-      await recordSale(shopId, items, total, paymentType);
+      await recordSale(shopId, items, total, paymentType, user.uid, displayName);
       setSuccessMsg(`ຮັບເງິນສຳເລັດ ₭${fmtK(total)}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";

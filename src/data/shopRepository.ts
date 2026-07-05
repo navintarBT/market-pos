@@ -173,6 +173,61 @@ export async function resetStaffPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
+// Change the shop owner's own login email: creates a new Auth user, migrates
+// the owner's Firestore docs to the new uid, sends a password-reset email.
+// Caller must sign the user out afterwards — the old session's uid no longer
+// maps to a users/{uid} doc.
+export async function updateOwnerEmail(
+  shopId: string,
+  oldUid: string,
+  newEmail: string,
+): Promise<string> {
+  const email = newEmail.trim().toLowerCase();
+
+  const oldSnap = await getDoc(doc(db, "users", oldUid));
+  const createdAt = oldSnap.data()?.createdAt as Timestamp | undefined;
+
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const rand = new Uint8Array(16);
+  crypto.getRandomValues(rand);
+  const tempPassword = Array.from(rand, b => chars[b % 62]).join("") + "Aa1!";
+
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${import.meta.env.VITE_FIREBASE_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: tempPassword, returnSecureToken: false }),
+    },
+  );
+  const json = await res.json();
+  if (!res.ok) {
+    const code: string = json.error?.message ?? "FAILED";
+    if (code === "EMAIL_EXISTS") throw new Error("ອີເມວນີ້ຖືກໃຊ້ແລ້ວ");
+    throw new Error(code);
+  }
+  const newUid: string = json.localId;
+  const now = serverTimestamp();
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users", newUid), {
+    role: "customer", shopId, email,
+    createdAt: createdAt ?? now,
+    updatedAt: now,
+  });
+  batch.set(doc(db, "shops", shopId, "users", newUid), {
+    role: "customer", email,
+    createdAt: createdAt ?? now,
+    updatedAt: now,
+  });
+  batch.delete(doc(db, "users", oldUid));
+  batch.delete(doc(db, "shops", shopId, "users", oldUid));
+  await batch.commit();
+
+  await sendPasswordResetEmail(auth, email);
+  return newUid;
+}
+
 export async function deleteStaffUser(shopId: string, uid: string): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, "users", uid));

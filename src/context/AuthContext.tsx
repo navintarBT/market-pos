@@ -34,6 +34,7 @@ interface AuthState {
   user: User | null;
   shopId: string | null;
   role: "customer" | "staff" | null;
+  displayName: string;
   tenant: TenantInfo | null;
   blocked: boolean;
   loading: boolean;
@@ -73,7 +74,7 @@ const NO_PERMISSIONS: StaffPermissions = { canManageProducts: false, canEditCart
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    user: null, shopId: null, role: null,
+    user: null, shopId: null, role: null, displayName: "",
     tenant: null, blocked: false, loading: true,
     permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
   });
@@ -87,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!data || !["customer", "staff"].includes(role ?? "")) {
           await firebaseSignOut(auth);
-          setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
+          setState({ user: null, shopId: null, role: null, displayName: "", tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
           return;
         }
 
@@ -103,18 +104,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch { /* rules might not allow yet */ }
 
         let permissions: StaffPermissions;
+        let displayName = user.email ?? "";
         if (role === "customer") {
           permissions = OWNER_PERMISSIONS;
         } else {
           try {
             const shopUserSnap = await getDoc(doc(db, "shops", shopId, "users", user.uid));
-            const sp = shopUserSnap.data()?.permissions as Partial<StaffPermissions> | undefined;
+            const su = shopUserSnap.data();
+            const sp = su?.permissions as Partial<StaffPermissions> | undefined;
             permissions = {
               canManageProducts: sp?.canManageProducts ?? false,
               canEditCartPrice: sp?.canEditCartPrice ?? false,
               canDeleteSales: sp?.canDeleteSales ?? false,
               canAddExpenses: sp?.canAddExpenses ?? false,
             };
+            const dn = su?.displayName as string | undefined;
+            if (dn) displayName = dn;
           } catch {
             permissions = NO_PERMISSIONS;
           }
@@ -131,9 +136,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         } catch { /* shop might not be readable yet */ }
 
-        setState({ user, shopId, role: role as "customer" | "staff", tenant, blocked, loading: false, permissions, features });
+        setState({ user, shopId, role: role as "customer" | "staff", displayName, tenant, blocked, loading: false, permissions, features });
       } else {
-        setState({ user: null, shopId: null, role: null, tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
+        setState({ user: null, shopId: null, role: null, displayName: "", tenant: null, blocked: false, loading: false, permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES });
       }
     });
   }, []);

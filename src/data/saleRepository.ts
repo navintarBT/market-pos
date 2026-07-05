@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -52,7 +51,9 @@ export async function recordSale(
   shopId: string,
   items: SaleItem[],
   total: number,
-  paymentType: Sale["paymentType"]
+  paymentType: Sale["paymentType"],
+  sellerUid: string,
+  sellerName: string
 ): Promise<string> {
   try {
     return await runTransaction(db, async (tx) => {
@@ -92,14 +93,14 @@ export async function recordSale(
       }
 
       const saleRef = doc(salesCol(shopId));
-      tx.set(saleRef, { items, total, paymentType, createdAt: Timestamp.now() });
+      tx.set(saleRef, { items, total, paymentType, sellerUid, sellerName, createdAt: Timestamp.now() });
       return saleRef.id;
     });
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     // Transaction can't run offline — fall back to provisional batch write
     if (code === "unavailable" || code === "failed-precondition" || !navigator.onLine) {
-      return recordSaleProvisional(shopId, items, total, paymentType);
+      return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName);
     }
     throw err;
   }
@@ -110,7 +111,9 @@ async function recordSaleProvisional(
   shopId: string,
   items: SaleItem[],
   total: number,
-  paymentType: Sale["paymentType"]
+  paymentType: Sale["paymentType"],
+  sellerUid: string,
+  sellerName: string
 ): Promise<string> {
   const batch = writeBatch(db);
   const changes = buildStockChanges(items);
@@ -143,6 +146,8 @@ async function recordSaleProvisional(
     items,
     total,
     paymentType,
+    sellerUid,
+    sellerName,
     createdAt: Timestamp.now(),
     provisional: true, // flag for reconciliation
   });
@@ -172,8 +177,43 @@ export async function getSalesByDateRange(shopId: string, from: Date, to: Date):
   });
 }
 
-export async function deleteSale(shopId: string, saleId: string): Promise<void> {
-  await deleteDoc(doc(salesCol(shopId), saleId));
+/** Deletes a sale and restores the stock it had decremented. */
+export async function deleteSale(shopId: string, sale: Sale): Promise<void> {
+  await runTransaction(db, async (tx) => {
+    const changes = buildStockChanges(sale.items);
+
+    const byProduct = new Map<string, StockChange[]>();
+    for (const ch of changes) {
+      const arr = byProduct.get(ch.productId) ?? [];
+      arr.push(ch);
+      byProduct.set(ch.productId, arr);
+    }
+
+    // Phase 1: all reads
+    const snaps = new Map<string, any>();
+    for (const productId of byProduct.keys()) {
+      const ref = doc(productsCol(shopId), productId);
+      const snap = await tx.get(ref);
+      if (snap.exists()) snaps.set(productId, snap);
+    }
+
+    // Phase 2: restore stock (skip products that no longer exist) + delete the sale
+    for (const [productId, productChanges] of byProduct) {
+      const snap = snaps.get(productId);
+      if (!snap) continue;
+      const ref = doc(productsCol(shopId), productId);
+      const variants: any[] = [...(snap.data().variants ?? [])];
+      for (const ch of productChanges) {
+        const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
+        if (idx !== -1) {
+          variants[idx] = { ...variants[idx], stock: variants[idx].stock + ch.qty };
+        }
+      }
+      tx.update(ref, { variants });
+    }
+
+    tx.delete(doc(salesCol(shopId), sale.id));
+  });
 }
 
 export async function getSalesToday(shopId: string): Promise<Sale[]> {

@@ -4,13 +4,19 @@ import {
   IonList, IonItem, IonLabel, IonButton, IonIcon,
   IonFab, IonFabButton, IonRefresher, IonRefresherContent,
   IonSpinner, IonText, IonAlert, IonModal, IonButtons, IonMenuButton,
+  IonSegment, IonSegmentButton,
   useIonViewWillEnter,
 } from "@ionic/react";
 import { addOutline, trashOutline, createOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
-import type { Expense } from "../data/types";
+import type { Expense, ExpenseCategory } from "../data/types";
 import { fmtK } from "../utils/format";
+
+const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
+  capital: "ທຶນທຸລະກິດ",
+  general: "ທົ່ວໄປ",
+};
 
 function formatDateTime(date: Date) {
   const d = String(date.getDate()).padStart(2, "0");
@@ -41,10 +47,12 @@ const Expenses: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "all">("all");
 
   const [formDesc, setFormDesc] = useState("");
   const [formAmount, setFormAmount] = useState(0);
   const [formAmountStr, setFormAmountStr] = useState("");
+  const [formCategory, setFormCategory] = useState<ExpenseCategory>("general");
   const [formBusy, setFormBusy] = useState(false);
 
   const formOpen = addOpen || !!editTarget;
@@ -63,10 +71,12 @@ const Expenses: React.FC = () => {
       setFormDesc(editTarget.description);
       setFormAmount(editTarget.amount);
       setFormAmountStr(fmtK(editTarget.amount));
+      setFormCategory(editTarget.category);
     } else if (addOpen) {
       setFormDesc("");
       setFormAmount(0);
       setFormAmountStr("");
+      setFormCategory("general");
     }
   }, [addOpen, editTarget]);
 
@@ -95,9 +105,9 @@ const Expenses: React.FC = () => {
     setFormBusy(true);
     try {
       if (editTarget) {
-        await updateExpense(shopId, editTarget.id, formDesc.trim(), formAmount);
+        await updateExpense(shopId, editTarget.id, formDesc.trim(), formAmount, formCategory);
       } else {
-        await addExpense(shopId, formDesc.trim(), formAmount);
+        await addExpense(shopId, formDesc.trim(), formAmount, formCategory);
       }
       dismissForm();
       await load(fromDate, toDate);
@@ -113,7 +123,10 @@ const Expenses: React.FC = () => {
     await load(fromDate, toDate);
   }
 
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const visibleExpenses = categoryFilter === "all"
+    ? expenses
+    : expenses.filter((e) => e.category === categoryFilter);
+  const total = visibleExpenses.reduce((s, e) => s + e.amount, 0);
   const isToday = fromDate === toDateInputValue(today) && toDate === toDateInputValue(today);
 
   return (
@@ -162,6 +175,17 @@ const Expenses: React.FC = () => {
             />
           </div>
 
+          {/* Category filter */}
+          <IonSegment
+            value={categoryFilter}
+            onIonChange={(e) => setCategoryFilter(e.detail.value as ExpenseCategory | "all")}
+            style={{ marginBottom: 16 }}
+          >
+            <IonSegmentButton value="all">ທັງໝົດ</IonSegmentButton>
+            <IonSegmentButton value="capital">{CATEGORY_LABEL.capital}</IonSegmentButton>
+            <IonSegmentButton value="general">{CATEGORY_LABEL.general}</IonSegmentButton>
+          </IonSegment>
+
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
               <IonSpinner name="crescent" color="primary" />
@@ -181,23 +205,23 @@ const Expenses: React.FC = () => {
                   ₭{fmtK(total)}
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: "0.8rem", opacity: 0.8 }}>
-                  {expenses.length} ລາຍການ
+                  {visibleExpenses.length} ລາຍການ
                 </p>
               </div>
 
-              {expenses.length === 0 ? (
+              {visibleExpenses.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
                   <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
                   <IonText color="medium"><p>ບໍ່ມີລາຍຈ່າຍໃນຊ່ວງວັນທີນີ້</p></IonText>
                 </div>
               ) : (
                 <IonList style={{ borderRadius: 16, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-                  {expenses.map((exp) => (
+                  {visibleExpenses.map((exp) => (
                     <IonItem key={exp.id} lines="inset" style={{ "--background": "#ffffff" }}>
                       <IonLabel>
                         <h3 style={{ fontWeight: 600, color: "#1c1917" }}>{exp.description}</h3>
                         <p style={{ color: "#a8a29e", fontSize: "0.75rem" }}>
-                          📅 {formatDateTime(exp.createdAt)}
+                          📅 {formatDateTime(exp.createdAt)} · {CATEGORY_LABEL[exp.category]}
                         </p>
                       </IonLabel>
                       <span slot="end" style={{ fontWeight: 700, color: "#dc2626", marginRight: 4 }}>
@@ -233,7 +257,7 @@ const Expenses: React.FC = () => {
       </IonContent>
 
       {/* Add / Edit modal */}
-      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.55} breakpoints={[0, 0.55]}>
+      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.65} breakpoints={[0, 0.65]}>
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
@@ -249,6 +273,15 @@ const Expenses: React.FC = () => {
         </IonHeader>
 
         <IonContent className="ion-padding">
+          <IonSegment
+            value={formCategory}
+            onIonChange={(e) => setFormCategory(e.detail.value as ExpenseCategory)}
+            style={{ marginBottom: 12 }}
+          >
+            <IonSegmentButton value="capital">{CATEGORY_LABEL.capital}</IonSegmentButton>
+            <IonSegmentButton value="general">{CATEGORY_LABEL.general}</IonSegmentButton>
+          </IonSegment>
+
           <IonList lines="full">
             <IonItem>
               <IonLabel position="stacked">ລາຍລະອຽດ *</IonLabel>

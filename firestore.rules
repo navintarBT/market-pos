@@ -16,6 +16,12 @@ service cloud.firestore {
           isShopOwner(request.resource.data.shopId)
           && request.resource.data.role == 'staff'
           && request.resource.data.keys().hasAll(['role', 'shopId', 'email', 'displayName', 'createdAt'])
+        )
+        || (
+          // Owner migrating their own account to a new uid (self email change)
+          isShopOwner(request.resource.data.shopId)
+          && request.resource.data.role == 'customer'
+          && request.resource.data.keys().hasAll(['role', 'shopId', 'email', 'createdAt'])
         );
       allow update: if isControlAdmin()
         || (
@@ -27,6 +33,11 @@ service cloud.firestore {
         || (
           isShopOwner(resource.data.shopId)
           && resource.data.role == 'staff'
+        )
+        || (
+          // Owner deleting their own old doc after an email change
+          uid == request.auth.uid
+          && resource.data.role == 'customer'
         );
     }
 
@@ -85,9 +96,12 @@ service cloud.firestore {
       }
 
       match /sales/{saleId} {
-        allow read:           if isControlAdmin() || isShopMember(shopId);
-        allow create:         if isShopMember(shopId) && validSale(request.resource.data);
-        allow update, delete: if false;
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isShopMember(shopId) && validSale(request.resource.data);
+        allow update: if false;
+        allow delete: if isControlAdmin()
+          || isShopOwner(shopId)
+          || (isShopMember(shopId) && hasStaffPermission(shopId, 'canDeleteSales'));
       }
 
       match /expenses/{expenseId} {
@@ -157,6 +171,12 @@ service cloud.firestore {
       return request.auth != null
         && d.shopId == shopId
         && d.role == 'customer';
+    }
+
+    function hasStaffPermission(shopId, key) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid)).data.permissions[key] == true;
     }
 
     function validSale(data) {

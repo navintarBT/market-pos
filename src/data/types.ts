@@ -91,10 +91,13 @@ export interface ShopUser {
 
 export type PaymentType = "cash" | "qr";
 
+export type ExpenseCategory = "capital" | "general";
+
 export interface Expense {
   id: string;
   description: string;
   amount: number;
+  category: ExpenseCategory;
   createdAt: Date;
 }
 
@@ -104,4 +107,6 @@ export interface Sale {
   total: number;
   paymentType: PaymentType;
   createdAt: Date;
+  sellerUid?: string;
+  sellerName?: string;
 }

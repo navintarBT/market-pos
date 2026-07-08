@@ -70,6 +70,7 @@ const SalesHistory: React.FC = () => {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -96,9 +97,15 @@ const SalesHistory: React.FC = () => {
 
   async function handleDeleteSale() {
     if (!shopId || !deleteTarget) return;
-    await deleteSale(shopId, deleteTarget);
-    setSales(prev => prev.filter(s => s.id !== deleteTarget.id));
+    const target = deleteTarget;
     setDeleteTarget(null);
+    setDeletingId(target.id);
+    try {
+      await deleteSale(shopId, target);
+      setSales(prev => prev.filter(s => s.id !== target.id));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function handleFromChange(val: string) {
@@ -561,13 +568,16 @@ const SalesHistory: React.FC = () => {
                           {permissions.canDeleteSales && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setDeleteTarget(sale); }}
+                              disabled={deletingId === sale.id}
                               style={{
                                 background: "none", border: "none", padding: "6px 4px",
-                                cursor: "pointer", lineHeight: 0, color: "#d1d5db",
-                                borderRadius: 6,
+                                cursor: deletingId === sale.id ? "default" : "pointer",
+                                lineHeight: 0, color: "#d1d5db", borderRadius: 6,
                               }}
                             >
-                              <IonIcon icon={trashOutline} style={{ fontSize: 16, display: "block" }} />
+                              {deletingId === sale.id
+                                ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                                : <IonIcon icon={trashOutline} style={{ fontSize: 16, display: "block" }} />}
                             </button>
                           )}
                         </div>

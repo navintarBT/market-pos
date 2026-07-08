@@ -266,7 +266,7 @@ const Expenses: React.FC = () => {
             <IonTitle>{editTarget ? "ແກ້ໄຂລາຍຈ່າຍ" : "ເພີ່ມລາຍຈ່າຍ"}</IonTitle>
             <IonButtons slot="end">
               <IonButton strong onClick={handleFormSave} disabled={formBusy || !formDesc.trim() || formAmount <= 0}>
-                ບັນທຶກ
+                {formBusy ? (<><IonSpinner name="dots" style={{ width: 16, height: 16, marginRight: 6 }} /> ກຳລັງບັນທຶກ...</>) : "ບັນທຶກ"}
               </IonButton>
             </IonButtons>
           </IonToolbar>

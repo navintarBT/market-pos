@@ -266,7 +266,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                 style={{ minHeight: 52, "--border-radius": "14px" }}
               >
                 {saving ? (
-                  <IonSpinner name="crescent" />
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງດຳເນີນການ...</span>
                 ) : canConfirm ? (
                   `ຢືນຢັນຕີກັບ ${totalReturnQty} ຊິ້ນ (${activeEntries.length} variant)`
                 ) : (

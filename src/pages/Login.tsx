@@ -145,7 +145,7 @@ const Login: React.FC = () => {
                 )}
 
                 <IonButton expand="block" type="submit" disabled={busy} style={btnStyle}>
-                  {busy ? <IonSpinner name="crescent" /> : "ເຂົ້າສູ່ລະບົບ"}
+                  {busy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງເຂົ້າສູ່ລະບົບ...</span>) : "ເຂົ້າສູ່ລະບົບ"}
                 </IonButton>
               </form>
             )}
@@ -177,7 +177,7 @@ const Login: React.FC = () => {
                 )}
 
                 <IonButton expand="block" type="submit" disabled={resetBusy || !resetEmail.trim()} style={btnStyle}>
-                  {resetBusy ? <IonSpinner name="crescent" /> : "ສົ່ງລິ້ງ Reset"}
+                  {resetBusy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງສົ່ງ...</span>) : "ສົ່ງລິ້ງ Reset"}
                 </IonButton>
               </form>
             )}

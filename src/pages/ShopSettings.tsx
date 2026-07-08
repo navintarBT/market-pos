@@ -236,8 +236,9 @@ const ShopSettings: React.FC = () => {
                   disabled={saving || !name.trim()}
                   style={{ marginTop: 16, "--border-radius": "14px", height: 48 }}
                 >
-                  {saving ? <IonSpinner name="crescent" /> : <IonIcon slot="start" icon={saveOutline} />}
-                  ບັນທຶກຮ້ານ
+                  {saving
+                    ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງບັນທຶກ...</span>)
+                    : (<><IonIcon slot="start" icon={saveOutline} /> ບັນທຶກຮ້ານ</>)}
                 </IonButton>
               </section>
 
@@ -289,8 +290,9 @@ const ShopSettings: React.FC = () => {
                     disabled={creating || !staffEmail.trim() || staffPassword.length < 6}
                     style={{ marginTop: 14, "--border-radius": "14px", height: 48 }}
                   >
-                    {creating ? <IonSpinner name="crescent" /> : <IonIcon slot="start" icon={addOutline} />}
-                    ສ້າງ ພະນັກງານ
+                    {creating
+                      ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງສ້າງ...</span>)
+                      : (<><IonIcon slot="start" icon={addOutline} /> ສ້າງ ພະນັກງານ</>)}
                   </IonButton>
                 </form>
               </section>

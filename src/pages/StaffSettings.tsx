@@ -330,8 +330,7 @@ const StaffSettings: React.FC = () => {
                         <IonButton expand="block" type="submit"
                           disabled={creating || !staffEmail.trim() || staffPassword.length < 6}
                           style={{ flex: 2, "--border-radius": "10px", height: 44 }}>
-                          {creating ? <IonSpinner name="crescent" /> : <IonIcon slot="start" icon={addOutline} />}
-                          ສ້າງ
+                          {creating ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 18, height: 18 }} /> ກຳລັງສ້າງ...</span>) : (<><IonIcon slot="start" icon={addOutline} /> ສ້າງ</>)}
                         </IonButton>
                       </div>
                     </form>
@@ -432,7 +431,7 @@ const StaffSettings: React.FC = () => {
                             onClick={() => handleResetPassword(user)}
                             style={{ "--border-radius": "10px", "--color": "#b45309", "--border-color": "#fcd34d", marginTop: 12, marginBottom: 10, height: 38 }}
                           >
-                            {resettingId === user.id ? <IonSpinner name="crescent" style={{ width: 16, height: 16 }} /> : "📧 Reset ລະຫັດຜ່ານ (ສົ່ງ email)"}
+                            {resettingId === user.id ? (<><IonSpinner name="dots" style={{ width: 16, height: 16, marginRight: 6 }} /> ກຳລັງສົ່ງ...</>) : "📧 Reset ລະຫັດຜ່ານ (ສົ່ງ email)"}
                           </IonButton>
                           <div style={{ display: "flex", gap: 8 }}>
                             <IonButton fill="outline" expand="block" onClick={handleCancelEdit} disabled={saving}
@@ -441,7 +440,7 @@ const StaffSettings: React.FC = () => {
                             </IonButton>
                             <IonButton expand="block" onClick={() => handleSaveEdit(user)} disabled={saving || !editEmail.trim()}
                               style={{ flex: 2, "--border-radius": "10px", height: 40 }}>
-                              {saving ? <IonSpinner name="crescent" /> : "ບັນທຶກ"}
+                              {saving ? (<><IonSpinner name="dots" style={{ width: 18, height: 18, marginRight: 6 }} /> ກຳລັງບັນທຶກ...</>) : "ບັນທຶກ"}
                             </IonButton>
                           </div>
                         </div>

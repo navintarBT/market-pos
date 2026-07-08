@@ -352,7 +352,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
             )}
             <IonButton expand="block" onClick={handleSave} disabled={!canSave || saving || uploading}
               style={{ minHeight: 52, "--border-radius": "14px" }}>
-              {(saving || uploading) ? <IonSpinner name="crescent" /> : (editingId ? "ບັນທຶກ" : "ສ້າງຊຸດ")}
+              {(saving || uploading) ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} />{uploading ? "ກຳລັງອັບໂຫລດ..." : "ກຳລັງບັນທຶກ..."}</span>) : (editingId ? "ບັນທຶກ" : "ສ້າງຊຸດ")}
             </IonButton>
           </div>
         </IonFooter>

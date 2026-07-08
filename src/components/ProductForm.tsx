@@ -146,7 +146,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
           </IonButtons>
           <IonButtons slot="end">
             <IonButton strong onClick={handleSave} disabled={busy || uploading}>
-              {busy ? <IonSpinner name="crescent" /> : "ບັນທຶກ"}
+              {busy ? (<><IonSpinner name="dots" style={{ width: 16, height: 16, marginRight: 6 }} /> ກຳລັງບັນທຶກ...</>) : "ບັນທຶກ"}
             </IonButton>
           </IonButtons>
         </IonToolbar>

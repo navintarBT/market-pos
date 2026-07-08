@@ -85,7 +85,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
               onClick={() => handlePay("cash")}
               style={{ minHeight: 72, fontSize: "1.1rem" }}
             >
-              {busy ? <IonSpinner name="crescent" /> : "💵 ເງິນສົດ"}
+              {busy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 22, height: 22 }} /> ກຳລັງດຳເນີນການ...</span>) : "💵 ເງິນສົດ"}
             </IonButton>
             <IonButton
               expand="block"
@@ -94,7 +94,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
               onClick={() => handlePay("qr")}
               style={{ minHeight: 72, fontSize: "1.1rem" }}
             >
-              {busy ? <IonSpinner name="crescent" /> : "📱 QR ໂອນ"}
+              {busy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 22, height: 22 }} /> ກຳລັງດຳເນີນການ...</span>) : "📱 QR ໂອນ"}
             </IonButton>
           </div>
         </IonContent>

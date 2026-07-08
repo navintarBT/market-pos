@@ -55,7 +55,7 @@ async function main() {
   console.log("\n⚠️  ⚠️  ⚠️  WARNING  ⚠️  ⚠️  ⚠️");
   console.log("ຈະລຶບທຸກຢ່າງໃນລະບົບ:");
   console.log("  - Firebase Auth: ທຸກ account");
-  console.log("  - Firestore: users, shops, tenants (ທຸກ subcollection)");
+  console.log("  - Firestore: users, shops, tenants, customers, packages (ທຸກ subcollection)");
   console.log("  ⚠️  ກູ້ຄືນບໍ່ໄດ້!\n");
 
   const ok = await confirm("ຢືນຢັນລຶບທຸກຢ່າງ? ພິມ y ເພື່ອຢືນຢັນ (y/N): ");
@@ -67,6 +67,8 @@ async function main() {
   await deleteCollection("users");
   await deleteCollection("tenants");
   await deleteCollection("shops");
+  await deleteCollection("customers");
+  await deleteCollection("packages");
 
   console.log("\n✅ ລຶບທຸກຢ່າງສຳເລັດ — ລະບົບ reset ສົມບູນ");
   process.exit(0);

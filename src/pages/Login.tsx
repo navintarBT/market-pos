@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   IonPage,
   IonContent,
-  IonInput,
   IonButton,
   IonText,
   IonSpinner,
@@ -58,10 +57,17 @@ const Login: React.FC = () => {
     setMode("forgot");
   }
 
-  const inputStyle = {
-    "--border-radius": "12px",
-    "--border-color": "#fed7aa",
-    "--highlight-color-focused": "#e07b39",
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 16px",
+    border: "1.5px solid #fed7aa",
+    borderRadius: 12,
+    fontSize: "1rem",
+    color: "#1a1a1a",
+    background: "#ffffff",
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
   };
 
   const btnStyle = {
@@ -113,16 +119,16 @@ const Login: React.FC = () => {
                   <label style={{ display: "block", fontWeight: 600, marginBottom: 6, color: "#78350f", fontSize: "0.9rem" }}>
                     ອີເມລ
                   </label>
-                  <IonInput type="email" value={email} onIonInput={(e) => setEmail(e.detail.value ?? "")}
-                    required autocomplete="email" fill="outline" style={inputStyle} />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    required autoComplete="email" style={inputStyle} />
                 </div>
 
                 <div style={{ marginBottom: 8 }}>
                   <label style={{ display: "block", fontWeight: 600, marginBottom: 6, color: "#78350f", fontSize: "0.9rem" }}>
                     ລະຫັດຜ່ານ
                   </label>
-                  <IonInput type="password" value={password} onIonInput={(e) => setPassword(e.detail.value ?? "")}
-                    required autocomplete="current-password" fill="outline" style={inputStyle} />
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    required autoComplete="current-password" style={inputStyle} />
                 </div>
 
                 <div style={{ textAlign: "right", marginBottom: 20 }}>
@@ -160,8 +166,8 @@ const Login: React.FC = () => {
                   <label style={{ display: "block", fontWeight: 600, marginBottom: 6, color: "#78350f", fontSize: "0.9rem" }}>
                     ອີເມລ
                   </label>
-                  <IonInput type="email" value={resetEmail} onIonInput={(e) => setResetEmail(e.detail.value ?? "")}
-                    required autocomplete="email" fill="outline" style={inputStyle} />
+                  <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)}
+                    required autoComplete="email" style={inputStyle} />
                 </div>
 
                 {resetError && (

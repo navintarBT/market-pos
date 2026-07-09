@@ -369,7 +369,32 @@ const Sell: React.FC = () => {
         onAdd={handleAddToCart} onDismiss={() => setPickerProduct(null)} />
       <CartSheet isOpen={cartOpen} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
       <CheckoutModal isOpen={checkoutOpen} onDismiss={() => setCheckoutOpen(false)}
-        onSuccess={() => { setCheckoutOpen(false); load(); }} />
+        onSuccess={(soldItems) => {
+          setCheckoutOpen(false);
+          setProducts((prev) => prev.map((p) => {
+            const soldQty: Record<string, number> = {};
+            for (const item of soldItems) {
+              if (item.isBundle && item.bundleItems) {
+                for (const bi of item.bundleItems) {
+                  if (bi.productId !== p.id) continue;
+                  const key = `${bi.variantSize ?? ""}|${bi.variantColor ?? ""}`;
+                  soldQty[key] = (soldQty[key] ?? 0) + bi.quantity * item.quantity;
+                }
+              } else if (item.productId === p.id) {
+                const key = `${item.variant.size}|${item.variant.color}`;
+                soldQty[key] = (soldQty[key] ?? 0) + item.quantity;
+              }
+            }
+            if (!Object.keys(soldQty).length) return p;
+            return {
+              ...p,
+              variants: p.variants.map((v) => {
+                const qty = soldQty[`${v.size}|${v.color}`] ?? 0;
+                return qty > 0 ? { ...v, stock: Math.max(0, v.stock - qty) } : v;
+              }),
+            };
+          }));
+        }} />
 
       {/* ── Bundle variant picker ── */}
       <IonModal

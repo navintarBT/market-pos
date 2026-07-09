@@ -54,3 +54,24 @@ export async function addStock(
     tx.update(ref, { variants });
   });
 }
+
+export async function reduceStock(
+  shopId: string,
+  productId: string,
+  size: string,
+  color: string,
+  qty: number,
+): Promise<void> {
+  const ref = doc(productsCol(shopId), productId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("Product not found");
+    const variants: any[] = [...(snap.data().variants ?? [])];
+    const idx = variants.findIndex((v) => v.size === size && v.color === color);
+    if (idx === -1) throw new Error("Variant not found");
+    const current: number = variants[idx].stock;
+    if (qty > current) throw new Error(`INSUFFICIENT_STOCK:${current}`);
+    variants[idx] = { ...variants[idx], stock: current - qty };
+    tx.update(ref, { variants });
+  });
+}

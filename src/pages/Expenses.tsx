@@ -47,6 +47,7 @@ const Expenses: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "all">("all");
 
   const [formDesc, setFormDesc] = useState("");
@@ -54,6 +55,7 @@ const Expenses: React.FC = () => {
   const [formAmountStr, setFormAmountStr] = useState("");
   const [formCategory, setFormCategory] = useState<ExpenseCategory>("general");
   const [formBusy, setFormBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const formOpen = addOpen || !!editTarget;
 
@@ -106,11 +108,23 @@ const Expenses: React.FC = () => {
     try {
       if (editTarget) {
         await updateExpense(shopId, editTarget.id, formDesc.trim(), formAmount, formCategory);
+        setExpenses((prev) => prev.map((e) =>
+          e.id === editTarget.id
+            ? { ...e, description: formDesc.trim(), amount: formAmount, category: formCategory }
+            : e
+        ));
       } else {
-        await addExpense(shopId, formDesc.trim(), formAmount, formCategory);
+        const id = await addExpense(shopId, formDesc.trim(), formAmount, formCategory);
+        const newExpense: Expense = {
+          id,
+          description: formDesc.trim(),
+          amount: formAmount,
+          category: formCategory,
+          createdAt: new Date(),
+        };
+        setExpenses((prev) => [newExpense, ...prev]);
       }
       dismissForm();
-      await load(fromDate, toDate);
     } finally {
       setFormBusy(false);
     }
@@ -118,9 +132,17 @@ const Expenses: React.FC = () => {
 
   async function handleDelete() {
     if (!shopId || !deleteTarget) return;
-    await deleteExpense(shopId, deleteTarget.id);
+    const id = deleteTarget.id;
     setDeleteTarget(null);
-    await load(fromDate, toDate);
+    setDeleting(true);
+    try {
+      await deleteExpense(shopId, id);
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const visibleExpenses = categoryFilter === "all"
@@ -234,6 +256,7 @@ const Expenses: React.FC = () => {
                             <IonIcon slot="icon-only" icon={createOutline} />
                           </IonButton>
                           <IonButton fill="clear" color="danger" slot="end" onClick={() => setDeleteTarget(exp)}
+                            disabled={deleting}
                             style={{ minHeight: 44, minWidth: 44 }}>
                             <IonIcon slot="icon-only" icon={trashOutline} />
                           </IonButton>
@@ -257,7 +280,7 @@ const Expenses: React.FC = () => {
       </IonContent>
 
       {/* Add / Edit modal */}
-      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.65} breakpoints={[0, 0.65]}>
+      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.65} breakpoints={[0, 0.65]} canDismiss={() => !formBusy}>
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
@@ -312,6 +335,15 @@ const Expenses: React.FC = () => {
           </IonList>
         </IonContent>
       </IonModal>
+
+      {/* Delete error */}
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
 
       {/* Delete */}
       <IonAlert

@@ -26,6 +26,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Bundle | null>(null);
@@ -84,10 +85,11 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
       const data: Omit<Bundle, "id"> = { name, price, items: formItems, photoUrl: finalPhotoUrl };
       if (editingId) {
         await updateBundle(shopId, editingId, data);
+        setBundles((prev) => prev.map((b) => b.id === editingId ? { id: editingId, ...data } : b));
       } else {
-        await addBundle(shopId, data);
+        const id = await addBundle(shopId, data);
+        setBundles((prev) => [...prev, { id, ...data }]);
       }
-      await load();
       setFormOpen(false);
     } catch {
       setSaveError(true);
@@ -99,9 +101,14 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await deleteBundle(shopId, deleteTarget.id);
+    const id = deleteTarget.id;
     setDeleteTarget(null);
-    await load();
+    try {
+      await deleteBundle(shopId, id);
+      setBundles((prev) => prev.filter((b) => b.id !== id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    }
   }
 
   function toggleProductInBundle(p: Product) {
@@ -441,6 +448,15 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
           { text: "ລຶບ", role: "destructive", handler: handleDelete },
         ]}
         onDidDismiss={() => setDeleteTarget(null)}
+      />
+
+      {/* ── Delete error ── */}
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
       />
 
       {/* ── Save error ── */}

@@ -382,6 +382,7 @@ const StaffSettings: React.FC = () => {
                           <div slot="end" style={{ display: "flex", gap: 4 }}>
                             <IonButton
                               fill="clear" size="small"
+                              disabled={saving}
                               onClick={() => editingId === user.id ? handleCancelEdit() : handleStartEdit(user)}
                               style={{ "--color": "#0f766e" }}
                             >

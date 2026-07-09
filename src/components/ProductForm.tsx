@@ -140,7 +140,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
         <IonToolbar>
           <IonTitle>{product ? "ແກ້ໄຂສິນຄ້າ" : "ເພີ່ມສິນຄ້າ"}</IonTitle>
           <IonButtons slot="start">
-            <IonButton onClick={onDismiss}>
+            <IonButton onClick={onDismiss} disabled={busy || uploading}>
               <IonIcon slot="icon-only" icon={closeOutline} />
             </IonButton>
           </IonButtons>

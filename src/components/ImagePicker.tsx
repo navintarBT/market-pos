@@ -2,6 +2,21 @@ import { useRef, useState } from "react";
 import { IonButton, IonIcon, IonSpinner } from "@ionic/react";
 import { cameraOutline, trashOutline } from "ionicons/icons";
 
+function compressImage(dataUrl: string, maxWidth = 900, quality = 0.82): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 interface Props {
   currentUrl?: string;
   onImage: (dataUrl: string) => void;
@@ -19,9 +34,11 @@ const ImagePicker: React.FC<Props> = ({ currentUrl, onImage, onRemove, uploading
 
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setPreview(dataUrl);
-      onImage(dataUrl);
+      const raw = reader.result as string;
+      compressImage(raw).then((compressed) => {
+        setPreview(compressed);
+        onImage(compressed);
+      });
     };
     reader.readAsDataURL(file);
 

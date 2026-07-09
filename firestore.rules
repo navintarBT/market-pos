@@ -142,6 +142,12 @@ service cloud.firestore {
         allow read:  if isControlAdmin() || isShopMember(shopId);
         allow write: if isControlAdmin() || isShopOwner(shopId);
       }
+
+      match /transfers/{transferId} {
+        allow read:          if isControlAdmin() || isShopMember(shopId);
+        allow create:        if isShopOwner(shopId);
+        allow update, delete: if false;
+      }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

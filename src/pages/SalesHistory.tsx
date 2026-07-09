@@ -10,7 +10,8 @@ import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline 
 import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange, deleteSale } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
-import type { Sale, ShopUser } from "../data/types";
+import { getExpensesByDateRange } from "../data/expenseRepository";
+import type { Sale, ShopUser, Expense } from "../data/types";
 import { fmtK } from "../utils/format";
 
 function toDateInputValue(date: Date) {
@@ -71,17 +72,21 @@ const SalesHistory: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
     try {
-      const [s, u] = await Promise.all([
+      const [s, u, exp] = await Promise.all([
         getSalesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
         getShopUsers(shopId),
+        getExpensesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
       ]);
       setSales(s);
       setUsers(u);
+      setExpenses(exp);
     } finally {
       setLoading(false);
     }
@@ -103,6 +108,8 @@ const SalesHistory: React.FC = () => {
     try {
       await deleteSale(shopId, target);
       setSales(prev => prev.filter(s => s.id !== target.id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
       setDeletingId(null);
     }
@@ -126,6 +133,8 @@ const SalesHistory: React.FC = () => {
   const totalCost = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const grossProfit = totalRevenue - totalCost;
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const netProfit = grossProfit - totalExpenses;
   const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
   const lossTotal = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {
@@ -187,6 +196,7 @@ const SalesHistory: React.FC = () => {
             <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
             <input
               type="date" value={fromDate} max={toDate}
+              disabled={loading}
               onChange={(e) => handleFromChange(e.target.value)}
               style={{
                 flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
@@ -197,6 +207,7 @@ const SalesHistory: React.FC = () => {
             <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
             <input
               type="date" value={toDate} min={fromDate}
+              disabled={loading}
               onChange={(e) => handleToChange(e.target.value)}
               style={{
                 flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
@@ -454,8 +465,18 @@ const SalesHistory: React.FC = () => {
                       </div>
                     )}
 
+                    {totalExpenses > 0 && (
+                      <div style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
+                      }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>💸 ຫັກລາຍຈ່າຍ</span>
+                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−₭{fmtK(totalExpenses)}</span>
+                      </div>
+                    )}
+
                     <div style={{
-                      background: grossProfit >= 0
+                      background: netProfit >= 0
                         ? "linear-gradient(135deg, #16a34a, #15803d)"
                         : "linear-gradient(135deg, #dc2626, #b91c1c)",
                       borderRadius: 14, padding: "14px 20px", color: "#fff",
@@ -464,10 +485,10 @@ const SalesHistory: React.FC = () => {
                       <div>
                         <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
                         <p style={{ margin: "3px 0 0", fontSize: "1.4rem", fontWeight: 800 }}>
-                          ₭{fmtK(grossProfit)}
+                          ₭{fmtK(netProfit)}
                         </p>
                       </div>
-                      <span style={{ fontSize: 32 }}>{grossProfit >= 0 ? "📈" : "📉"}</span>
+                      <span style={{ fontSize: 32 }}>{netProfit >= 0 ? "📈" : "📉"}</span>
                     </div>
                   </div>
                 </div>
@@ -730,6 +751,14 @@ const SalesHistory: React.FC = () => {
           </IonContent>
         )}
       </IonModal>
+
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
 
       <IonAlert
         isOpen={!!deleteTarget}

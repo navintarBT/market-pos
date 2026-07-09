@@ -21,6 +21,7 @@ const CategoryManager: React.FC<Props> = ({ isOpen, shopId, onDismiss, onChanged
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Category | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -35,26 +36,35 @@ const CategoryManager: React.FC<Props> = ({ isOpen, shopId, onDismiss, onChanged
   async function handleAdd(data: Record<string, string>) {
     const name = (data[0] ?? "").trim();
     if (!name) return;
-    await addCategory(shopId, name);
-    await load();
+    const id = await addCategory(shopId, name);
+    setCategories((prev) => [...prev, { id, name }].sort((a, b) => a.name.localeCompare(b.name)));
     onChanged();
   }
 
   async function handleEdit(data: Record<string, string>) {
     const name = (data[0] ?? "").trim();
     if (!name || !editTarget) return;
-    await updateCategory(shopId, editTarget.id, name);
+    const targetId = editTarget.id;
+    await updateCategory(shopId, targetId, name);
     setEditTarget(null);
-    await load();
+    setCategories((prev) =>
+      prev.map((c) => c.id === targetId ? { id: targetId, name } : c)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
     onChanged();
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await deleteCategory(shopId, deleteTarget.id);
+    const id = deleteTarget.id;
     setDeleteTarget(null);
-    await load();
-    onChanged();
+    try {
+      await deleteCategory(shopId, id);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      onChanged();
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    }
   }
 
   return (
@@ -127,6 +137,14 @@ const CategoryManager: React.FC<Props> = ({ isOpen, shopId, onDismiss, onChanged
           { text: "ບັນທຶກ", handler: (data) => { handleEdit(data); } },
         ]}
         onDidDismiss={() => setEditTarget(null)}
+      />
+
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
       />
 
       <IonAlert

@@ -15,12 +15,12 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { recordSale } from "../data/saleRepository";
 import { fmtK } from "../utils/format";
-import type { Sale } from "../data/types";
+import type { Sale, SaleItem } from "../data/types";
 
 interface Props {
   isOpen: boolean;
   onDismiss: () => void;
-  onSuccess: () => void;
+  onSuccess: (soldItems: SaleItem[]) => void;
 }
 
 const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
@@ -46,14 +46,15 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
   }
 
   function handleSuccessDismiss() {
+    const soldItems = [...items];
     clear();
     setSuccessMsg(null);
-    onSuccess();
+    onSuccess(soldItems);
   }
 
   return (
     <>
-      <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6]}>
+      <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6]} canDismiss={() => !busy}>
         <IonHeader>
           <IonToolbar>
             <IonTitle>ຊຳລະເງິນ</IonTitle>

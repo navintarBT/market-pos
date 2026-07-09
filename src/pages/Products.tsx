@@ -47,6 +47,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [bundleOpen, setBundleOpen] = useState(false);
@@ -85,19 +86,29 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
     if (!shopId) return;
     if (editing) {
       await updateProduct(shopId, editing.id, data);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === editing.id ? { id: editing.id, ...data } : p))
+      );
     } else {
-      await addProduct(shopId, data);
+      const id = await addProduct(shopId, data);
+      setProducts((prev) =>
+        [...prev, { id, ...data }].sort((a, b) => a.name.localeCompare(b.name))
+      );
     }
-    await load();
     onStockChanged?.();
   }
 
   async function handleDelete() {
     if (!shopId || !deleteTarget) return;
-    await deleteProduct(shopId, deleteTarget.id);
+    const target = deleteTarget;
     setDeleteTarget(null);
-    await load();
-    onStockChanged?.();
+    try {
+      await deleteProduct(shopId, target.id);
+      setProducts((prev) => prev.filter((p) => p.id !== target.id));
+      onStockChanged?.();
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    }
   }
 
   function openAdd() {
@@ -266,10 +277,21 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           products={products}
           shopId={shopId}
           onDismiss={() => setReturnOpen(false)}
-          onSaved={() => { setReturnOpen(false); load(); onStockChanged?.(); }}
+          onSaved={(updated) => {
+            setProducts((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            onStockChanged?.();
+          }}
         />
       )}
 
+
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
 
       <IonAlert
         isOpen={!!deleteTarget}

@@ -214,12 +214,13 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <IonIcon icon={removeOutline} style={{ fontSize: 16 }} />
                 </button>
                 <input
-                  type="number" min={0} max={isReduce ? v.stock : undefined}
-                  value={qty === 0 ? "" : qty}
+                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={qty === 0 ? "" : String(qty)}
                   placeholder="0"
                   onChange={(e) => {
-                    const n = parseInt(e.target.value, 10);
-                    setQty(idx, isNaN(n) ? 0 : n);
+                    const raw = e.target.value.replace(/\D/g, "");
+                    const n = raw === "" ? 0 : parseInt(raw, 10);
+                    setQty(idx, isReduce ? Math.min(n, v.stock) : n);
                   }}
                   style={{
                     width: 52, height: 32, borderRadius: 8,

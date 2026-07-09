@@ -280,7 +280,7 @@ const Expenses: React.FC = () => {
       </IonContent>
 
       {/* Add / Edit modal */}
-      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.65} breakpoints={[0, 0.65]} canDismiss={() => !formBusy}>
+      <IonModal isOpen={formOpen} onDidDismiss={dismissForm} initialBreakpoint={0.65} breakpoints={[0, 0.65]} canDismiss={async () => !formBusy}>
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">

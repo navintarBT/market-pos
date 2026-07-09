@@ -54,7 +54,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
 
   return (
     <>
-      <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6]} canDismiss={() => !busy}>
+      <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6]} canDismiss={async () => !busy}>
         <IonHeader>
           <IonToolbar>
             <IonTitle>ຊຳລະເງິນ</IonTitle>

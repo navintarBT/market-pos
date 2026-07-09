@@ -255,7 +255,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: 12 }}>
                     <div>
                       <h1 style={{ margin: "0 0 4px", fontSize: "1.45rem", color: "#1c1917" }}>
-                        {shop?.name ?? "Market POS"}
+                        {shop?.name ?? "Minny ONE"}
                       </h1>
                     </div>
                     {!isEditing && (

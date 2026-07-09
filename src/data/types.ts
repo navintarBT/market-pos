@@ -98,6 +98,15 @@ export interface Expense {
   description: string;
   amount: number;
   category: ExpenseCategory;
+  paymentType?: "cash" | "transfer";
+  createdAt: Date;
+}
+
+export interface Income {
+  id: string;
+  description: string;
+  amount: number;
+  paymentType: "cash" | "transfer";
   createdAt: Date;
 }
 

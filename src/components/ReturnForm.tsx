@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
   IonContent, IonFooter, IonIcon, IonSpinner, IonAlert,
@@ -10,7 +10,105 @@ import { processAtomicReturn } from "../data/returnRepository";
 import { processAtomicTransfer } from "../data/transferRepository";
 import ReturnHistory from "./ReturnHistory";
 import TransferHistory from "./TransferHistory";
-import type { Product } from "../data/types";
+import type { Product, ProductVariant } from "../data/types";
+
+// ── VariantRow: module-level so React never unmounts it on parent re-render ──
+function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
+  v: ProductVariant; idx: number; qty: number;
+  setQty: (idx: number, qty: number) => void;
+  accentColor: string; isReduce?: boolean;
+}) {
+  const [raw, setRaw] = useState(qty === 0 ? "" : String(qty));
+
+  useEffect(() => {
+    setRaw(qty === 0 ? "" : String(qty));
+  }, [qty]);
+
+  const parsed  = raw === "" ? 0 : (parseInt(raw, 10) || 0);
+  const isActive = parsed > 0;
+  const isOver  = !!isReduce && parsed > v.stock;
+
+  function commit(val: number) {
+    const clamped = isReduce ? Math.min(Math.max(0, val), v.stock) : Math.max(0, val);
+    setQty(idx, clamped);
+  }
+
+  return (
+    <div style={{
+      background: "#fff", borderRadius: 12, padding: "10px 14px",
+      border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
+      boxShadow: isActive ? `0 2px 8px ${accentColor}20` : "0 1px 3px rgba(0,0,0,0.04)",
+      display: "flex", alignItems: "center", gap: 10, transition: "border-color 0.15s",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#1c1917" }}>
+          {v.size}{v.color ? ` / ${v.color}` : ""}
+        </p>
+        {isReduce ? (
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "#ef4444" : isActive ? "#dc2626" : "#a8a29e" }}>
+            {isOver ? `⚠ stock ມີ ${v.stock} ຊິ້ນ — ເກີນ!` : isActive ? `${v.stock} → ${v.stock - parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
+          </p>
+        ) : (
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "#16a34a" : "#a8a29e" }}>
+            {isActive ? `${v.stock} → ${v.stock + parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
+          </p>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <button onClick={() => commit(parsed - 1)} disabled={parsed <= 0}
+          style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            border: "1.5px solid #e5e7eb",
+            background: parsed <= 0 ? "#f5f5f4" : "#fff",
+            cursor: parsed <= 0 ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+          <IonIcon icon={removeOutline} style={{ fontSize: 16 }} />
+        </button>
+        <input
+          type="text" inputMode="numeric" pattern="[0-9]*"
+          value={raw} placeholder="0"
+          onChange={(e) => setRaw(e.target.value.replace(/\D/g, ""))}
+          onBlur={() => commit(parsed)}
+          style={{
+            width: 52, height: 32, borderRadius: 8,
+            border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
+            textAlign: "center", fontSize: "1rem", fontWeight: 800,
+            color: isOver ? "#ef4444" : isActive ? accentColor : "#a8a29e",
+            background: "#fff", outline: "none",
+          }}
+        />
+        <button onClick={() => commit(parsed + 1)} disabled={!!isReduce && parsed >= v.stock}
+          style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            border: `1.5px solid ${isActive && !isOver ? accentColor : "#e5e7eb"}`,
+            background: isActive && !isOver ? accentColor : "#fff",
+            cursor: !!isReduce && parsed >= v.stock ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: isActive && !isOver ? "#fff" : "#57534e",
+            opacity: !!isReduce && parsed >= v.stock ? 0.4 : 1,
+          }}>
+          <IonIcon icon={addOutline} style={{ fontSize: 16 }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VariantSteppers({ product, qtys, setQty, accentColor, isReduce }: {
+  product: Product; qtys: Record<number, number>;
+  setQty: (idx: number, qty: number) => void;
+  accentColor: string; isReduce?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {product.variants.map((v, idx) => (
+        <VariantRow key={idx} v={v} idx={idx} qty={qtys[idx] ?? 0}
+          setQty={setQty} accentColor={accentColor} isReduce={isReduce} />
+      ))}
+    </div>
+  );
+}
 
 interface Props {
   isOpen: boolean;
@@ -150,105 +248,6 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
             <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
           </button>
         ))}
-      </div>
-    );
-  }
-
-  // ── Shared variant stepper renderer ──
-  function VariantSteppers({
-    product, qtys, setQty, accentColor, isReduce,
-  }: {
-    product: Product;
-    qtys: Record<number, number>;
-    setQty: (idx: number, qty: number) => void;
-    accentColor: string;
-    isReduce?: boolean;
-  }) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {product.variants.map((v, idx) => {
-          const qty = qtys[idx] ?? 0;
-          const isActive = qty > 0;
-          const isOver = isReduce && qty > v.stock;
-          return (
-            <div
-              key={idx}
-              style={{
-                background: "#fff", borderRadius: 12, padding: "10px 14px",
-                border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
-                boxShadow: isActive ? `0 2px 8px ${accentColor}20` : "0 1px 3px rgba(0,0,0,0.04)",
-                display: "flex", alignItems: "center", gap: 10,
-                transition: "border-color 0.15s",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#1c1917" }}>
-                  {v.size}{v.color ? ` / ${v.color}` : ""}
-                </p>
-                {isReduce ? (
-                  <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "#ef4444" : isActive ? "#dc2626" : "#a8a29e" }}>
-                    {isOver
-                      ? `⚠ stock ມີ ${v.stock} ຊິ້ນ — ເກີນ!`
-                      : isActive
-                        ? `${v.stock} → ${v.stock - qty} ຊິ້ນ`
-                        : `${v.stock} ຊິ້ນ`}
-                  </p>
-                ) : (
-                  <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "#16a34a" : "#a8a29e" }}>
-                    {isActive ? `${v.stock} → ${v.stock + qty} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
-                  </p>
-                )}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                <button
-                  onClick={() => setQty(idx, qty - 1)}
-                  disabled={qty <= 0}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    border: "1.5px solid #e5e7eb",
-                    background: qty <= 0 ? "#f5f5f4" : "#fff",
-                    cursor: qty <= 0 ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
-                  <IonIcon icon={removeOutline} style={{ fontSize: 16 }} />
-                </button>
-                <input
-                  type="text" inputMode="numeric" pattern="[0-9]*"
-                  value={qty === 0 ? "" : String(qty)}
-                  placeholder="0"
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    const n = raw === "" ? 0 : parseInt(raw, 10);
-                    setQty(idx, isReduce ? Math.min(n, v.stock) : n);
-                  }}
-                  style={{
-                    width: 52, height: 32, borderRadius: 8,
-                    border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
-                    textAlign: "center", fontSize: "1rem", fontWeight: 800,
-                    color: isOver ? "#ef4444" : isActive ? accentColor : "#a8a29e",
-                    background: "#fff", outline: "none",
-                  }}
-                />
-                <button
-                  onClick={() => setQty(idx, qty + 1)}
-                  disabled={isReduce && qty >= v.stock}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    border: `1.5px solid ${isActive && !isOver ? accentColor : "#e5e7eb"}`,
-                    background: isActive && !isOver ? accentColor : "#fff",
-                    cursor: isReduce && qty >= v.stock ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: isActive && !isOver ? "#fff" : "#57534e",
-                    opacity: isReduce && qty >= v.stock ? 0.4 : 1,
-                  }}
-                >
-                  <IonIcon icon={addOutline} style={{ fontSize: 16 }} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
       </div>
     );
   }

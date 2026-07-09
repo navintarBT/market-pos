@@ -25,7 +25,7 @@ import {
   warningOutline,
   logOutOutline,
   peopleOutline,
-  receiptOutline,
+  walletOutline,
   shirtOutline,
   timeOutline,
 } from "ionicons/icons";
@@ -37,7 +37,7 @@ import type { ShopProfile } from "../data/types";
 import Sell from "./Sell";
 import Products from "./Products";
 import Summary from "./Summary";
-import Expenses from "./Expenses";
+import Finance from "./Finance";
 import SalesHistory from "./SalesHistory";
 import ShopProfileSettings from "./ShopProfileSettings";
 import StaffSettings from "./StaffSettings";
@@ -107,7 +107,7 @@ const MainTabs: React.FC = () => {
               )}
             </div>
             <h2 style={{ margin: 0, color: "#1c1917", fontSize: "1.05rem", fontWeight: 800 }}>
-              {shop?.name ?? "Market POS"}
+              {shop?.name ?? "Minny ONE"}
             </h2>
             <p style={{ margin: "3px 0 0", color: "#78716c", fontSize: "0.78rem", fontWeight: 600 }}>
               {role === "customer" ? "Owner" : "Staff"}
@@ -205,7 +205,7 @@ const MainTabs: React.FC = () => {
           <Route exact path="/tabs/sell"><Sell /></Route>
           <Route exact path="/tabs/products"><Products onStockChanged={refreshAlerts} /></Route>
           <Route exact path="/tabs/summary"><Summary /></Route>
-          <Route exact path="/tabs/expenses"><Expenses /></Route>
+          <Route exact path="/tabs/finance"><Finance /></Route>
           <Route exact path="/tabs/history"><SalesHistory /></Route>
           <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShop} /></Route>
           <Route exact path="/tabs/staff"><StaffSettings /></Route>
@@ -222,9 +222,9 @@ const MainTabs: React.FC = () => {
             <IonLabel>ສິນຄ້າ</IonLabel>
             {alertCount > 0 && <IonBadge color="danger">{alertCount}</IonBadge>}
           </IonTabButton>
-          <IonTabButton tab="expenses" href="/tabs/expenses">
-            <IonIcon icon={receiptOutline} />
-            <IonLabel>ລາຍຈ່າຍ</IonLabel>
+          <IonTabButton tab="finance" href="/tabs/finance">
+            <IonIcon icon={walletOutline} />
+            <IonLabel>ການເງິນ</IonLabel>
           </IonTabButton>
           <IonTabButton tab="history" href="/tabs/history">
             <IonIcon icon={timeOutline} />

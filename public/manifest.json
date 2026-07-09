@@ -1,7 +1,7 @@
-{
-  "name": "Market POS",
-  "short_name": "Market POS",
-  "description": "ລະບົບຂາຍສິນຄ້າ",
+﻿{
+  "name": "Minny ONE",
+  "short_name": "Minny ONE",
+  "description": "犲･犲ｰ犲壟ｺｻ犲壟ｺもｺｲ犲財ｺｪ犲ｴ犲吭ｺ・ｻ霞ｺｲ",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

@@ -25,7 +25,7 @@ export async function getShopProfile(shopId: string): Promise<ShopProfile> {
   const data = snap.data();
   return {
     id: shopId,
-    name: (data?.name as string) ?? "Market POS",
+    name: (data?.name as string) ?? "Minny ONE",
     profileUrl: data?.profileUrl as string | undefined,
   };
 }

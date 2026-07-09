@@ -180,7 +180,7 @@ const ShopSettings: React.FC = () => {
                     )}
                   </div>
                   <h1 style={{ margin: "12px 0 4px", fontSize: "1.45rem", color: "#1c1917" }}>
-                    {shop?.name ?? "Market POS"}
+                    {shop?.name ?? "Minny ONE"}
                   </h1>
                   <p style={{ margin: 0, color: "#78716c", fontSize: "0.82rem" }}>
                     {staff.filter((u) => u.role === "staff").length} staff

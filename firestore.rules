@@ -117,6 +117,20 @@ service cloud.firestore {
         allow delete: if isShopOwner(shopId);
       }
 
+      match /incomes/{incomeId} {
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isShopMember(shopId)
+          && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType', 'createdAt'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0
+          && request.resource.data.paymentType in ['cash', 'transfer'];
+        allow update: if isShopOwner(shopId)
+          && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0;
+        allow delete: if isShopOwner(shopId);
+      }
+
       match /categories/{categoryId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
         allow create: if isShopOwner(shopId)

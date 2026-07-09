@@ -97,7 +97,7 @@ const Login: React.FC = () => {
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ fontSize: 72, lineHeight: 1, marginBottom: 12 }}>🛍️</div>
             <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 800, color: "#92400e", letterSpacing: "-0.5px" }}>
-              Market POS
+              Minny ONE
             </h1>
             <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "1rem" }}>
               ລະບົບຂາຍສິນຄ້າ

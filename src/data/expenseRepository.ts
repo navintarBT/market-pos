@@ -24,6 +24,7 @@ function mapExpense(d: any): Expense {
     description: data.description,
     amount: data.amount,
     category: data.category ?? "general",
+    paymentType: (data.paymentType as "cash" | "transfer") ?? "cash",
     createdAt: (data.createdAt as Timestamp).toDate(),
   };
 }
@@ -63,12 +64,14 @@ export async function addExpense(
   shopId: string,
   description: string,
   amount: number,
-  category: ExpenseCategory
+  category: ExpenseCategory,
+  paymentType?: "cash" | "transfer"
 ): Promise<string> {
   const ref = await addDoc(expensesCol(shopId), {
     description,
     amount,
     category,
+    paymentType: paymentType ?? "cash",
     createdAt: Timestamp.now(),
   });
   return ref.id;
@@ -79,9 +82,15 @@ export async function updateExpense(
   expenseId: string,
   description: string,
   amount: number,
-  category: ExpenseCategory
+  category: ExpenseCategory,
+  paymentType?: "cash" | "transfer"
 ): Promise<void> {
-  await updateDoc(doc(expensesCol(shopId), expenseId), { description, amount, category });
+  await updateDoc(doc(expensesCol(shopId), expenseId), {
+    description,
+    amount,
+    category,
+    paymentType: paymentType ?? "cash",
+  });
 }
 
 export async function deleteExpense(shopId: string, expenseId: string): Promise<void> {

@@ -28,6 +28,7 @@ import {
   walletOutline,
   shirtOutline,
   timeOutline,
+  swapHorizontalOutline,
 } from "ionicons/icons";
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -60,7 +61,7 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, signOut, features, tenant } = useAuth();
+  const { shopId, role, signOut, features, tenant, availableShops, showShopPicker } = useAuth();
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
   const [shop, setShop] = useState<ShopProfile | null>(null);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
@@ -131,8 +132,16 @@ const MainTabs: React.FC = () => {
                 </IonMenuToggle>
               </>
             )}
+            {availableShops.length > 1 && (
+              <IonMenuToggle autoHide={false}>
+                <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "#fff7ed", marginTop: 8 }}>
+                  <IonIcon slot="start" icon={swapHorizontalOutline} style={{ color: "#e07b39" }} />
+                  <IonLabel style={{ fontWeight: 600, color: "#c2410c" }}>ສຳຮ້ານ</IonLabel>
+                </IonItem>
+              </IonMenuToggle>
+            )}
             <IonMenuToggle autoHide={false}>
-              <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "#fee2e2", marginTop: 8 }}>
+              <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "#fee2e2", marginTop: 4 }}>
                 <IonIcon slot="start" icon={logOutOutline} color="danger" />
                 <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
               </IonItem>

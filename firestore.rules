@@ -182,14 +182,14 @@ service cloud.firestore {
     function isShopMember(shopId) {
       let d = getUserData();
       return request.auth != null
-        && d.shopId == shopId
+        && (d.shopId == shopId || (d.keys().hasAny(['shopIds']) && d.shopIds.hasAny([shopId])))
         && d.role in ['customer', 'staff'];
     }
 
     function isShopOwner(shopId) {
       let d = getUserData();
       return request.auth != null
-        && d.shopId == shopId
+        && (d.shopId == shopId || (d.keys().hasAny(['shopIds']) && d.shopIds.hasAny([shopId])))
         && d.role == 'customer';
     }
 

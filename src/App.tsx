@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import MainTabs from "./pages/MainTabs";
 import OfflineBanner from "./components/OfflineBanner";
+import ShopPicker from "./components/ShopPicker";
 
 import "@ionic/react/css/core.css";
 import "@ionic/react/css/normalize.css";
@@ -22,7 +23,7 @@ import "./theme/variables.css";
 setupIonicReact();
 
 function AppRoutes() {
-  const { user, loading, blocked, tenant, signOut } = useAuth();
+  const { user, loading, blocked, tenant, signOut, needsShopPick } = useAuth();
 
   if (loading) {
     return (
@@ -32,6 +33,10 @@ function AppRoutes() {
         </div>
       </IonApp>
     );
+  }
+
+  if (user && needsShopPick) {
+    return <IonApp><ShopPicker /></IonApp>;
   }
 
   if (user && blocked) {

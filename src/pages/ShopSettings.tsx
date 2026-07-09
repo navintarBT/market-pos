@@ -38,7 +38,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 const ShopSettings: React.FC = () => {
-  const { shopId, role } = useAuth();
+  const { shopId, role, availableShops, showShopPicker } = useAuth();
   const [shop, setShop] = useState<ShopProfile | null>(null);
   const [staff, setStaff] = useState<ShopUser[]>([]);
   const [name, setName] = useState("");
@@ -334,6 +334,21 @@ const ShopSettings: React.FC = () => {
                   ))}
                 </IonList>
               </section>
+              {availableShops.length > 1 && (
+                <button
+                  onClick={showShopPicker}
+                  style={{
+                    marginTop: 8, width: "100%", padding: "14px 20px",
+                    borderRadius: 14, border: "1.5px solid #fed7aa",
+                    background: "#fff7ed", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: 8, fontSize: "0.95rem", fontWeight: 700,
+                    color: "#c2410c", fontFamily: "inherit",
+                  }}
+                >
+                  🏪 ສຳຮ້ານ ({availableShops.length} ຮ້ານ)
+                </button>
+              )}
             </>
           )}
         </div>

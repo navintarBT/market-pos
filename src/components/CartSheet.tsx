@@ -7,6 +7,7 @@ import {
   IonButtons,
   IonButton,
   IonContent,
+  IonFooter,
   IonList,
   IonItem,
   IonLabel,
@@ -34,7 +35,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
 
   return (
     <>
-      <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.85} breakpoints={[0, 0.85, 1]}>
+      <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
         <IonHeader>
           <IonToolbar>
             <IonTitle>ກະຕ່າ</IonTitle>
@@ -131,21 +132,27 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
               );
             })}
           </IonList>
+        </IonContent>
 
-          {items.length > 0 && (
-            <div className="ion-padding">
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: "1.1rem" }}>
+        {items.length > 0 && (
+          <IonFooter>
+            <div style={{
+              padding: "12px 16px max(env(safe-area-inset-bottom), 16px)",
+              background: "var(--ion-item-background, #fff)",
+              borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: "1.1rem" }}>
                 <span>ຍອດລວມ</span>
                 <span style={{ fontWeight: 700, color: "var(--ion-color-primary)" }}>
                   ₭{fmtK(total)}
                 </span>
               </div>
-              <IonButton expand="block" onClick={onCheckout} style={{ minHeight: 52 }}>
+              <IonButton expand="block" onClick={onCheckout} style={{ minHeight: 54, "--border-radius": "14px" }}>
                 ຊຳລະເງິນ
               </IonButton>
             </div>
-          )}
-        </IonContent>
+          </IonFooter>
+        )}
       </IonModal>
 
       <IonAlert

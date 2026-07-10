@@ -169,10 +169,65 @@ const Sell: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
+      <IonContent style={{ "--padding-bottom": count > 0 ? "76px" : "0px" }}>
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent />
         </IonRefresher>
+
+        {/* Floating cart bar — slides up above the tab bar when items are added */}
+        <div
+          slot="fixed"
+          style={{
+            position: "absolute",
+            left: 12, right: 12, bottom: 12,
+            zIndex: 10,
+            transform: count > 0 ? "translateY(0)" : "translateY(140%)",
+            opacity: count > 0 ? 1 : 0,
+            pointerEvents: count > 0 ? "auto" : "none",
+            transition: "transform 0.25s ease, opacity 0.2s ease",
+          }}
+        >
+          <button
+            onClick={() => setCartOpen(true)}
+            style={{
+              width: "100%",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px 10px 10px",
+              borderRadius: 18, border: "none",
+              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              boxShadow: "0 8px 24px rgba(194, 94, 30, 0.42)",
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                position: "relative",
+                width: 36, height: 36, borderRadius: 11,
+                background: "rgba(255,255,255,0.22)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <IonIcon icon={cartOutline} style={{ fontSize: 19, color: "#fff" }} />
+                <span style={{
+                  position: "absolute", top: -6, right: -6,
+                  background: "#fff", color: "#c2410c",
+                  fontSize: "0.68rem", fontWeight: 800,
+                  minWidth: 18, height: 18, borderRadius: 9, padding: "0 4px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                }}>
+                  {count}
+                </span>
+              </div>
+              <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.98rem" }}>
+                ₭{fmtK(total)}
+              </span>
+            </div>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.88rem" }}>
+              ເບິ່ງກະຕ່າ ›
+            </span>
+          </button>
+        </div>
 
         {/* Tab: ສິນຄ້າ / ຊຸດ */}
         <div style={{ display: "flex", padding: "10px 12px 4px", gap: 8 }}>

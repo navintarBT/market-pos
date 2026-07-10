@@ -280,7 +280,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                     <PlanBadge status={tenant.status} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#78716c" }}>
-                    <span>{{ trial: "ທົດລອງໃຊ້ 30 ວັນ", monthly: "ລາຍເດືອນ", yearly: "ລາຍປີ" }[tenant.plan]}</span>
+                    <span>{{ trial: "ທົດລອງໃຊ້ 30 ວັນ", monthly: "ລາຍເດືອນ", yearly: "ລາຍປີ", unlimited: "♾ ບໍ່ຈຳກັດ" }[tenant.plan]}</span>
                     {tenant.expiresAt && (
                       <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "#dc2626" : "#78716c" }}>
                         {(tenant.daysLeft ?? 0) <= 0

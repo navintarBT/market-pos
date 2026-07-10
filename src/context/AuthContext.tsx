@@ -10,7 +10,7 @@ import { auth, db } from "../firebase";
 import type { StaffPermissions, ShopFeatures } from "../data/types";
 
 export interface TenantInfo {
-  plan: "trial" | "monthly" | "yearly";
+  plan: "trial" | "monthly" | "yearly" | "unlimited";
   status: "active" | "trial" | "suspended" | "cancelled";
   expiresAt: Date | null;
   daysLeft: number | null;
@@ -40,7 +40,7 @@ interface AuthState {
   loading: boolean;
   permissions: StaffPermissions;
   features: ShopFeatures;
-  availableShops: { id: string; name: string }[];
+  availableShops: { id: string; name: string; profileUrl?: string }[];
   needsShopPick: boolean;
 }
 
@@ -175,15 +175,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Fetch shop names for all shops
+      // Fetch shop names + profile photos for all shops
       const availableShops = await Promise.all(
         shopIds.map(async (id) => {
+          let name = id;
           try {
             const tSnap = await getDoc(doc(db, "tenants", id));
-            return { id, name: (tSnap.data()?.shopName as string) ?? id };
-          } catch {
-            return { id, name: id };
-          }
+            name = (tSnap.data()?.shopName as string) ?? id;
+          } catch { /* tenant rules may not allow yet */ }
+          let profileUrl: string | undefined;
+          try {
+            const sSnap = await getDoc(doc(db, "shops", id));
+            profileUrl = sSnap.data()?.profileUrl as string | undefined;
+          } catch { /* shop rules may not allow yet */ }
+          return { id, name, profileUrl };
         })
       );
 

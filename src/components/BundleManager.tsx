@@ -20,10 +20,11 @@ interface Props {
   isOpen: boolean;
   products: Product[];
   shopId: string;
+  isOwner?: boolean;
   onDismiss: () => void;
 }
 
-const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss }) => {
+const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = false, onDismiss }) => {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -206,9 +207,11 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
                     <IonButton fill="clear" size="small" onClick={() => openEdit(b)}>
                       <IonIcon slot="icon-only" icon={createOutline} />
                     </IonButton>
-                    <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
-                      <IonIcon slot="icon-only" icon={trashOutline} />
-                    </IonButton>
+                    {isOwner && (
+                      <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
+                        <IonIcon slot="icon-only" icon={trashOutline} />
+                      </IonButton>
+                    )}
                   </div>
                 </div>
               );

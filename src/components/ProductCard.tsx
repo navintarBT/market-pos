@@ -12,12 +12,13 @@ import { fmtK } from "../utils/format";
 interface Props {
   product: Product;
   isAdmin: boolean;
+  canDelete: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDetail: (product: Product) => void;
 }
 
-const ProductCard: React.FC<Props> = ({ product, isAdmin, onEdit, onDelete, onDetail }) => {
+const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onDelete, onDetail }) => {
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   const outOfStock = totalStock === 0;
 
@@ -104,10 +105,12 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, onEdit, onDelete, onDe
                 style={{ minHeight: 36, minWidth: 36, "--color": "#e07b39" }}>
                 <IonIcon slot="icon-only" icon={createOutline} />
               </IonButton>
-              <IonButton fill="clear" size="small" color="danger" onClick={() => onDelete(product)}
-                style={{ minHeight: 36, minWidth: 36 }}>
-                <IonIcon slot="icon-only" icon={trashOutline} />
-              </IonButton>
+              {canDelete && (
+                <IonButton fill="clear" size="small" color="danger" onClick={() => onDelete(product)}
+                  style={{ minHeight: 36, minWidth: 36 }}>
+                  <IonIcon slot="icon-only" icon={trashOutline} />
+                </IonButton>
+              )}
             </div>
           )}
         </div>

@@ -40,7 +40,7 @@ interface Props {
 }
 
 const Products: React.FC<Props> = ({ onStockChanged }) => {
-  const { shopId, permissions, features } = useAuth();
+  const { shopId, role, permissions, features } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [activeCategory, setActiveCategory] = useState("all");
 
   const isAdmin = permissions.canManageProducts;
+  const isOwner = role === "customer";
 
   const alertCount = useMemo(() =>
     products.filter((p) => p.variants.some((v) => v.stock <= (v.minStock ?? 5))).length,
@@ -201,7 +202,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                 <IonRow>
                   {filtered.map((p) => (
                     <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
-                      <ProductCard product={p} isAdmin={isAdmin} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} />
+                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} />
                     </IonCol>
                   ))}
                 </IonRow>
@@ -241,6 +242,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           isOpen={bundleOpen}
           products={products}
           shopId={shopId}
+          isOwner={isOwner}
           onDismiss={() => setBundleOpen(false)}
         />
       )}
@@ -267,6 +269,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         product={editing}
         categories={categories}
         shopId={shopId ?? undefined}
+        isOwner={isOwner}
         onSave={handleSave}
         onDismiss={() => setFormOpen(false)}
         onCategoryChanged={(cats) => setCategories(cats)}

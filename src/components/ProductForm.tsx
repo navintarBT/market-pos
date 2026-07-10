@@ -18,6 +18,7 @@ interface Props {
   product: Product | null;
   categories: Category[];
   shopId?: string;
+  isOwner?: boolean;
   onSave: (data: Omit<Product, "id">) => Promise<void>;
   onDismiss: () => void;
   onCategoryChanged?: (cats: Category[]) => void;
@@ -37,7 +38,7 @@ interface FormErrors {
 
 const emptyVariant = (): ProductVariant => ({ size: "", color: "", stock: 0, minStock: 5 });
 
-const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onSave, onDismiss, onCategoryChanged }) => {
+const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isOwner = false, onSave, onDismiss, onCategoryChanged }) => {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState<number>(0);
@@ -566,11 +567,13 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, onS
                   style={{ minHeight: 40, minWidth: 40 }}>
                   <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 17 }} />
                 </IonButton>
-                <IonButton fill="clear" size="small" color="danger" slot="end"
-                  onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
-                  style={{ minHeight: 40, minWidth: 40 }}>
-                  <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 17 }} />
-                </IonButton>
+                {isOwner && (
+                  <IonButton fill="clear" size="small" color="danger" slot="end"
+                    onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
+                    style={{ minHeight: 40, minWidth: 40 }}>
+                    <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 17 }} />
+                  </IonButton>
+                )}
               </>
             )}
           </IonItem>

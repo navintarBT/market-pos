@@ -106,29 +106,29 @@ service cloud.firestore {
 
       match /expenses/{expenseId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if isShopMember(shopId)
+        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'createdAt'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow update: if isShopOwner(shopId)
+        allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow delete: if isShopOwner(shopId);
+        allow delete: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses');
       }
 
       match /incomes/{incomeId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if isShopMember(shopId)
+        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType', 'createdAt'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.paymentType in ['cash', 'transfer'];
-        allow update: if isShopOwner(shopId)
+        allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow delete: if isShopOwner(shopId);
+        allow delete: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses');
       }
 
       match /categories/{categoryId} {

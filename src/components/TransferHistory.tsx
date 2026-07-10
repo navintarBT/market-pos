@@ -66,8 +66,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             onChange={(e) => setFromDate(e.target.value)}
             style={{
               flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid #e5e7eb", fontSize: "0.82rem",
-              background: "#fafaf9", outline: "none", color: "#1c1917",
+              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
+              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
             }}
           />
           <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
@@ -76,8 +76,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             onChange={(e) => setToDate(e.target.value)}
             style={{
               flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid #e5e7eb", fontSize: "0.82rem",
-              background: "#fafaf9", outline: "none", color: "#1c1917",
+              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
+              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
             }}
           />
         </div>

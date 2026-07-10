@@ -1,5 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#3880ff"/>
-  <text x="256" y="320" font-family="system-ui, sans-serif" font-size="200" font-weight="700"
-        text-anchor="middle" fill="#ffffff">POS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bagD" gradientUnits="userSpaceOnUse" x1="512" y1="360" x2="512" y2="790"><stop offset="0" stop-color="#FFA12A"></stop><stop offset="1" stop-color="#FF6A00"></stop></linearGradient>
+    <linearGradient id="bagB" gradientUnits="userSpaceOnUse" x1="330" y1="350" x2="620" y2="600"><stop offset="0" stop-color="#FFCB5E"></stop><stop offset="1" stop-color="#FF8A1E"></stop></linearGradient>
+    <linearGradient id="tile" gradientUnits="userSpaceOnUse" x1="512" y1="0" x2="512" y2="1024"><stop offset="0.55" stop-color="#FFFFFF"></stop><stop offset="1" stop-color="#F1EEEB"></stop></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#tile)"></rect>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M300 476 V756" stroke="url(#bagD)" stroke-width="120"></path>
+    <path d="M724 476 V756" stroke="url(#bagD)" stroke-width="120"></path>
+    <path d="M405 358 C405 246 619 246 619 358" stroke="url(#bagB)" stroke-width="34"></path>
+  </g>
+  <path d="M283 476 L283 402 Q283 356 329 356 H695 Q741 356 741 402 L741 476 L512 596 Z" fill="url(#bagB)"></path>
+  <path d="M283 476 L512 596 L741 476" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" opacity=".55"></path>
+  <circle cx="405" cy="360" r="18" fill="#fff"></circle>
+  <circle cx="619" cy="360" r="18" fill="#fff"></circle>
+  <path d="M512 592 L500 646" stroke="url(#bagD)" stroke-width="10" stroke-linecap="round"></path>
+  <g transform="rotate(22 500 648)">
+    <path d="M500 648 L540 682 Q544 685 544 691 L544 760 Q544 774 530 774 H470 Q456 774 456 760 L456 691 Q456 685 460 682 Z" fill="url(#bagD)"></path>
+    <circle cx="500" cy="684" r="10" fill="#fff"></circle>
+  </g>
 </svg>

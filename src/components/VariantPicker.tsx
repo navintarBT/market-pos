@@ -104,22 +104,22 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                   padding: "12px 14px",
                   marginBottom: 8,
                   borderRadius: 14,
-                  border: `2px solid ${selected ? "var(--ion-color-primary)" : "#e5e7eb"}`,
-                  background: selected ? "rgba(224,123,57,0.06)" : outOfStock ? "#fafaf9" : "#ffffff",
+                  border: `2px solid ${selected ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                  background: selected ? "rgba(224,123,57,0.06)" : outOfStock ? "var(--ion-color-step-50, #fafaf9)" : "var(--ion-item-background, #ffffff)",
                   opacity: outOfStock ? 0.5 : 1,
                   transition: "border-color 0.15s, background 0.15s",
                 }}
               >
                 {/* Left: variant info */}
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, #1c1917)" }}>
                     {v.size} / {v.color}
                   </div>
                   <div style={{
                     display: "inline-block", marginTop: 4,
                     fontSize: "0.72rem", fontWeight: 600,
                     padding: "2px 8px", borderRadius: 20,
-                    background: outOfStock ? "#fee2e2" : v.stock <= 3 ? "#fef3c7" : "#dcfce7",
+                    background: outOfStock ? "rgba(220,38,38,0.12)" : v.stock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
                     color: outOfStock ? "#dc2626" : v.stock <= 3 ? "#92400e" : "#166534",
                   }}>
                     {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock} ຊິ້ນ`}
@@ -136,11 +136,11 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       disabled={qty === 0}
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        border: "1.5px solid #e5e7eb",
-                        background: qty === 0 ? "#f5f5f4" : "#fff",
+                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
+                        background: qty === 0 ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: qty === 0 ? "not-allowed" : "pointer",
-                        color: qty === 0 ? "#d4d4d0" : "#1c1917",
+                        color: qty === 0 ? "var(--ion-color-step-300, #d4d4d0)" : "var(--ion-text-color, #1c1917)",
                       }}
                     >
                       <IonIcon icon={removeOutline} style={{ fontSize: 18 }} />
@@ -162,9 +162,9 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       style={{
                         width: 52, height: 36, textAlign: "center",
                         fontSize: "1.1rem", fontWeight: 700,
-                        color: qty > 0 ? "var(--ion-color-primary)" : "#a8a29e",
-                        border: "1.5px solid #e5e7eb", borderRadius: 10,
-                        outline: "none", background: "#fff",
+                        color: qty > 0 ? "var(--ion-color-primary)" : "var(--ion-color-medium, #a8a29e)",
+                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", borderRadius: 10,
+                        outline: "none", background: "var(--ion-item-background, #fff)",
                       }}
                     />
 
@@ -173,8 +173,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       disabled={qty >= v.stock}
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        border: `1.5px solid ${qty >= v.stock ? "#e5e7eb" : "var(--ion-color-primary)"}`,
-                        background: qty >= v.stock ? "#f5f5f4" : "var(--ion-color-primary)",
+                        border: `1.5px solid ${qty >= v.stock ? "var(--ion-color-step-150, #e5e7eb)" : "var(--ion-color-primary)"}`,
+                        background: qty >= v.stock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-color-primary)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: qty >= v.stock ? "not-allowed" : "pointer",
                         color: qty >= v.stock ? "#d4d4d0" : "#fff",
@@ -191,13 +191,13 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
       </IonContent>
 
       <IonFooter>
-        <div style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "1px solid #e5e7eb" }}>
+        <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
           {totalQty > 0 && (
             <div style={{
               display: "flex", justifyContent: "space-between",
               marginBottom: 10, fontSize: "0.9rem", fontWeight: 600,
             }}>
-              <span style={{ color: "#57534e" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
+              <span style={{ color: "var(--ion-text-color, #57534e)" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
               <span style={{ color: "var(--ion-color-primary)", fontWeight: 800 }}>
                 ₭{fmtK(totalPrice)}
               </span>

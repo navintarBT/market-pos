@@ -313,13 +313,13 @@ const StaffSettings: React.FC = () => {
                       <div style={{ display: "grid", gap: 10 }}>
                         <IonInput label="ຊື່ ພະນັກງານ" labelPlacement="stacked"
                           value={staffName} onIonInput={(e) => setStaffName(e.detail.value ?? "")}
-                          fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                          fill="outline" style={{ "--border-radius": "10px", "--background": "var(--ion-item-background, #fff)" }} />
                         <IonInput label="ອີເມວ" labelPlacement="stacked" type="email"
                           value={staffEmail} onIonInput={(e) => setStaffEmail(e.detail.value ?? "")}
-                          fill="outline" required style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                          fill="outline" required style={{ "--border-radius": "10px", "--background": "var(--ion-item-background, #fff)" }} />
                         <IonInput label="ລະຫັດຜ່ານ (ຢ່າງໜ້ອຍ 6 ຕົວ)" labelPlacement="stacked" type="password"
                           value={staffPassword} onIonInput={(e) => setStaffPassword(e.detail.value ?? "")}
-                          fill="outline" minlength={6} required style={{ "--border-radius": "10px", "--background": "#fff" }} />
+                          fill="outline" minlength={6} required style={{ "--border-radius": "10px", "--background": "var(--ion-item-background, #fff)" }} />
                       </div>
                       <PermCheckbox perms={newPerms} onChange={setNewPerms} />
                       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -340,14 +340,14 @@ const StaffSettings: React.FC = () => {
                 {/* Staff list */}
                 <IonList style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #fed7aa" }}>
                   {staff.length === 0 ? (
-                    <IonItem lines="none" style={{ "--background": "#ffffff" }}>
+                    <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)" }}>
                       <IonLabel style={{ textAlign: "center", color: "#78716c", fontSize: "0.85rem", padding: "16px 0" }}>
                         ຍັງບໍ່ມີພະນັກງານ
                       </IonLabel>
                     </IonItem>
                   ) : staff.map((user) => (
                     <div key={user.id}>
-                      <IonItem lines="none" style={{ "--background": "#ffffff", "--padding-bottom": "6px", "--padding-top": "6px" }}>
+                      <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)", "--padding-bottom": "6px", "--padding-top": "6px" }}>
                         <div slot="start" style={{
                           width: 38, height: 38, borderRadius: 12,
                           background: user.role === "customer" ? "#ffedd5" : "#ccfbf1",
@@ -417,12 +417,12 @@ const StaffSettings: React.FC = () => {
                             <IonInput
                               label="ອີເມວ" labelPlacement="stacked" type="email"
                               value={editEmail} onIonInput={(e) => setEditEmail(e.detail.value ?? "")}
-                              fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }}
+                              fill="outline" style={{ "--border-radius": "10px", "--background": "var(--ion-item-background, #fff)" }}
                             />
                             <IonInput
                               label="ຊື່ ພະນັກງານ" labelPlacement="stacked"
                               value={editName} onIonInput={(e) => setEditName(e.detail.value ?? "")}
-                              fill="outline" style={{ "--border-radius": "10px", "--background": "#fff" }}
+                              fill="outline" style={{ "--border-radius": "10px", "--background": "var(--ion-item-background, #fff)" }}
                             />
                           </div>
                           <PermCheckbox perms={editPerms} onChange={setEditPerms} />

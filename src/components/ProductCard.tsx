@@ -43,7 +43,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
       </div>
 
       <IonCardContent style={{ padding: "10px 12px 12px" }}>
-        <p style={{ margin: "0 0 2px", fontWeight: 700, fontSize: "0.95rem", color: "#1c1917", lineHeight: 1.3 }}>
+        <p style={{ margin: "0 0 2px", fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, #1c1917)", lineHeight: 1.3 }}>
           {product.name}
         </p>
         <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
@@ -71,8 +71,8 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
                   fontWeight: 600,
                   lineHeight: "14px",
                   whiteSpace: "nowrap",
-                  background: empty ? "#e5e7eb" : low ? "#fef3c7" : "#dcfce7",
-                  color: empty ? "#9ca3af" : low ? "#92400e" : "#166534",
+                  background: empty ? "var(--ion-color-step-150, #e5e7eb)" : low ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
+                  color: empty ? "var(--ion-color-medium, #9ca3af)" : low ? "#92400e" : "#166534",
                 }}
               >
                 {v.size}/{v.color}
@@ -83,7 +83,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
             <span style={{
               display: "inline-block", padding: "2px 6px", borderRadius: 5,
               fontSize: "0.62rem", fontWeight: 700, lineHeight: "14px",
-              background: "#f3f4f6", color: "#6b7280",
+              background: "var(--ion-color-step-100, #f3f4f6)", color: "var(--ion-color-medium, #6b7280)",
             }}>
               +{product.variants.length - 4}
             </span>

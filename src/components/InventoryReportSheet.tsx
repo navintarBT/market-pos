@@ -85,9 +85,9 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                   onClick={() => setActiveCategory(cat)}
                   style={{
                     flexShrink: 0, padding: "6px 16px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "#e5e7eb"}`,
-                    background: isActive ? "var(--ion-color-primary)" : "#ffffff",
-                    color: isActive ? "#ffffff" : "#57534e",
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
                     fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
                     transition: "all 0.15s",
                   }}

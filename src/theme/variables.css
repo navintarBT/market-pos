@@ -5,6 +5,26 @@
 }
 * { font-family: var(--ion-font-family); }
 
+/* Force all Ionic Shadow DOM hosts and overlays to light color-scheme
+   so the browser never applies auto-dark or Force Dark to them */
+body,
+ion-app,
+ion-page,
+ion-content,
+ion-header,
+ion-footer,
+ion-toolbar,
+ion-modal,
+ion-popover,
+ion-action-sheet,
+ion-alert,
+ion-toast,
+ion-loading,
+ion-picker,
+ion-sheet {
+  color-scheme: light;
+}
+
 /* ===== Warm Orange Theme ===== */
 :root {
   /* Primary — warm orange */
@@ -146,5 +166,6 @@ ion-card {
     --ion-color-step-850: #432202;
     --ion-color-step-900: #2d1601;
     --ion-color-step-950: #160b00;
+    --ion-color-step-1000: #1c1917;
   }
 }

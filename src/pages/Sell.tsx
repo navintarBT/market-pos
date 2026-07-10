@@ -185,9 +185,9 @@ const Sell: React.FC = () => {
                 style={{
                   padding: "7px 22px", borderRadius: 24, fontWeight: 700, fontSize: "0.85rem",
                   cursor: "pointer", transition: "all 0.15s",
-                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "#e5e7eb"}`,
-                  background: active ? "var(--ion-color-primary)" : "#ffffff",
-                  color: active ? "#ffffff" : "#57534e",
+                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                  background: active ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
+                  color: active ? "#ffffff" : "var(--ion-text-color, #57534e)",
                   boxShadow: active ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                 }}
               >
@@ -212,9 +212,9 @@ const Sell: React.FC = () => {
                   style={{
                     flexShrink: 0,
                     padding: "7px 18px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "#e5e7eb"}`,
-                    background: isActive ? "var(--ion-color-primary)" : "#ffffff",
-                    color: isActive ? "#ffffff" : "#57534e",
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
                     fontSize: "0.85rem", fontWeight: 700,
                     cursor: "pointer",
                     boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
@@ -262,7 +262,7 @@ const Sell: React.FC = () => {
                           onClick={() => setPickerProduct(p)}
                           style={{
                             width: "100%", minHeight: 140, borderRadius: 16, border: "none",
-                            background: outOfStock ? "#f5f5f4" : "#ffffff",
+                            background: outOfStock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #ffffff)",
                             boxShadow: outOfStock ? "none" : "0 3px 14px rgba(224,123,57,0.14)",
                             padding: "14px 12px",
                             cursor: outOfStock ? "not-allowed" : "pointer",
@@ -276,7 +276,7 @@ const Sell: React.FC = () => {
                               : "👕"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
                             {p.name}
                           </div>
                           <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
@@ -285,7 +285,7 @@ const Sell: React.FC = () => {
                           <div style={{
                             display: "inline-block", fontSize: "0.72rem", fontWeight: 600,
                             padding: "2px 8px", borderRadius: 20,
-                            background: outOfStock ? "#fee2e2" : totalStock <= 3 ? "#fef3c7" : "#dcfce7",
+                            background: outOfStock ? "rgba(220,38,38,0.12)" : totalStock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
                             color: outOfStock ? "#dc2626" : totalStock <= 3 ? "#92400e" : "#166534",
                           }}>
                             {outOfStock ? "ໝົດ" : `${totalStock} ຊິ້ນ`}
@@ -321,7 +321,7 @@ const Sell: React.FC = () => {
                           onClick={() => openBundlePicker(b)}
                           style={{
                             width: "100%", minHeight: 140, borderRadius: 16, border: "none",
-                            background: !available ? "#f5f5f4" : "#ffffff",
+                            background: !available ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #ffffff)",
                             boxShadow: !available ? "none" : "0 3px 14px rgba(224,123,57,0.14)",
                             padding: "14px 12px",
                             cursor: !available ? "not-allowed" : "pointer",
@@ -335,7 +335,7 @@ const Sell: React.FC = () => {
                               : "🎁"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
                             {b.name}
                           </div>
                           <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
@@ -401,7 +401,7 @@ const Sell: React.FC = () => {
         isOpen={!!bundlePickerTarget}
         onDidDismiss={() => setBundlePickerTarget(null)}
       >
-        <IonToolbar style={{ "--background": "#fff", paddingTop: 8 }}>
+        <IonToolbar style={{ "--background": "var(--ion-item-background, #fff)", paddingTop: 8 }}>
           <div slot="start" style={{ paddingLeft: 16, fontWeight: 700, fontSize: "1rem" }}>
             🎁 {bundlePickerTarget?.name}
           </div>
@@ -453,9 +453,9 @@ const Sell: React.FC = () => {
                             style={{
                               padding: "7px 14px", borderRadius: 20,
                               cursor: outOfStock ? "not-allowed" : "pointer",
-                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "#e5e7eb"}`,
-                              background: isChosen ? "var(--ion-color-primary)" : outOfStock ? "#f5f5f4" : "#fff",
-                              color: isChosen ? "#fff" : outOfStock ? "#a8a29e" : "#1c1917",
+                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                              background: isChosen ? "var(--ion-color-primary)" : outOfStock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
+                              color: isChosen ? "#fff" : outOfStock ? "var(--ion-color-medium, #a8a29e)" : "var(--ion-text-color, #1c1917)",
                               fontWeight: 600, fontSize: "0.85rem",
                               display: "flex", alignItems: "center", gap: 4,
                             }}
@@ -477,7 +477,7 @@ const Sell: React.FC = () => {
         </IonContent>
 
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "1px solid #e5e7eb" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
             <IonButton
               expand="block"
               disabled={!allVariantsChosen}

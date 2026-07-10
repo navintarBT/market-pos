@@ -379,8 +379,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                       placeholder="ເຊັ່ນ: ຈາກສາງ A, batch ວັນທີ 5/7"
                       style={{
                         width: "100%", padding: "10px 14px", borderRadius: 10,
-                        border: "1.5px solid #e5e7eb", fontSize: "0.88rem",
-                        background: "#fafaf9", outline: "none", color: "#1c1917",
+                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.88rem",
+                        background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
                         boxSizing: "border-box",
                       }}
                     />
@@ -394,7 +394,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
         {/* Footer — shown only in detail step */}
         {currentStep === "detail" && (
           <IonFooter>
-            <div style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "1px solid #e5e7eb" }}>
+            <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
               {/* Summary chips */}
               {activeTab === "return" && rEntries.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>

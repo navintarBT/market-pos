@@ -365,7 +365,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
           </div>
         </IonContent>
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "1px solid #e5e7eb" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
             {formItems.length < 2 && formItems.length > 0 && (
               <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: "0.8rem", color: "#a8a29e" }}>
                 ຕ້ອງມີສິນຄ້າຢ່າງໜ້ອຍ 2 ລາຍການ

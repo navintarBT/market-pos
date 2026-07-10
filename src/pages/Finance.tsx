@@ -301,7 +301,7 @@ const Finance: React.FC = () => {
             gap: 0,
             margin: "12px 16px 0",
             borderRadius: 12,
-            background: "#f5f0eb",
+            background: "var(--ion-color-step-50, #f5f0eb)",
             padding: 4,
           }}
         >
@@ -314,8 +314,8 @@ const Finance: React.FC = () => {
                 padding: "9px 0",
                 borderRadius: 9,
                 border: "none",
-                background: activeTab === tab ? "#ffffff" : "transparent",
-                color: activeTab === tab ? "#1c1917" : "#78716c",
+                background: activeTab === tab ? "var(--ion-item-background, #ffffff)" : "transparent",
+                color: activeTab === tab ? "var(--ion-text-color, #1c1917)" : "var(--ion-color-medium, #78716c)",
                 fontWeight: activeTab === tab ? 700 : 600,
                 fontSize: "0.9rem",
                 cursor: "pointer",
@@ -339,10 +339,10 @@ const Finance: React.FC = () => {
               flex: 1,
               padding: "8px 10px",
               borderRadius: 8,
-              border: "1.5px solid #e5e7eb",
+              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
               fontSize: "0.82rem",
-              background: "#fafaf9",
-              color: "#1c1917",
+              background: "var(--ion-color-step-50, #fafaf9)",
+              color: "var(--ion-text-color, #1c1917)",
               outline: "none",
             }}
           />
@@ -356,10 +356,10 @@ const Finance: React.FC = () => {
               flex: 1,
               padding: "8px 10px",
               borderRadius: 8,
-              border: "1.5px solid #e5e7eb",
+              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
               fontSize: "0.82rem",
-              background: "#fafaf9",
-              color: "#1c1917",
+              background: "var(--ion-color-step-50, #fafaf9)",
+              color: "var(--ion-text-color, #1c1917)",
               outline: "none",
             }}
           />

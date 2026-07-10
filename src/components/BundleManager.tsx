@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter,
   IonButtons, IonButton, IonIcon, IonSpinner, IonAlert, IonInput, IonLabel,
-  IonFab, IonFabButton, IonText,
+  IonText,
 } from "@ionic/react";
 import {
   addOutline, closeOutline, trashOutline, createOutline,
@@ -10,6 +10,8 @@ import {
 } from "ionicons/icons";
 import { fmtK } from "../utils/format";
 import { getBundles, addBundle, updateBundle, deleteBundle } from "../data/bundleRepository";
+
+function digitsOnly(s: string) { return s.replace(/[^0-9]/g, ""); }
 import { uploadProductImage } from "../data/imageRepository";
 import ImagePicker from "./ImagePicker";
 import type { Bundle, BundleItem, Product } from "../data/types";
@@ -34,6 +36,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
   // Form fields
   const [formName, setFormName] = useState("");
   const [formPrice, setFormPrice] = useState("");
+  const [formPriceStr, setFormPriceStr] = useState("");
   const [formItems, setFormItems] = useState<BundleItem[]>([]);
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | undefined>(undefined);
   const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
@@ -54,6 +57,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
     setEditingId(null);
     setFormName("");
     setFormPrice("");
+    setFormPriceStr("");
     setFormItems([]);
     setFormPhotoUrl(undefined);
     setPendingDataUrl(null);
@@ -64,6 +68,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
     setEditingId(b.id);
     setFormName(b.name);
     setFormPrice(String(b.price));
+    setFormPriceStr(b.price > 0 ? fmtK(b.price) : "");
     setFormItems([...b.items]);
     setFormPhotoUrl(b.photoUrl);
     setPendingDataUrl(null);
@@ -137,6 +142,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
           <IonToolbar>
             <IonTitle style={{ fontWeight: 700 }}>ຊຸດຂາຍ</IonTitle>
             <IonButtons slot="end">
+              <IonButton onClick={openCreate}>
+                <IonIcon slot="icon-only" icon={addOutline} />
+              </IonButton>
               <IonButton onClick={onDismiss}>
                 <IonIcon slot="icon-only" icon={closeOutline} />
               </IonButton>
@@ -152,10 +160,10 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
           {!loading && bundles.length === 0 && (
             <div style={{ textAlign: "center", padding: "64px 32px" }}>
               <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-              <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ກົດ + ເພື່ອສ້າງ</p></IonText>
+              <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ກົດ + ດ້ານເທິງເພື່ອສ້າງ</p></IonText>
             </div>
           )}
-          <div style={{ padding: "12px 16px 100px" }}>
+          <div style={{ padding: "12px 16px 24px" }}>
             {bundles.map((b) => {
               const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
               return (
@@ -206,11 +214,6 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
               );
             })}
           </div>
-          <IonFab vertical="bottom" horizontal="end" slot="fixed">
-            <IonFabButton onClick={openCreate}>
-              <IonIcon icon={addOutline} />
-            </IonFabButton>
-          </IonFab>
         </IonContent>
       </IonModal>
 
@@ -330,16 +333,24 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, onDismiss })
               <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
                 ລາຄາຂາຍ (₭) *
               </IonLabel>
-              <IonInput
-                type="number"
-                value={formPrice}
-                onIonInput={(e) => setFormPrice(e.detail.value ?? "")}
-                placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ₭${fmtK(bundleCost)}` : "0"}
-                fill="outline"
+              <input
+                type="text" inputMode="numeric"
+                value={formPriceStr}
+                onChange={(e) => {
+                  const raw = digitsOnly(e.target.value);
+                  setFormPrice(raw);
+                  setFormPriceStr(raw);
+                }}
+                onBlur={() => {
+                  const n = parseInt(formPrice) || 0;
+                  setFormPriceStr(n > 0 ? fmtK(n) : "");
+                }}
+                placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ${fmtK(bundleCost)}` : "0"}
                 style={{
-                  "--border-radius": "12px",
-                  "--border-color": priceBelowCost ? "#dc2626" : undefined,
-                  "--highlight-color-focused": priceBelowCost ? "#dc2626" : undefined,
+                  width: "100%", padding: "12px 14px", fontSize: "1rem",
+                  border: `1.5px solid ${priceBelowCost ? "#dc2626" : "#c8c8c8"}`,
+                  borderRadius: 12, outline: "none", background: "#fff",
+                  color: "#1c1917",
                 }}
               />
               {priceBelowCost && (

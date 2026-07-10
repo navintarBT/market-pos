@@ -314,7 +314,7 @@ const Expenses: React.FC = () => {
                 onChange={(e) => setFormDesc(e.target.value)}
                 placeholder="ເຊັ່ນ: ຄ່າເຊົ່າ, ຄ່ານ້ຳ..."
                 autoFocus
-                style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "1rem", padding: "8px 0" }}
+                style={{ width: "100%", border: "none", outline: "none", background: "transparent", color: "var(--ion-text-color, #1c1917)", fontSize: "1rem", padding: "8px 0" }}
               />
             </IonItem>
             <IonItem>
@@ -329,7 +329,7 @@ const Expenses: React.FC = () => {
                   setFormAmountStr(n > 0 ? fmtK(n) : "");
                 }}
                 placeholder="ເຊັ່ນ: 50.000"
-                style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "1rem", padding: "8px 0" }}
+                style={{ width: "100%", border: "none", outline: "none", background: "transparent", color: "var(--ion-text-color, #1c1917)", fontSize: "1rem", padding: "8px 0" }}
               />
             </IonItem>
           </IonList>

@@ -1,5 +1,6 @@
 /* Noto Sans Lao font */
 :root {
+  color-scheme: light;
   --ion-font-family: "Noto Sans Lao", sans-serif;
 }
 * { font-family: var(--ion-font-family); }

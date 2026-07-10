@@ -269,6 +269,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         shopId={shopId ?? undefined}
         onSave={handleSave}
         onDismiss={() => setFormOpen(false)}
+        onCategoryChanged={(cats) => setCategories(cats)}
       />
 
       {shopId && (

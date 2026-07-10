@@ -342,6 +342,7 @@ const Finance: React.FC = () => {
               border: "1.5px solid #e5e7eb",
               fontSize: "0.82rem",
               background: "#fafaf9",
+              color: "#1c1917",
               outline: "none",
             }}
           />
@@ -358,6 +359,7 @@ const Finance: React.FC = () => {
               border: "1.5px solid #e5e7eb",
               fontSize: "0.82rem",
               background: "#fafaf9",
+              color: "#1c1917",
               outline: "none",
             }}
           />
@@ -703,6 +705,7 @@ const Finance: React.FC = () => {
                   fontSize: "0.95rem",
                   outline: "none",
                   background: "#fafaf9",
+                  color: "#1c1917",
                   boxSizing: "border-box",
                 }}
               />
@@ -733,6 +736,7 @@ const Finance: React.FC = () => {
                   fontWeight: 700,
                   outline: "none",
                   background: "#fafaf9",
+                  color: "#1c1917",
                   boxSizing: "border-box",
                 }}
               />
@@ -819,6 +823,7 @@ const Finance: React.FC = () => {
                   fontSize: "0.95rem",
                   outline: "none",
                   background: "#fafaf9",
+                  color: "#1c1917",
                   boxSizing: "border-box",
                 }}
               />
@@ -849,6 +854,7 @@ const Finance: React.FC = () => {
                   fontWeight: 700,
                   outline: "none",
                   background: "#fafaf9",
+                  color: "#1c1917",
                   boxSizing: "border-box",
                 }}
               />

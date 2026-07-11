@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import type { Expense, ExpenseCategory } from "../data/types";
 import { fmtK } from "../utils/format";
+import NumInput from "../components/NumInput";
 
 const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   capital: "ທຶນທຸລະກິດ",
@@ -34,8 +35,6 @@ function toDateInputValue(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-function digitsOnly(s: string) { return s.replace(/[^0-9]/g, ""); }
-
 const today = new Date();
 
 const Expenses: React.FC = () => {
@@ -52,7 +51,6 @@ const Expenses: React.FC = () => {
 
   const [formDesc, setFormDesc] = useState("");
   const [formAmount, setFormAmount] = useState(0);
-  const [formAmountStr, setFormAmountStr] = useState("");
   const [formCategory, setFormCategory] = useState<ExpenseCategory>("general");
   const [formBusy, setFormBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -72,7 +70,6 @@ const Expenses: React.FC = () => {
     if (editTarget) {
       setFormDesc(editTarget.description);
       setFormAmount(editTarget.amount);
-      setFormAmountStr(fmtK(editTarget.amount));
       setFormCategory(editTarget.category);
     } else if (addOpen) {
       setFormDesc("");
@@ -319,15 +316,9 @@ const Expenses: React.FC = () => {
             </IonItem>
             <IonItem>
               <IonLabel position="stacked">ຈຳນວນເງິນ (ກີບ) *</IonLabel>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formAmountStr}
-                onChange={(e) => {
-                  const n = parseInt(digitsOnly(e.target.value)) || 0;
-                  setFormAmount(n);
-                  setFormAmountStr(n > 0 ? fmtK(n) : "");
-                }}
+              <NumInput
+                value={formAmount}
+                onChange={setFormAmount}
                 placeholder="ເຊັ່ນ: 50.000"
                 style={{ width: "100%", border: "none", outline: "none", background: "transparent", color: "var(--ion-text-color, #1c1917)", fontSize: "1rem", padding: "8px 0" }}
               />

@@ -32,6 +32,7 @@ import InventoryReportSheet from "../components/InventoryReportSheet";
 import ProductDetailSheet from "../components/ProductDetailSheet";
 import BundleManager from "../components/BundleManager";
 import ReturnForm from "../components/ReturnForm";
+import RestockModal from "../components/RestockModal";
 import type { Product, Category } from "../data/types";
 import { useIonViewWillEnter } from "@ionic/react";
 
@@ -53,6 +54,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [bundleOpen, setBundleOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  const [restockTarget, setRestockTarget] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
 
   const isAdmin = permissions.canManageProducts;
@@ -202,7 +204,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                 <IonRow>
                   {filtered.map((p) => (
                     <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
-                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} />
+                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
                     </IonCol>
                   ))}
                 </IonRow>
@@ -252,6 +254,19 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         onDismiss={() => setDetailProduct(null)}
       />
 
+      {shopId && (
+        <RestockModal
+          product={restockTarget}
+          shopId={shopId}
+          onDismiss={() => setRestockTarget(null)}
+          onSaved={(updated) => {
+            setProducts((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            setRestockTarget(null);
+            onStockChanged?.();
+          }}
+        />
+      )}
+
       <InventoryReportSheet
         isOpen={inventoryOpen}
         products={products}
@@ -273,6 +288,9 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         onSave={handleSave}
         onDismiss={() => setFormOpen(false)}
         onCategoryChanged={(cats) => setCategories(cats)}
+        onCategoryRenamed={(oldName, newName) =>
+          setProducts((prev) => prev.map((p) => p.category === oldName ? { ...p, category: newName } : p))
+        }
       />
 
       {shopId && (

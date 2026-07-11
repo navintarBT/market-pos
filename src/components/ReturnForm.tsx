@@ -141,10 +141,16 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const [tStockError, setTStockError] = useState("");
   const [tHistoryOpen, setTHistoryOpen] = useState(false);
 
+  // ── Category filter for product list ──
+  const [listCat, setListCat] = useState("all");
+  const productCategories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
+  const filteredProducts = listCat === "all" ? products : products.filter((p) => p.category === listCat);
+
   function resetAll() {
     setRStep("product"); setRProduct(null); setRQtys({});
     setTStep("product"); setTProduct(null); setTQtys({}); setTNote("");
     setActiveTab("return");
+    setListCat("all");
   }
 
   // ── Return helpers ──
@@ -222,33 +228,63 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   // ── Shared product list renderer ──
   function ProductList({ onSelect }: { onSelect: (p: Product) => void }) {
     return (
-      <div style={{ padding: "8px 16px 32px" }}>
-        {products.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onSelect(p)}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
-              border: "1.5px solid #e5e7eb",
-              display: "flex", alignItems: "center", gap: 14,
-              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            }}
-          >
-            {p.photoUrl
-              ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
-              : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
-            }
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>{p.name}</p>
-              <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
-                {p.variants.length} variant · stock {p.variants.reduce((s, v) => s + v.stock, 0)} ຊິ້ນ
-              </p>
-            </div>
-            <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
-          </button>
-        ))}
-      </div>
+      <>
+        {productCategories.length > 0 && (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "4px 16px 8px", scrollbarWidth: "none" }}>
+            {["all", ...productCategories].map((cat) => {
+              const isActive = listCat === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setListCat(cat)}
+                  style={{
+                    flexShrink: 0, padding: "6px 16px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
+                    cursor: "pointer", transition: "all 0.15s",
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
+                    color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                    boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
+                  }}
+                >
+                  {cat === "all" ? "ທັງໝົດ" : cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ padding: "4px 16px 32px" }}>
+          {filteredProducts.length === 0 && (
+            <p style={{ textAlign: "center", color: "#a8a29e", padding: "24px 0", fontSize: "0.85rem" }}>
+              ບໍ່ມີສິນຄ້າໃນໝວດນີ້
+            </p>
+          )}
+          {filteredProducts.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p)}
+              style={{
+                width: "100%", textAlign: "left", cursor: "pointer",
+                background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
+                border: "1.5px solid #e5e7eb",
+                display: "flex", alignItems: "center", gap: 14,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              {p.photoUrl
+                ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+                : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
+              }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>{p.name}</p>
+                <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                  {p.variants.length} variant · stock {p.variants.reduce((s, v) => s + v.stock, 0)} ຊິ້ນ
+                </p>
+              </div>
+              <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
+            </button>
+          ))}
+        </div>
+      </>
     );
   }
 
@@ -290,7 +326,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => { setActiveTab(tab); setListCat("all"); }}
                   disabled={rSaving || tSaving}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 10, fontSize: "0.85rem", fontWeight: 700,

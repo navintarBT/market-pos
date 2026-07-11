@@ -9,9 +9,9 @@ import {
   chevronBackOutline, checkmarkOutline, imageOutline,
 } from "ionicons/icons";
 import { fmtK } from "../utils/format";
+import NumInput from "./NumInput";
 import { getBundles, addBundle, updateBundle, deleteBundle } from "../data/bundleRepository";
 
-function digitsOnly(s: string) { return s.replace(/[^0-9]/g, ""); }
 import { uploadProductImage } from "../data/imageRepository";
 import ImagePicker from "./ImagePicker";
 import type { Bundle, BundleItem, Product } from "../data/types";
@@ -36,8 +36,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
   // Form fields
   const [formName, setFormName] = useState("");
-  const [formPrice, setFormPrice] = useState("");
-  const [formPriceStr, setFormPriceStr] = useState("");
+  const [formPrice, setFormPrice] = useState(0);
   const [formItems, setFormItems] = useState<BundleItem[]>([]);
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | undefined>(undefined);
   const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
@@ -45,6 +44,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
   // Item picker
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerCat, setPickerCat] = useState("all");
+  const pickerCategories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
+  const pickerProducts = pickerCat === "all" ? products : products.filter((p) => p.category === pickerCat);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,8 +59,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
   function openCreate() {
     setEditingId(null);
     setFormName("");
-    setFormPrice("");
-    setFormPriceStr("");
+    setFormPrice(0);
     setFormItems([]);
     setFormPhotoUrl(undefined);
     setPendingDataUrl(null);
@@ -68,8 +69,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
   function openEdit(b: Bundle) {
     setEditingId(b.id);
     setFormName(b.name);
-    setFormPrice(String(b.price));
-    setFormPriceStr(b.price > 0 ? fmtK(b.price) : "");
+    setFormPrice(b.price);
     setFormItems([...b.items]);
     setFormPhotoUrl(b.photoUrl);
     setPendingDataUrl(null);
@@ -78,7 +78,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
   async function handleSave() {
     const name = formName.trim();
-    const price = Number(formPrice);
+    const price = formPrice;
     if (!canSave) return;
     setSaving(true);
     try {
@@ -126,7 +126,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
   }
 
   const bundleCost = formItems.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
-  const sellPrice = Number(formPrice);
+  const sellPrice = formPrice;
   const priceBelowCost = sellPrice > 0 && bundleCost > 0 && sellPrice < bundleCost;
   const profit = sellPrice - bundleCost;
   const canSave =
@@ -336,18 +336,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
               <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
                 ລາຄາຂາຍ (₭) *
               </IonLabel>
-              <input
-                type="text" inputMode="numeric"
-                value={formPriceStr}
-                onChange={(e) => {
-                  const raw = digitsOnly(e.target.value);
-                  setFormPrice(raw);
-                  setFormPriceStr(raw);
-                }}
-                onBlur={() => {
-                  const n = parseInt(formPrice) || 0;
-                  setFormPriceStr(n > 0 ? fmtK(n) : "");
-                }}
+              <NumInput
+                value={formPrice}
+                onChange={setFormPrice}
                 placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ${fmtK(bundleCost)}` : "0"}
                 style={{
                   width: "100%", padding: "12px 14px", fontSize: "1rem",
@@ -399,11 +390,37 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
           </IonToolbar>
         </IonHeader>
         <IonContent>
+          {pickerCategories.length > 0 && (
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 4px", scrollbarWidth: "none" }}>
+              {["all", ...pickerCategories].map((cat) => {
+                const isActive = pickerCat === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setPickerCat(cat)}
+                    style={{
+                      flexShrink: 0, padding: "6px 16px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
+                      cursor: "pointer", transition: "all 0.15s",
+                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                      background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
+                      color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                      boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
+                    }}
+                  >
+                    {cat === "all" ? "ທັງໝົດ" : cat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div style={{ padding: "8px 16px 24px" }}>
             {products.length === 0 && (
               <p style={{ textAlign: "center", color: "#a8a29e", padding: 32 }}>ບໍ່ມີສິນຄ້າ</p>
             )}
-            {products.map((p) => {
+            {pickerCat !== "all" && pickerProducts.length === 0 && (
+              <p style={{ textAlign: "center", color: "#a8a29e", padding: "16px 0", fontSize: "0.85rem" }}>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p>
+            )}
+            {pickerProducts.map((p) => {
               const selected = formItems.some((i) => i.productId === p.id);
               return (
                 <button

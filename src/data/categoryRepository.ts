@@ -1,9 +1,13 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, orderBy, query,
+  getDocs, orderBy, query, where, writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Category } from "./types";
+
+function productsCol(shopId: string) {
+  return collection(db, "shops", shopId, "products");
+}
 
 function categoriesCol(shopId: string) {
   return collection(db, "shops", shopId, "categories");
@@ -26,4 +30,17 @@ export async function updateCategory(shopId: string, id: string, name: string): 
 
 export async function deleteCategory(shopId: string, id: string): Promise<void> {
   await deleteDoc(doc(categoriesCol(shopId), id));
+}
+
+export async function isCategoryInUse(shopId: string, categoryName: string): Promise<boolean> {
+  const snap = await getDocs(query(productsCol(shopId), where("category", "==", categoryName)));
+  return !snap.empty;
+}
+
+export async function renameCategoryInProducts(shopId: string, oldName: string, newName: string): Promise<void> {
+  const snap = await getDocs(query(productsCol(shopId), where("category", "==", oldName)));
+  if (snap.empty) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.update(d.ref, { category: newName }));
+  await batch.commit();
 }

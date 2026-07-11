@@ -7,11 +7,10 @@ import {
 import { addOutline, trashOutline, chevronDownOutline, checkmarkOutline, closeOutline, createOutline } from "ionicons/icons";
 import type { Product, ProductVariant, Category } from "../data/types";
 import { uploadProductImage } from "../data/imageRepository";
-import { addCategory, updateCategory, deleteCategory } from "../data/categoryRepository";
+import { addCategory, updateCategory, deleteCategory, isCategoryInUse, renameCategoryInProducts } from "../data/categoryRepository";
 import ImagePicker from "./ImagePicker";
+import NumInput from "./NumInput";
 import { fmtK } from "../utils/format";
-
-function digitsOnly(s: string) { return s.replace(/[^0-9]/g, ""); }
 
 interface Props {
   isOpen: boolean;
@@ -22,9 +21,8 @@ interface Props {
   onSave: (data: Omit<Product, "id">) => Promise<void>;
   onDismiss: () => void;
   onCategoryChanged?: (cats: Category[]) => void;
+  onCategoryRenamed?: (oldName: string, newName: string) => void;
 }
-
-interface VStr { s: string; ms: string; }
 
 interface FormErrors {
   name?: string;
@@ -38,18 +36,15 @@ interface FormErrors {
 
 const emptyVariant = (): ProductVariant => ({ size: "", color: "", stock: 0, minStock: 5 });
 
-const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isOwner = false, onSave, onDismiss, onCategoryChanged }) => {
+const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isOwner = false, onSave, onDismiss, onCategoryChanged, onCategoryRenamed }) => {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState<number>(0);
-  const [priceStr, setPriceStr] = useState("");
   const [costPrice, setCostPrice] = useState<number>(0);
-  const [costStr, setCostStr] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
-  const [vStr, setVStr] = useState<VStr[]>([{ s: "", ms: "5" }]);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [localCats, setLocalCats] = useState<Category[]>(categories);
@@ -67,18 +62,12 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
       setCategory(product?.category ?? "");
       const p = product?.price ?? 0;
       setPrice(p);
-      setPriceStr(p > 0 ? fmtK(p) : "");
       const cp = product?.costPrice ?? 0;
       setCostPrice(cp);
-      setCostStr(cp > 0 ? fmtK(cp) : "");
       setPhotoUrl(product?.photoUrl);
       setPendingDataUrl(null);
       const vArr = product?.variants.length ? [...product.variants] : [emptyVariant()];
       setVariants(vArr);
-      setVStr(vArr.map(v => ({
-        s: v.stock > 0 ? fmtK(v.stock) : "",
-        ms: v.minStock ? fmtK(v.minStock) : "5",
-      })));
       setErrors({});
     }
   }, [isOpen, product]);
@@ -89,12 +78,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
   function addVariant() {
     setVariants(p => [...p, emptyVariant()]);
-    setVStr(p => [...p, { s: "", ms: "5" }]);
   }
 
   function removeVariant(idx: number) {
     setVariants(p => p.filter((_, j) => j !== idx));
-    setVStr(p => p.filter((_, j) => j !== idx));
     setErrors(prev => {
       if (!prev.badVariants) return prev;
       const next = new Set(prev.badVariants);
@@ -110,8 +97,11 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   async function handleCreateCategory(catName: string) {
     if (!shopId || !catName.trim()) return;
     const trimmed = catName.trim();
-    const exists = localCats.some((c) => c.name.toLowerCase() === trimmed.toLowerCase());
-    if (exists) { setCategory(trimmed); return; }
+    const match = localCats.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (match) {
+      setCatError(`ໝວດໝູ່ "${match.name}" ມີຢູ່ແລ້ວ — ກະລຸນາໃຊ້ຊື່ອື່ນ`);
+      return;
+    }
     try {
       const id = await addCategory(shopId, trimmed);
       const newCat: Category = { id, name: trimmed };
@@ -127,13 +117,22 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   async function handleEditCategory(data: Record<string, string>) {
     const catName = (data[0] ?? "").trim();
     if (!catName || !editCatTarget || !shopId) return;
+    const oldName = editCatTarget.name;
+    const duplicate = localCats.find((c) => c.id !== editCatTarget.id && c.name.toLowerCase() === catName.toLowerCase());
+    if (duplicate) {
+      setCatError(`ໝວດໝູ່ "${duplicate.name}" ມີຢູ່ແລ້ວ — ກະລຸນາໃຊ້ຊື່ອື່ນ`);
+      setEditCatTarget(null);
+      return;
+    }
     try {
       await updateCategory(shopId, editCatTarget.id, catName);
+      await renameCategoryInProducts(shopId, oldName, catName);
       const next = localCats.map((c) => c.id === editCatTarget.id ? { ...c, name: catName } : c);
       setLocalCats(next);
-      if (category === editCatTarget.name) setCategory(catName);
+      if (category === oldName) setCategory(catName);
       setEditCatTarget(null);
       onCategoryChanged?.(next);
+      onCategoryRenamed?.(oldName, catName);
     } catch {
       setCatError("ແກ້ໄຂໝວດໝູ່ບໍ່ສຳເລັດ — ລອງໃໝ່");
       setEditCatTarget(null);
@@ -143,6 +142,12 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   async function handleDeleteCategory() {
     if (!deleteCatTarget || !shopId) return;
     try {
+      const inUse = await isCategoryInUse(shopId, deleteCatTarget.name);
+      if (inUse) {
+        setCatError(`ບໍ່ສາມາດລຶບ "${deleteCatTarget.name}" ເພາະມີສິນຄ້າທີ່ໃຊ້ໝວດນີ້ຢູ່`);
+        setDeleteCatTarget(null);
+        return;
+      }
       await deleteCategory(shopId, deleteCatTarget.id);
       const next = localCats.filter((c) => c.id !== deleteCatTarget.id);
       setLocalCats(next);
@@ -296,19 +301,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
             <IonLabel position="stacked" color={errors.price ? "danger" : undefined}>
               ລາຄາຂາຍ (ກີບ) *
             </IonLabel>
-            <input
-              type="text" inputMode="numeric"
-              value={priceStr}
-              onChange={(e) => {
-                const raw = digitsOnly(e.target.value);
-                const n = parseInt(raw) || 0;
-                setPrice(n);
-                setPriceStr(raw);
-                clearFieldError("price");
-                clearFieldError("priceWarn");
-              }}
-              onBlur={() => setPriceStr(price > 0 ? fmtK(price) : "")}
-              placeholder="ເຊັ່ນ: 150000"
+            <NumInput
+              value={price}
+              onChange={(n) => { setPrice(n); clearFieldError("price"); clearFieldError("priceWarn"); }}
+              placeholder="ເຊັ່ນ: 150.000"
               style={{ ...inputBase, borderBottom: `2px solid ${errors.price ? "#dc2626" : "transparent"}` }}
             />
           </IonItem>
@@ -318,19 +314,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
             <IonLabel position="stacked" color={errors.cost ? "danger" : undefined}>
               ລາຄາຕົ້ນທຶນ (ກີບ) *
             </IonLabel>
-            <input
-              type="text" inputMode="numeric"
-              value={costStr}
-              onChange={(e) => {
-                const raw = digitsOnly(e.target.value);
-                const n = parseInt(raw) || 0;
-                setCostPrice(n);
-                setCostStr(raw);
-                clearFieldError("cost");
-                clearFieldError("priceWarn");
-              }}
-              onBlur={() => setCostStr(costPrice > 0 ? fmtK(costPrice) : "")}
-              placeholder="ເຊັ່ນ: 80000"
+            <NumInput
+              value={costPrice}
+              onChange={(n) => { setCostPrice(n); clearFieldError("cost"); clearFieldError("priceWarn"); }}
+              placeholder="ເຊັ່ນ: 80.000"
               style={{ ...inputBase, borderBottom: `2px solid ${errors.cost ? "#dc2626" : "transparent"}` }}
             />
           </IonItem>
@@ -405,34 +392,16 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                     "--highlight-color-focused": missColor ? "#dc2626" : undefined,
                   }}
                 />
-                <input
-                  type="text" inputMode="numeric"
+                <NumInput
+                  value={v.stock}
+                  onChange={(n) => updateVariant(i, "stock", n)}
                   placeholder="0"
-                  value={vStr[i]?.s ?? ""}
-                  onChange={(e) => {
-                    const raw = digitsOnly(e.target.value);
-                    updateVariant(i, "stock", parseInt(raw) || 0);
-                    setVStr(prev => prev.map((vs, j) => j === i ? { ...vs, s: raw } : vs));
-                  }}
-                  onBlur={() => {
-                    const n = variants[i]?.stock ?? 0;
-                    setVStr(prev => prev.map((vs, j) => j === i ? { ...vs, s: n > 0 ? fmtK(n) : "" } : vs));
-                  }}
                   style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
                 />
-                <input
-                  type="text" inputMode="numeric"
+                <NumInput
+                  value={v.minStock ?? 5}
+                  onChange={(n) => updateVariant(i, "minStock", Math.max(1, n || 1))}
                   placeholder="5"
-                  value={vStr[i]?.ms ?? ""}
-                  onChange={(e) => {
-                    const raw = digitsOnly(e.target.value);
-                    updateVariant(i, "minStock", Math.max(1, parseInt(raw) || 1));
-                    setVStr(prev => prev.map((vs, j) => j === i ? { ...vs, ms: raw } : vs));
-                  }}
-                  onBlur={() => {
-                    const n = variants[i]?.minStock ?? 5;
-                    setVStr(prev => prev.map((vs, j) => j === i ? { ...vs, ms: fmtK(n) } : vs));
-                  }}
                   style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
                 />
                 <IonButton fill="clear" color="danger" onClick={() => removeVariant(i)}

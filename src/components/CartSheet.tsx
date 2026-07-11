@@ -19,6 +19,7 @@ import { trashOutline, addOutline, removeOutline, createOutline } from "ionicons
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { fmtK } from "../utils/format";
+import NumInput from "./NumInput";
 import type { SaleItem } from "../data/types";
 
 interface Props {
@@ -31,6 +32,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
   const { items, total, setQty, setPrice, removeItem, itemKey } = useCart();
   const { permissions } = useAuth();
   const [priceEditItem, setPriceEditItem] = useState<SaleItem | null>(null);
+  const [editPrice, setEditPrice] = useState(0);
   const [pendingPrice, setPendingPrice] = useState<{ key: string; price: number } | null>(null);
 
   return (
@@ -81,7 +83,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         <IonButton
                           fill="clear"
                           size="small"
-                          onClick={() => setPriceEditItem(item)}
+                          onClick={() => { setPriceEditItem(item); setEditPrice(item.unitPrice); }}
                           style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
                         >
                           <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 15 }} />
@@ -155,36 +157,70 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
         )}
       </IonModal>
 
-      <IonAlert
+      <IonModal
         isOpen={!!priceEditItem}
-        header="ແກ້ໄຂລາຄາ"
-        message={priceEditItem ? `${priceEditItem.productName} (${priceEditItem.variant.size}/${priceEditItem.variant.color})` : ""}
-        inputs={[{
-          type: "number",
-          placeholder: "ລາຄາໃໝ່",
-          value: priceEditItem?.unitPrice,
-          min: 1,
-        }]}
-        buttons={[
-          { text: "ຍົກເລີກ", role: "cancel", handler: () => setPriceEditItem(null) },
-          {
-            text: "ຕົກລົງ",
-            handler: (data: Record<string, string>) => {
-              const newPrice = Number(data[0]);
-              if (newPrice > 0 && priceEditItem) {
-                const costPrice = priceEditItem.costPrice ?? 0;
-                if (costPrice > 0 && newPrice < costPrice) {
-                  setPendingPrice({ key: itemKey(priceEditItem), price: newPrice });
-                } else {
-                  setPrice(itemKey(priceEditItem), newPrice);
-                }
-              }
-              setPriceEditItem(null);
-            },
-          },
-        ]}
         onDidDismiss={() => setPriceEditItem(null)}
-      />
+        initialBreakpoint={1}
+        breakpoints={[0, 1]}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle style={{ fontSize: "1rem" }}>ແກ້ໄຂລາຄາ</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setPriceEditItem(null)}>ຍົກເລີກ</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: "20px 20px 16px" }}>
+            <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>
+              {priceEditItem?.productName}
+            </p>
+            <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "#78716c" }}>
+              {priceEditItem?.isBundle
+                ? "ຊຸດ"
+                : `${priceEditItem?.variant.size} / ${priceEditItem?.variant.color}`}
+              {" · "}ລາຄາເດີມ ₭{fmtK(priceEditItem?.unitPrice ?? 0)}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "#57534e" }}>
+              ລາຄາໃໝ່ (ກີບ)
+            </p>
+            <NumInput
+              value={editPrice}
+              onChange={setEditPrice}
+              placeholder="ລາຄາໃໝ່"
+              style={{
+                width: "100%", padding: "14px 16px", fontSize: "1.2rem", fontWeight: 700,
+                border: "1.5px solid #c8c8c8", borderRadius: 12, outline: "none",
+                background: "var(--ion-item-background, #fff)",
+                color: "var(--ion-text-color, #1c1917)",
+              }}
+            />
+          </div>
+        </IonContent>
+        <IonFooter>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+            <IonButton
+              expand="block"
+              disabled={editPrice <= 0}
+              onClick={() => {
+                if (editPrice > 0 && priceEditItem) {
+                  const costPrice = priceEditItem.costPrice ?? 0;
+                  if (costPrice > 0 && editPrice < costPrice) {
+                    setPendingPrice({ key: itemKey(priceEditItem), price: editPrice });
+                  } else {
+                    setPrice(itemKey(priceEditItem), editPrice);
+                  }
+                }
+                setPriceEditItem(null);
+              }}
+              style={{ minHeight: 52, "--border-radius": "14px" }}
+            >
+              ຢືນຢັນ
+            </IonButton>
+          </div>
+        </IonFooter>
+      </IonModal>
 
       <IonAlert
         isOpen={!!pendingPrice}

@@ -20,7 +20,7 @@ import {
   IonButtons,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { cartOutline, checkmarkOutline, closeOutline } from "ionicons/icons";
+import { cartOutline, checkmarkOutline } from "ionicons/icons";
 import { IonMenuButton } from "@ionic/react";
 import { fmtK } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
@@ -455,17 +455,17 @@ const Sell: React.FC = () => {
       <IonModal
         isOpen={!!bundlePickerTarget}
         onDidDismiss={() => setBundlePickerTarget(null)}
+        initialBreakpoint={1}
+        breakpoints={[0, 1]}
       >
-        <IonToolbar style={{ "--background": "var(--ion-item-background, #fff)", paddingTop: 8 }}>
-          <div slot="start" style={{ paddingLeft: 16, fontWeight: 700, fontSize: "1rem" }}>
-            🎁 {bundlePickerTarget?.name}
-          </div>
-          <IonButtons slot="end">
-            <IonButton onClick={() => setBundlePickerTarget(null)}>
-              <IonIcon slot="icon-only" icon={closeOutline} />
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle style={{ fontSize: "1rem" }}>🎁 {bundlePickerTarget?.name}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setBundlePickerTarget(null)}>ປິດ</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
 
         <IonContent>
           <div style={{ padding: "8px 16px 24px" }}>

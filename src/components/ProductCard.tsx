@@ -5,7 +5,7 @@ import {
   IonIcon,
   IonImg,
 } from "@ionic/react";
-import { createOutline, trashOutline } from "ionicons/icons";
+import { createOutline, trashOutline, addCircleOutline } from "ionicons/icons";
 import type { Product } from "../data/types";
 import { fmtK } from "../utils/format";
 
@@ -16,9 +16,10 @@ interface Props {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDetail: (product: Product) => void;
+  onRestock: (product: Product) => void;
 }
 
-const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onDelete, onDetail }) => {
+const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onDelete, onDetail, onRestock }) => {
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   const outOfStock = totalStock === 0;
 
@@ -101,6 +102,10 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
 
           {isAdmin && (
             <div style={{ display: "flex", gap: 4 }}>
+              <IonButton fill="clear" size="small" onClick={() => onRestock(product)}
+                style={{ minHeight: 36, minWidth: 36, "--color": "#16a34a" }}>
+                <IonIcon slot="icon-only" icon={addCircleOutline} />
+              </IonButton>
               <IonButton fill="clear" size="small" onClick={() => onEdit(product)}
                 style={{ minHeight: 36, minWidth: 36, "--color": "#e07b39" }}>
                 <IonIcon slot="icon-only" icon={createOutline} />

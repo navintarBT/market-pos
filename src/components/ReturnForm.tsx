@@ -236,7 +236,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
             }}
           >
             {p.photoUrl
-              ? <img src={p.photoUrl} alt={p.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+              ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
               : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
             }
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -323,7 +323,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                 <div style={{ padding: "16px 16px 32px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                     {rProduct.photoUrl
-                      ? <img src={rProduct.photoUrl} alt={rProduct.name} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
+                      ? <img src={rProduct.photoUrl} alt={rProduct.name} loading="lazy" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
                       : <div style={{ width: 48, height: 48, borderRadius: 12, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>👕</div>
                     }
                     <div>
@@ -355,7 +355,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                 <div style={{ padding: "16px 16px 32px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                     {tProduct.photoUrl
-                      ? <img src={tProduct.photoUrl} alt={tProduct.name} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
+                      ? <img src={tProduct.photoUrl} alt={tProduct.name} loading="lazy" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
                       : <div style={{ width: 48, height: 48, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>📦</div>
                     }
                     <div>

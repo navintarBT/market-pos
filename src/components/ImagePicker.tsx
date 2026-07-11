@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { IonButton, IonIcon, IonSpinner } from "@ionic/react";
 import { cameraOutline, trashOutline } from "ionicons/icons";
 
-function compressImage(dataUrl: string, maxWidth = 900, quality = 0.82): Promise<string> {
+function compressImage(dataUrl: string, maxWidth = 600, quality = 0.78): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {

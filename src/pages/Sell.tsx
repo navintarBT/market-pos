@@ -327,7 +327,7 @@ const Sell: React.FC = () => {
                         >
                           <div style={{ fontSize: 38, marginBottom: 6, lineHeight: 1 }}>
                             {p.photoUrl
-                              ? <img src={p.photoUrl} alt={p.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                              ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
                               : "👕"
                             }
                           </div>
@@ -386,7 +386,7 @@ const Sell: React.FC = () => {
                         >
                           <div style={{ fontSize: 34, marginBottom: 6, lineHeight: 1 }}>
                             {b.photoUrl
-                              ? <img src={b.photoUrl} alt={b.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                              ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
                               : "🎁"
                             }
                           </div>

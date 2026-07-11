@@ -74,7 +74,6 @@ const Expenses: React.FC = () => {
     } else if (addOpen) {
       setFormDesc("");
       setFormAmount(0);
-      setFormAmountStr("");
       setFormCategory("general");
     }
   }, [addOpen, editTarget]);

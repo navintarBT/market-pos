@@ -11,7 +11,8 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { fmtK } from "../utils/format";
-import type { Expense, Income } from "../data/types";
+import type { Expense, Income, ExpenseCategory } from "../data/types";
+import NumInput from "../components/NumInput";
 
 function todayStr() {
   const d = new Date();
@@ -72,10 +73,11 @@ const Finance: React.FC = () => {
   const [expDeleteError, setExpDeleteError] = useState<string | null>(null);
   const [expDesc, setExpDesc] = useState("");
   const [expAmount, setExpAmount] = useState(0);
-  const [expAmountStr, setExpAmountStr] = useState("");
+  const [expCategory, setExpCategory] = useState<ExpenseCategory>("capital");
   const [expPayment, setExpPayment] = useState<"cash" | "transfer">("cash");
   const [expBusy, setExpBusy] = useState(false);
   const [expDeleting, setExpDeleting] = useState(false);
+  const [expCatFilter, setExpCatFilter] = useState<ExpenseCategory | "all">("all");
 
   // Income state
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -86,7 +88,6 @@ const Finance: React.FC = () => {
   const [incDeleteError, setIncDeleteError] = useState<string | null>(null);
   const [incDesc, setIncDesc] = useState("");
   const [incAmount, setIncAmount] = useState(0);
-  const [incAmountStr, setIncAmountStr] = useState("");
   const [incPayment, setIncPayment] = useState<"cash" | "transfer">("cash");
   const [incBusy, setIncBusy] = useState(false);
   const [incDeleting, setIncDeleting] = useState(false);
@@ -133,7 +134,7 @@ const Finance: React.FC = () => {
     setExpEditTarget(null);
     setExpDesc("");
     setExpAmount(0);
-    setExpAmountStr("");
+    setExpCategory("capital");
     setExpPayment("cash");
   }
 
@@ -141,7 +142,7 @@ const Finance: React.FC = () => {
     setExpEditTarget(e);
     setExpDesc(e.description);
     setExpAmount(e.amount);
-    setExpAmountStr(fmtK(e.amount));
+    setExpCategory((e.category as ExpenseCategory) ?? "capital");
     setExpPayment(e.paymentType ?? "cash");
     setExpModalOpen(true);
   }
@@ -151,7 +152,7 @@ const Finance: React.FC = () => {
     setExpBusy(true);
     try {
       if (expEditTarget) {
-        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, "general", expPayment);
+        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment);
         setExpenses((prev) =>
           prev.map((e) =>
             e.id === expEditTarget.id
@@ -160,13 +161,13 @@ const Finance: React.FC = () => {
           )
         );
       } else {
-        const id = await addExpense(shopId, expDesc.trim(), expAmount, "general", expPayment);
+        const id = await addExpense(shopId, expDesc.trim(), expAmount, expCategory, expPayment);
         const newItem: Expense = {
           id,
           description: expDesc.trim(),
           amount: expAmount,
           paymentType: expPayment,
-          category: "general",
+          category: expCategory,
           createdAt: new Date(),
         };
         setExpenses((prev) => [newItem, ...prev]);
@@ -199,7 +200,6 @@ const Finance: React.FC = () => {
     setIncEditTarget(null);
     setIncDesc("");
     setIncAmount(0);
-    setIncAmountStr("");
     setIncPayment("cash");
   }
 
@@ -207,7 +207,6 @@ const Finance: React.FC = () => {
     setIncEditTarget(i);
     setIncDesc(i.description);
     setIncAmount(i.amount);
-    setIncAmountStr(fmtK(i.amount));
     setIncPayment(i.paymentType);
     setIncModalOpen(true);
   }
@@ -277,6 +276,9 @@ const Finance: React.FC = () => {
 
   const isExpTab = activeTab === "expense";
   const loading = isExpTab ? expLoading : incLoading;
+  const visibleExpenses = expCatFilter === "all"
+    ? expenses
+    : expenses.filter((e) => e.category === expCatFilter);
 
   return (
     <IonPage>
@@ -412,19 +414,43 @@ const Finance: React.FC = () => {
             </div>
           </div>
 
+          {/* Category filter chips — expense tab only */}
+          {isExpTab && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "nowrap", overflowX: "auto", paddingBottom: 2 }}>
+              {([
+                { v: "all" as const, label: "ທັງໝົດ" },
+                { v: "capital" as const, label: "🏪 ທຸລະກິດ" },
+                { v: "general" as const, label: "👤 ສ່ວນຕົວ" },
+              ] as const).map(({ v, label }) => (
+                <button
+                  key={v}
+                  onClick={() => setExpCatFilter(v)}
+                  style={{
+                    flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
+                    background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
+                    color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, #78716c)",
+                    fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* List */}
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
               <IonSpinner name="crescent" color="primary" />
             </div>
           ) : isExpTab ? (
-            expenses.length === 0 ? (
+            visibleExpenses.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
                 <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
               </div>
             ) : (
-              expenses.map((item) => {
+              visibleExpenses.map((item) => {
                 const timeStr = item.createdAt.toLocaleTimeString("lo-LA", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -479,18 +505,21 @@ const Finance: React.FC = () => {
                       >
                         ₭{fmtK(item.amount)}
                       </span>
-                      <span
-                        style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 700,
-                          padding: "2px 8px",
-                          background: "#f5f0eb",
-                          borderRadius: 20,
-                          color: "#78716c",
-                        }}
-                      >
-                        {(item.paymentType ?? "cash") === "cash" ? "💵 ເງິນສົດ" : "📱 ໂອນ"}
-                      </span>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <span style={{
+                          fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
+                          borderRadius: 20, color: "#fff",
+                          background: item.category === "capital" ? "#1d4ed8" : "#c2410c",
+                        }}>
+                          {item.category === "capital" ? "ທຸລະກິດ" : "ສ່ວນຕົວ"}
+                        </span>
+                        <span style={{
+                          fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
+                          background: "#f5f0eb", borderRadius: 20, color: "#78716c",
+                        }}>
+                          {(item.paymentType ?? "cash") === "cash" ? "💵 ສົດ" : "📱 ໂອນ"}
+                        </span>
+                      </div>
                     </div>
                     {permissions.canAddExpenses && (
                       <div
@@ -711,21 +740,12 @@ const Finance: React.FC = () => {
               />
             </div>
             <div>
-              <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
-              >
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
                 ຈຳນວນ (₭)
               </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={expAmountStr}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9]/g, "");
-                  const n = raw === "" ? 0 : parseInt(raw, 10);
-                  setExpAmount(n);
-                  setExpAmountStr(raw === "" ? "" : fmtK(n));
-                }}
+              <NumInput
+                value={expAmount}
+                onChange={setExpAmount}
                 placeholder="0"
                 style={{
                   width: "100%",
@@ -742,9 +762,32 @@ const Finance: React.FC = () => {
               />
             </div>
             <div>
-              <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
-              >
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
+                ປະເພດລາຍຈ່າຍ
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([
+                  { v: "capital" as const, label: "🏪 ທຸລະກິດ", active: "#1d4ed8" },
+                  { v: "general" as const, label: "👤 ສ່ວນຕົວ", active: "#c2410c" },
+                ] as const).map(({ v, label, active }) => (
+                  <button
+                    key={v}
+                    onClick={() => setExpCategory(v)}
+                    style={{
+                      flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
+                      background: expCategory === v ? active : "#f5f0eb",
+                      color: expCategory === v ? "#fff" : "#57534e",
+                      fontWeight: 700, fontSize: "0.88rem", cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
                 ປະເພດການຈ່າຍ
               </p>
               <PaymentToggle value={expPayment} onChange={setExpPayment} />
@@ -834,16 +877,9 @@ const Finance: React.FC = () => {
               >
                 ຈຳນວນ (₭)
               </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={incAmountStr}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9]/g, "");
-                  const n = raw === "" ? 0 : parseInt(raw, 10);
-                  setIncAmount(n);
-                  setIncAmountStr(raw === "" ? "" : fmtK(n));
-                }}
+              <NumInput
+                value={incAmount}
+                onChange={setIncAmount}
                 placeholder="0"
                 style={{
                   width: "100%",

@@ -15,8 +15,8 @@ import { fmtK } from "../utils/format";
 import NumInput from "../components/NumInput";
 
 const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
-  capital: "ທຶນທຸລະກິດ",
-  general: "ທົ່ວໄປ",
+  capital: "ທຸລະກິດ",
+  general: "ສ່ວນຕົວ",
 };
 
 function formatDateTime(date: Date) {

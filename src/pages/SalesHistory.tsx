@@ -6,9 +6,9 @@ import {
   IonButtons, IonMenuButton, IonModal, IonButton, IonIcon,
   IonSegment, IonSegmentButton, useIonViewWillEnter,
 } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline } from "ionicons/icons";
+import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import { getSalesByDateRange, deleteSale } from "../data/saleRepository";
+import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
 import type { Sale, ShopUser, Expense } from "../data/types";
@@ -74,6 +74,9 @@ const SalesHistory: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null);
+  const [removingItem, setRemovingItem] = useState(false);
+  const [expandedItemIdx, setExpandedItemIdx] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -98,6 +101,29 @@ const SalesHistory: React.FC = () => {
   async function handleRefresh(e: CustomEvent) {
     await load();
     (e.target as HTMLIonRefresherElement).complete();
+  }
+
+  async function handleRemoveItem(idx: number, qty: number) {
+    if (!shopId || !selectedSale) return;
+    setRemoveItemIdx(null);
+    setRemovingItem(true);
+    const origQty = selectedSale.items[idx]?.quantity ?? 0;
+    try {
+      const updated = await removeItemFromSale(shopId, selectedSale, idx, qty);
+      if (updated === null) {
+        setSales((prev) => prev.filter((s) => s.id !== selectedSale.id));
+        setSelectedSale(null);
+        setExpandedItemIdx(null);
+      } else {
+        setSales((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        setSelectedSale(updated);
+        if (expandedItemIdx === idx && origQty - qty <= 1) setExpandedItemIdx(null);
+      }
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setRemovingItem(false);
+    }
   }
 
   async function handleDeleteSale() {
@@ -615,7 +641,7 @@ const SalesHistory: React.FC = () => {
       {/* Sale detail sheet */}
       <IonModal
         isOpen={!!selectedSale}
-        onDidDismiss={() => setSelectedSale(null)}
+        onDidDismiss={() => { setSelectedSale(null); setExpandedItemIdx(null); }}
         initialBreakpoint={0.85}
         breakpoints={[0, 0.85, 1]}
       >
@@ -654,14 +680,18 @@ const SalesHistory: React.FC = () => {
               ລາຍການສິນຄ້າ
             </p>
             <div style={{ borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
-              {selectedSale.items.map((item, idx) => {
+              {selectedSale.items.flatMap((item, idx) => {
                 const discount = ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
                 const subtotal = item.unitPrice * item.quantity;
                 const isLoss = item.costPrice != null && item.unitPrice < item.costPrice;
-                return (
-                  <div key={idx} style={{
+                const isExpanded = expandedItemIdx === idx;
+                const canExpand = item.quantity > 1;
+                const isLast = idx === selectedSale.items.length - 1;
+
+                const mainRow = (
+                  <div key={`item-${idx}`} style={{
                     padding: "12px 16px",
-                    borderBottom: idx < selectedSale.items.length - 1 ? "1px solid #f5f5f4" : "none",
+                    borderBottom: !isExpanded && !isLast ? "1px solid #f5f5f4" : "none",
                     background: isLoss ? "#fff9f9" : "#ffffff",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -683,8 +713,25 @@ const SalesHistory: React.FC = () => {
                         <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
                           {item.variant.size} · {item.variant.color}
                         </p>
-                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#78716c" }}>
-                          {item.quantity} × ₭{fmtK(item.unitPrice)}
+                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#78716c", display: "flex", alignItems: "center", gap: 4 }}>
+                          {canExpand ? (
+                            <button
+                              onClick={() => setExpandedItemIdx(isExpanded ? null : idx)}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 3,
+                                background: "var(--ion-color-step-100, #f5f0eb)",
+                                border: "none", borderRadius: 6, padding: "2px 7px",
+                                fontWeight: 700, fontSize: "0.82rem",
+                                color: "var(--ion-text-color, #44403c)", cursor: "pointer",
+                              }}
+                            >
+                              {item.quantity}
+                              <IonIcon icon={isExpanded ? chevronUpOutline : chevronDownOutline} style={{ fontSize: 11 }} />
+                            </button>
+                          ) : (
+                            <span>{item.quantity}</span>
+                          )}
+                          <span>× ₭{fmtK(item.unitPrice)}</span>
                         </p>
                         {discount > 0 && (
                           <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#9333ea" }}>
@@ -692,12 +739,61 @@ const SalesHistory: React.FC = () => {
                           </p>
                         )}
                       </div>
-                      <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
-                        ₭{fmtK(subtotal)}
-                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
+                          ₭{fmtK(subtotal)}
+                        </p>
+                        {!isExpanded && permissions.canDeleteSales && (
+                          <button
+                            onClick={() => setRemoveItemIdx(idx)}
+                            disabled={removingItem}
+                            style={{
+                              background: "none", border: "none", padding: "2px 4px",
+                              cursor: removingItem ? "default" : "pointer",
+                              color: "#d1d5db", lineHeight: 0,
+                            }}
+                          >
+                            <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
+
+                if (!isExpanded) return [mainRow];
+
+                const subRows = Array.from({ length: item.quantity }, (_, i) => (
+                  <div
+                    key={`item-${idx}-sub-${i}`}
+                    style={{
+                      padding: "8px 16px 8px 28px",
+                      background: "var(--ion-color-step-50, #fafaf9)",
+                      borderBottom: i < item.quantity - 1 ? "1px solid #f0f0ef"
+                        : !isLast ? "1px solid #f5f5f4" : "none",
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
+                      ລາຍ {i + 1} · ₭{fmtK(item.unitPrice)}
+                    </span>
+                    {permissions.canDeleteSales && (
+                      <button
+                        onClick={() => handleRemoveItem(idx, 1)}
+                        disabled={removingItem}
+                        style={{
+                          background: "none", border: "none", padding: "6px 4px",
+                          cursor: removingItem ? "default" : "pointer",
+                          color: "#d1d5db", lineHeight: 0,
+                        }}
+                      >
+                        <IonIcon icon={trashOutline} style={{ fontSize: 14, display: "block" }} />
+                      </button>
+                    )}
+                  </div>
+                ));
+
+                return [mainRow, ...subRows];
               })}
             </div>
 
@@ -769,6 +865,32 @@ const SalesHistory: React.FC = () => {
           { text: "ລຶບ", role: "destructive", handler: handleDeleteSale },
         ]}
         onDidDismiss={() => setDeleteTarget(null)}
+      />
+
+      <IonAlert
+        isOpen={removeItemIdx !== null}
+        header="ລຶບລາຍການ"
+        message={
+          removeItemIdx !== null && selectedSale
+            ? `${selectedSale.items[removeItemIdx].productName} ×${selectedSale.items[removeItemIdx].quantity}`
+            : ""
+        }
+        buttons={
+          removeItemIdx !== null && selectedSale
+            ? [
+                { text: "ຍົກເລີກ", role: "cancel" as const },
+                ...(selectedSale.items[removeItemIdx].quantity > 1
+                  ? [{ text: "ຫຼຸດ 1 ຊິ້ນ", handler: () => handleRemoveItem(removeItemIdx!, 1) }]
+                  : []),
+                {
+                  text: selectedSale.items[removeItemIdx].quantity > 1 ? "ລຶບທັງໝົດ" : "ລຶບ",
+                  cssClass: "alert-button-confirm",
+                  handler: () => handleRemoveItem(removeItemIdx!, selectedSale!.items[removeItemIdx!].quantity),
+                },
+              ]
+            : []
+        }
+        onDidDismiss={() => setRemoveItemIdx(null)}
       />
     </IonPage>
   );

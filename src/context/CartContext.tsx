@@ -11,11 +11,13 @@ type CartAction =
   | { type: "ADD"; item: CartItem }
   | { type: "SET_QTY"; key: string; qty: number }
   | { type: "SET_PRICE"; key: string; price: number }
+  | { type: "SPLIT_PRICE"; key: string; price: number }
   | { type: "REMOVE"; key: string }
   | { type: "CLEAR" };
 
-function itemKey(item: Pick<CartItem, "productId" | "variant">) {
-  return `${item.productId}__${item.variant.size}__${item.variant.color}`;
+function itemKey(item: Pick<CartItem, "productId" | "variant" | "splitId">) {
+  const base = `${item.productId}__${item.variant.size}__${item.variant.color}`;
+  return item.splitId ? `${base}__${item.splitId}` : base;
 }
 
 function reducer(state: CartState, action: CartAction): CartState {
@@ -44,6 +46,21 @@ function reducer(state: CartState, action: CartAction): CartState {
           itemKey(i) === action.key ? { ...i, unitPrice: action.price } : i
         ),
       };
+    case "SPLIT_PRICE": {
+      const original = state.items.find((i) => itemKey(i) === action.key);
+      if (!original) return state;
+      if (original.quantity === 1) {
+        return { items: state.items.map((i) => itemKey(i) === action.key ? { ...i, unitPrice: action.price } : i) };
+      }
+      const splitId = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      const splitItem: CartItem = { ...original, quantity: 1, unitPrice: action.price, splitId };
+      return {
+        items: [
+          ...state.items.map((i) => itemKey(i) === action.key ? { ...i, quantity: i.quantity - 1 } : i),
+          splitItem,
+        ],
+      };
+    }
     case "REMOVE":
       return { items: state.items.filter((i) => itemKey(i) !== action.key) };
     case "CLEAR":
@@ -58,6 +75,7 @@ interface CartContextValue {
   addItem: (item: CartItem) => void;
   setQty: (key: string, qty: number) => void;
   setPrice: (key: string, price: number) => void;
+  splitPrice: (key: string, price: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
   itemKey: typeof itemKey;
@@ -95,6 +113,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addItem: (item) => dispatch({ type: "ADD", item }),
         setQty: (key, qty) => dispatch({ type: "SET_QTY", key, qty }),
         setPrice: (key, price) => dispatch({ type: "SET_PRICE", key, price }),
+        splitPrice: (key, price) => dispatch({ type: "SPLIT_PRICE", key, price }),
         removeItem: (key) => dispatch({ type: "REMOVE", key }),
         clear: () => dispatch({ type: "CLEAR" }),
         itemKey,

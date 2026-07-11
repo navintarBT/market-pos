@@ -60,6 +60,7 @@ export interface SaleItem {
   costPrice?: number;
   isBundle?: boolean;
   bundleItems?: BundleItem[];
+  splitId?: string;
 }
 
 export interface Category {

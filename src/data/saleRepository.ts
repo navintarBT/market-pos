@@ -216,6 +216,61 @@ export async function deleteSale(shopId: string, sale: Sale): Promise<void> {
   });
 }
 
+/** Removes qty units of one line item from a sale and restores that stock. Returns updated sale, or null if the whole sale was deleted. */
+export async function removeItemFromSale(
+  shopId: string,
+  sale: Sale,
+  itemIndex: number,
+  qtyToRemove: number
+): Promise<Sale | null> {
+  return runTransaction<Sale | null>(db, async (tx) => {
+    const item = sale.items[itemIndex];
+    const actual = Math.min(qtyToRemove, item.quantity);
+    const changes = buildStockChanges([{ ...item, quantity: actual }]);
+
+    const byProduct = new Map<string, StockChange[]>();
+    for (const ch of changes) {
+      const arr = byProduct.get(ch.productId) ?? [];
+      arr.push(ch);
+      byProduct.set(ch.productId, arr);
+    }
+
+    const snaps = new Map<string, any>();
+    for (const productId of byProduct.keys()) {
+      const ref = doc(productsCol(shopId), productId);
+      const snap = await tx.get(ref);
+      if (snap.exists()) snaps.set(productId, snap);
+    }
+
+    for (const [productId, productChanges] of byProduct) {
+      const snap = snaps.get(productId);
+      if (!snap) continue;
+      const ref = doc(productsCol(shopId), productId);
+      const variants: any[] = [...(snap.data().variants ?? [])];
+      for (const ch of productChanges) {
+        const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
+        if (idx !== -1) variants[idx] = { ...variants[idx], stock: variants[idx].stock + ch.qty };
+      }
+      tx.update(ref, { variants });
+    }
+
+    const newItems: SaleItem[] =
+      item.quantity <= actual
+        ? sale.items.filter((_, i) => i !== itemIndex)
+        : sale.items.map((it, i) => (i === itemIndex ? { ...it, quantity: it.quantity - actual } : it));
+
+    const saleRef = doc(salesCol(shopId), sale.id);
+    if (newItems.length === 0) {
+      tx.delete(saleRef);
+      return null;
+    }
+
+    const newTotal = newItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+    tx.update(saleRef, { items: newItems, total: newTotal });
+    return { ...sale, items: newItems, total: newTotal };
+  });
+}
+
 export async function getSalesToday(shopId: string): Promise<Sale[]> {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);

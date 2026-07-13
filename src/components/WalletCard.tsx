@@ -37,7 +37,7 @@ export default function WalletCard({ loading, cashBalance, transferBalance, codO
                 margin: "4px 0 0", fontSize: "1.05rem", fontWeight: 800,
                 color: warn ? "#fca5a5" : "#fff",
               }}>
-                ₭{fmtK(value)}
+                {fmtK(value)} ກີບ
               </p>
             </div>
           ))}

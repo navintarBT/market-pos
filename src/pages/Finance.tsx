@@ -461,7 +461,7 @@ const Finance: React.FC = () => {
                       color: "#fff",
                     }}
                   >
-                    ₭{fmtK(value)}
+                    {fmtK(value)} ກີບ
                   </p>
                 </div>
               ))}
@@ -557,7 +557,7 @@ const Finance: React.FC = () => {
                       <span
                         style={{ fontWeight: 800, color: "#ef4444", fontSize: "1rem" }}
                       >
-                        ₭{fmtK(item.amount)}
+                        {fmtK(item.amount)} ກີບ
                       </span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <span style={{
@@ -673,7 +673,7 @@ const Finance: React.FC = () => {
                     <span
                       style={{ fontWeight: 800, color: "#22c55e", fontSize: "1rem" }}
                     >
-                      ₭{fmtK(item.amount)}
+                      {fmtK(item.amount)} ກີບ
                     </span>
                     <span
                       style={{
@@ -795,7 +795,7 @@ const Finance: React.FC = () => {
             </div>
             <div>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
-                ຈຳນວນ (₭)
+                ຈຳນວນ (ກີບ)
               </p>
               <NumInput
                 value={expAmount}
@@ -929,7 +929,7 @@ const Finance: React.FC = () => {
               <p
                 style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
               >
-                ຈຳນວນ (₭)
+                ຈຳນວນ (ກີບ)
               </p>
               <NumInput
                 value={incAmount}

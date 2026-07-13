@@ -220,7 +220,7 @@ const Expenses: React.FC = () => {
                   {isToday ? "ລາຍຈ່າຍລວມມື້ນີ້" : "ລາຍຈ່າຍລວມ"}
                 </p>
                 <p style={{ margin: "6px 0 0", fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                  ₭{fmtK(total)}
+                  {fmtK(total)} ກີບ
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: "0.8rem", opacity: 0.8 }}>
                   {visibleExpenses.length} ລາຍການ
@@ -243,7 +243,7 @@ const Expenses: React.FC = () => {
                         </p>
                       </IonLabel>
                       <span slot="end" style={{ fontWeight: 700, color: "#dc2626", marginRight: 4 }}>
-                        ₭{fmtK(exp.amount)}
+                        {fmtK(exp.amount)} ກີບ
                       </span>
                       {permissions.canAddExpenses && (
                         <>
@@ -339,7 +339,7 @@ const Expenses: React.FC = () => {
       <IonAlert
         isOpen={!!deleteTarget}
         header="ລຶບລາຍຈ່າຍ"
-        message={`ຕ້ອງການລຶບ "${deleteTarget?.description}" ₭${fmtK(deleteTarget?.amount ?? 0)} ແມ່ນບໍ?`}
+        message={`ຕ້ອງການລຶບ "${deleteTarget?.description}" ${fmtK(deleteTarget?.amount ?? 0)} ກີບ ແມ່ນບໍ?`}
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel" },
           { text: "ລຶບ", role: "destructive", handler: handleDelete },

@@ -125,7 +125,7 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
               {[
                 { label: "ລາຍການ", value: String(records.length) },
                 { label: "ຈຳນວນລວມ", value: `${totalQty} ຊິ້ນ` },
-                { label: "ຕົ້ນທຶນລວມ", value: `₭${fmtK(totalCost)}` },
+                { label: "ຕົ້ນທຶນລວມ", value: `${fmtK(totalCost)} ກີບ` },
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: "0.68rem", color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{label}</p>
@@ -170,7 +170,7 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                         </p>
                         {r.costPrice > 0 && (
                           <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
-                            ຕົ້ນທຶນ ₭{fmtK(cost)}
+                            ຕົ້ນທຶນ {fmtK(cost)} ກີບ
                           </p>
                         )}
                         {r.paymentType && (

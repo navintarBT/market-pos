@@ -188,11 +188,11 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                     <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#1c1917" }}>{b.name}</p>
                     <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
                       <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
-                        ₭{fmtK(b.price)}
+                        {fmtK(b.price)} ກີບ
                       </span>
                       {cost > 0 && (
                         <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
-                          ກຳໄລ ₭{fmtK(b.price - cost)}
+                          ກຳໄລ {fmtK(b.price - cost)} ກີບ
                         </span>
                       )}
                     </div>
@@ -297,7 +297,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                   </p>
                   <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
                     {item.variantSize}{item.variantColor ? ` / ${item.variantColor}` : ""} · ×{item.quantity}
-                    {item.costPrice ? ` · ₭${fmtK(item.costPrice * item.quantity)}` : ""}
+                    {item.costPrice ? ` · ${fmtK(item.costPrice * item.quantity)} ກີບ` : ""}
                   </p>
                 </div>
                 <IonButton fill="clear" size="small" color="danger"
@@ -317,14 +317,14 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 600 }}>ຕົ້ນທຶນລວມ</span>
                   <span style={{ fontSize: "1rem", fontWeight: 800, color: "#92400e" }}>
-                    ₭{fmtK(bundleCost)}
+                    {fmtK(bundleCost)} ກີບ
                   </span>
                 </div>
                 {sellPrice > 0 && !priceBelowCost && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                     <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>ກຳໄລ</span>
                     <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#16a34a" }}>
-                      ₭{fmtK(profit)}
+                      {fmtK(profit)} ກີບ
                     </span>
                   </div>
                 )}
@@ -334,7 +334,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             {/* Selling price */}
             <div style={{ marginBottom: 4 }}>
               <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
-                ລາຄາຂາຍ (₭) *
+                ລາຄາຂາຍ (ກີບ) *
               </IonLabel>
               <NumInput
                 value={formPrice}
@@ -349,7 +349,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
               />
               {priceBelowCost && (
                 <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#dc2626", fontWeight: 600 }}>
-                  ⚠ ລາຄາຂາຍຕ່ຳກວ່າຕົ້ນທຶນ (₭{fmtK(bundleCost)})
+                  ⚠ ລາຄາຂາຍຕ່ຳກວ່າຕົ້ນທຶນ ({fmtK(bundleCost)} ກີບ)
                 </p>
               )}
             </div>
@@ -446,7 +446,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                         {p.name}
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
-                        {p.costPrice ? `ຕົ້ນທຶນ ₭${fmtK(p.costPrice)}` : "ບໍ່ມີຕົ້ນທຶນ"}
+                        {p.costPrice ? `ຕົ້ນທຶນ ${fmtK(p.costPrice)} ກີບ` : "ບໍ່ມີຕົ້ນທຶນ"}
                         {" · "}{p.variants.length} variant
                       </p>
                     </div>

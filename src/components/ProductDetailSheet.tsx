@@ -79,7 +79,7 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
             <div style={{ background: "#fff7ed", borderRadius: 12, padding: "12px 14px" }}>
               <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>ລາຄາຂາຍ</p>
               <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "#e07b39" }}>
-                ₭{fmtK(product.price)}
+                {fmtK(product.price)} ກີບ
               </p>
             </div>
             {hasCost && (
@@ -87,13 +87,13 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
                 <div style={{ background: "#fef3c7", borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>ຕົ້ນທຶນ</p>
                   <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "#92400e" }}>
-                    ₭{fmtK(product.costPrice ?? 0)}
+                    {fmtK(product.costPrice ?? 0)} ກີບ
                   </p>
                 </div>
                 <div style={{ background: "#f0fdf4", borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>ກຳໄລ</p>
                   <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "#16a34a" }}>
-                    ₭{fmtK(profit)}
+                    {fmtK(profit)} ກີບ
                   </p>
                 </div>
               </>

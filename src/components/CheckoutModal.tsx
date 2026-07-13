@@ -38,8 +38,8 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
       await recordSale(shopId, items, total, paymentType, user.uid, displayName);
       setSuccessMsg(
         paymentType === "cod"
-          ? `ບັນທຶກອອເດີ COD ແລ້ວ ₭${fmtK(total)} — ລໍຖ້າເກັບເງິນ`
-          : `ຮັບເງິນສຳເລັດ ₭${fmtK(total)}`
+          ? `ບັນທຶກອອເດີ COD ແລ້ວ ${fmtK(total)} ກີບ — ລໍຖ້າເກັບເງິນ`
+          : `ຮັບເງິນສຳເລັດ ${fmtK(total)} ກີບ`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
@@ -72,7 +72,7 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <p style={{ margin: 0, color: "var(--ion-color-medium)" }}>ຍອດທີ່ຕ້ອງຊຳລະ</p>
             <p style={{ margin: "8px 0 0", fontSize: "2.5rem", fontWeight: 700, color: "var(--ion-color-primary)" }}>
-              ₭{fmtK(total)}
+              {fmtK(total)} ກີບ
             </p>
           </div>
 

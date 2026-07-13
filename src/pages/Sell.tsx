@@ -150,7 +150,7 @@ const Sell: React.FC = () => {
           <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
             {count > 0 && (
               <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>
-                ₭{fmtK(total)}
+                {fmtK(total)} ກີບ
               </span>
             )}
             <IonButton fill="clear" onClick={() => setCartOpen(true)}
@@ -222,7 +222,7 @@ const Sell: React.FC = () => {
                 </span>
               </div>
               <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.98rem" }}>
-                ₭{fmtK(total)}
+                {fmtK(total)} ກີບ
               </span>
             </div>
             <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.88rem" }}>
@@ -337,7 +337,7 @@ const Sell: React.FC = () => {
                             {p.name}
                           </div>
                           <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
-                            ₭{fmtK(p.price)}
+                            {fmtK(p.price)} ກີບ
                           </div>
                           <div style={{
                             display: "inline-block", fontSize: "0.72rem", fontWeight: 600,
@@ -396,7 +396,7 @@ const Sell: React.FC = () => {
                             {b.name}
                           </div>
                           <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
-                            ₭{fmtK(b.price)}
+                            {fmtK(b.price)} ກີບ
                           </div>
                           <div style={{ fontSize: "0.68rem", color: "#78716c", lineHeight: 1.4 }}>
                             {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" + ")}
@@ -541,7 +541,7 @@ const Sell: React.FC = () => {
               onClick={confirmBundleToCart}
               style={{ minHeight: 52, "--border-radius": "14px" }}
             >
-              ເພີ່ມໃສ່ກະຕ່າ · ₭{fmtK(bundlePickerTarget?.price ?? 0)}
+              ເພີ່ມໃສ່ກະຕ່າ · {fmtK(bundlePickerTarget?.price ?? 0)} ກີບ
             </IonButton>
           </div>
         </IonFooter>

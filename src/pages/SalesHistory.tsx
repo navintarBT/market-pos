@@ -283,7 +283,7 @@ const SalesHistory: React.FC = () => {
                   }}>
                     <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
                     <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                      ₭{fmtK(selectedStaff.total)}
+                      {fmtK(selectedStaff.total)} ກີບ
                     </p>
                     <p style={{ margin: "3px 0 0", fontSize: "0.78rem", opacity: 0.8 }}>
                       {selectedStaff.count} ລາຍການ
@@ -331,7 +331,7 @@ const SalesHistory: React.FC = () => {
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
-                                ₭{fmtK(sale.total)}
+                                {fmtK(sale.total)} ກີບ
                               </div>
                               <div style={{
                                 fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
@@ -381,7 +381,7 @@ const SalesHistory: React.FC = () => {
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
                         <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#e07b39" }}>
-                          ₭{fmtK(row.total)}
+                          {fmtK(row.total)} ກີບ
                         </div>
                       </div>
                       <IonIcon icon={chevronForwardOutline} style={{ color: "#d6d3d1", flexShrink: 0 }} />
@@ -407,7 +407,7 @@ const SalesHistory: React.FC = () => {
                         </div>
                       </div>
                       <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#78716c" }}>
-                        ₭{fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))}
+                        {fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))} ກີບ
                       </div>
                     </div>
                   )}
@@ -424,7 +424,7 @@ const SalesHistory: React.FC = () => {
               }}>
                 <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
                 <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                  ₭{fmtK(totalRevenue)}
+                  {fmtK(totalRevenue)} ກີບ
                 </p>
                 <p style={{ margin: "3px 0 0", fontSize: "0.78rem", opacity: 0.8 }}>
                   {sales.length} ລາຍການ · {itemCount} ຊິ້ນ
@@ -434,15 +434,15 @@ const SalesHistory: React.FC = () => {
               <IonGrid style={{ padding: 0, marginBottom: 12 }}>
                 <IonRow>
                   <IonCol style={{ paddingLeft: 0, paddingRight: 4 }}>
-                    <StatCard label="ເງິນສົດ" value={`₭${fmtK(cashTotal)}`}
+                    <StatCard label="ເງິນສົດ" value={`${fmtK(cashTotal)} ກີບ`}
                       icon="💵" bg="#f0fdf4" color="#16a34a" />
                   </IonCol>
                   <IonCol style={{ paddingRight: 4, paddingLeft: 4 }}>
-                    <StatCard label="ໂອນ" value={`₭${fmtK(qrTotal)}`}
+                    <StatCard label="ໂອນ" value={`${fmtK(qrTotal)} ກີບ`}
                       icon="📱" bg="#eff6ff" color="#2563eb" />
                   </IonCol>
                   <IonCol style={{ paddingRight: 0, paddingLeft: 4 }}>
-                    <StatCard label="COD" value={`₭${fmtK(codTotal)}`}
+                    <StatCard label="COD" value={`${fmtK(codTotal)} ກີບ`}
                       icon="📦" bg="#fffbeb" color="#d97706" />
                   </IonCol>
                 </IonRow>
@@ -457,11 +457,11 @@ const SalesHistory: React.FC = () => {
                   <div>
                     <p style={{ margin: 0, fontSize: "0.72rem", color: "#78716c", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
                     <p style={{ margin: "4px 0 0", fontSize: "1.1rem", fontWeight: 800, color: "#9333ea" }}>
-                      −₭{fmtK(totalDiscount)}
+                      −{fmtK(totalDiscount)} ກີບ
                     </p>
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#a78bfa", textAlign: "right" }}>
-                    <div>ກ່ອນລົດ ₭{(fmtK(totalRevenue + totalDiscount))}</div>
+                    <div>ກ່ອນລົດ {(fmtK(totalRevenue + totalDiscount))} ກີບ</div>
                   </div>
                 </div>
               )}
@@ -475,7 +475,7 @@ const SalesHistory: React.FC = () => {
                       background: "#fef3c7", borderRadius: 12, padding: "11px 16px",
                     }}>
                       <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນລວມ</span>
-                      <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#92400e" }}>₭{fmtK(totalCost)}</span>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#92400e" }}>{fmtK(totalCost)} ກີບ</span>
                     </div>
 
                     {lossTotal > 0 ? (
@@ -485,14 +485,14 @@ const SalesHistory: React.FC = () => {
                           background: "#f0fdf4", borderRadius: 12, padding: "11px 16px",
                         }}>
                           <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>📊 ກຳໄລ (ກ່ອນຫັກຂາດທຶນ)</span>
-                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#16a34a" }}>₭{fmtK(grossProfit + lossTotal)}</span>
+                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(grossProfit + lossTotal)} ກີບ</span>
                         </div>
                         <div style={{
                           display: "flex", justifyContent: "space-between", alignItems: "center",
                           background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
                         }}>
                           <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>📉 ຂາດທຶນຈາກການຂາຍ</span>
-                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−₭{fmtK(lossTotal)}</span>
+                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−{fmtK(lossTotal)} ກີບ</span>
                         </div>
                       </>
                     ) : (
@@ -505,7 +505,7 @@ const SalesHistory: React.FC = () => {
                           📊 ກຳໄລຂັ້ນຕົ້ນ
                         </span>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800, color: grossProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                          ₭{fmtK(grossProfit)}
+                          {fmtK(grossProfit)} ກີບ
                         </span>
                       </div>
                     )}
@@ -516,7 +516,7 @@ const SalesHistory: React.FC = () => {
                         background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
                       }}>
                         <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>💸 ຫັກລາຍຈ່າຍ</span>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−₭{fmtK(totalExpenses)}</span>
+                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−{fmtK(totalExpenses)} ກີບ</span>
                       </div>
                     )}
 
@@ -530,7 +530,7 @@ const SalesHistory: React.FC = () => {
                       <div>
                         <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
                         <p style={{ margin: "3px 0 0", fontSize: "1.4rem", fontWeight: 800 }}>
-                          ₭{fmtK(netProfit)}
+                          {fmtK(netProfit)} ກີບ
                         </p>
                       </div>
                       <span style={{ fontSize: 32 }}>{netProfit >= 0 ? "📈" : "📉"}</span>
@@ -620,7 +620,7 @@ const SalesHistory: React.FC = () => {
                         <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
                           <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
-                              ₭{fmtK(sale.total)}
+                              {fmtK(sale.total)} ກີບ
                             </div>
                             <div style={{
                               fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
@@ -761,17 +761,17 @@ const SalesHistory: React.FC = () => {
                           ) : (
                             <span>{item.quantity}</span>
                           )}
-                          <span>× ₭{fmtK(item.unitPrice)}</span>
+                          <span>× {fmtK(item.unitPrice)} ກີບ</span>
                         </p>
                         {discount > 0 && (
                           <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#9333ea" }}>
-                            ສ່ວນຫຼຸດ −₭{fmtK(discount)}
+                            ສ່ວນຫຼຸດ −{fmtK(discount)} ກີບ
                           </p>
                         )}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
                         <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
-                          ₭{fmtK(subtotal)}
+                          {fmtK(subtotal)} ກີບ
                         </p>
                         {!isExpanded && permissions.canDeleteSales && (
                           <button
@@ -805,7 +805,7 @@ const SalesHistory: React.FC = () => {
                     }}
                   >
                     <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
-                      ລາຍ {i + 1} · ₭{fmtK(item.unitPrice)}
+                      ລາຍ {i + 1} · {fmtK(item.unitPrice)} ກີບ
                     </span>
                     {permissions.canDeleteSales && (
                       <button
@@ -845,20 +845,20 @@ const SalesHistory: React.FC = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#fef3c7", borderRadius: 10 }}>
                     <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນ</span>
-                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#92400e" }}>₭{fmtK(saleCost)}</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#92400e" }}>{fmtK(saleCost)} ກີບ</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: saleProfit >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 10 }}>
                     <span style={{ fontSize: "0.82rem", fontWeight: 600, color: saleProfit >= 0 ? "#16a34a" : "#dc2626" }}>
                       {saleProfit >= 0 ? "📈 ກຳໄລ" : "📉 ຂາດທຶນ"}
                     </span>
                     <span style={{ fontSize: "0.88rem", fontWeight: 800, color: saleProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                      ₭{fmtK(Math.abs(saleProfit))}
+                      {fmtK(Math.abs(saleProfit))} ກີບ
                     </span>
                   </div>
                   {totalLoss > 0 && saleProfit >= 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#fef2f2", borderRadius: 10 }}>
                       <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>⚠ ຂາດທຶນຈາກບາງລາຍການ</span>
-                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#dc2626" }}>₭{fmtK(totalLoss)}</span>
+                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#dc2626" }}>{fmtK(totalLoss)} ກີບ</span>
                     </div>
                   )}
                 </div>
@@ -872,7 +872,7 @@ const SalesHistory: React.FC = () => {
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <span style={{ fontWeight: 700, fontSize: "1rem" }}>ຍອດລວມທັງໝົດ</span>
-              <span style={{ fontWeight: 800, fontSize: "1.4rem" }}>₭{fmtK(selectedSale.total)}</span>
+              <span style={{ fontWeight: 800, fontSize: "1.4rem" }}>{fmtK(selectedSale.total)} ກີບ</span>
             </div>
           </IonContent>
         )}
@@ -889,7 +889,7 @@ const SalesHistory: React.FC = () => {
       <IonAlert
         isOpen={!!deleteTarget}
         header="ລຶບລາຍການຂາຍ"
-        message={deleteTarget ? `ຕ້ອງການລຶບລາຍການ ₭${fmtK(deleteTarget.total)} ແມ່ນບໍ?` : ""}
+        message={deleteTarget ? `ຕ້ອງການລຶບລາຍການ ${fmtK(deleteTarget.total)} ກີບ ແມ່ນບໍ?` : ""}
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
           { text: "ລຶບ", role: "destructive", handler: handleDeleteSale },

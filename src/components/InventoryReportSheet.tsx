@@ -146,19 +146,19 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                       <div style={{ background: "#fef3c7", borderRadius: 8, padding: "7px 8px" }}>
                         <p style={{ margin: 0, fontSize: "0.58rem", color: "#92400e", fontWeight: 700 }}>ຕົ້ນທຶນ</p>
                         <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#92400e" }}>
-                          {hasCost ? `₭${fmtK(costTotal)}` : "—"}
+                          {hasCost ? `${fmtK(costTotal)} ກີບ` : "—"}
                         </p>
                       </div>
                       <div style={{ background: "#f0fdf4", borderRadius: 8, padding: "7px 8px" }}>
                         <p style={{ margin: 0, fontSize: "0.58rem", color: "#16a34a", fontWeight: 700 }}>ກຳໄລ</p>
                         <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#16a34a" }}>
-                          {hasCost ? `₭${fmtK(profitTotal)}` : "—"}
+                          {hasCost ? `${fmtK(profitTotal)} ກີບ` : "—"}
                         </p>
                       </div>
                       <div style={{ background: "#eff6ff", borderRadius: 8, padding: "7px 8px" }}>
                         <p style={{ margin: 0, fontSize: "0.58rem", color: "#2563eb", fontWeight: 700 }}>ລາຄາຂາຍ</p>
                         <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#2563eb" }}>
-                          ₭{fmtK(sellTotal)}
+                          {fmtK(sellTotal)} ກີບ
                         </p>
                       </div>
                     </div>
@@ -186,19 +186,19 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
             <div style={{ textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ຕົ້ນທຶນ</p>
               <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandCost)}
+                {fmtK(grandCost)} ກີບ
               </p>
             </div>
             <div style={{ textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ກຳໄລ</p>
               <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandProfit)}
+                {fmtK(grandProfit)} ກີບ
               </p>
             </div>
             <div style={{ textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ລາຄາຂາຍ</p>
               <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandSell)}
+                {fmtK(grandSell)} ກີບ
               </p>
             </div>
           </div>

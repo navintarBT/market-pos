@@ -48,11 +48,11 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
           {product.name}
         </p>
         <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
-          ₭{fmtK(product.price)}
+          {fmtK(product.price)} ກີບ
         </p>
         {product.costPrice != null && product.costPrice > 0 && (
           <p style={{ margin: "0 0 6px", fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
-            ກຳໄລ ₭{fmtK(product.price - product.costPrice)}
+            ກຳໄລ {fmtK(product.price - product.costPrice)} ກີບ
           </p>
         )}
 

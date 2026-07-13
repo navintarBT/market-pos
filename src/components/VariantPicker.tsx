@@ -80,7 +80,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
       <IonContent>
         <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
-            ₭{fmtK(product.price)} / ຊິ້ນ
+            {fmtK(product.price)} ກີບ / ຊິ້ນ
           </span>
           <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
             ເລືອກໄດ້ຫຼາຍ variant
@@ -199,7 +199,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
             }}>
               <span style={{ color: "var(--ion-text-color, #57534e)" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
               <span style={{ color: "var(--ion-color-primary)", fontWeight: 800 }}>
-                ₭{fmtK(totalPrice)}
+                {fmtK(totalPrice)} ກີບ
               </span>
             </div>
           )}

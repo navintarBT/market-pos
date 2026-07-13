@@ -118,7 +118,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                       )}
                       <p style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
-                          ₭{fmtK(item.unitPrice)}
+                          {fmtK(item.unitPrice)} ກີບ
                         </span>
                         {/* Price edit — main row only when not expanded */}
                         {permissions.canEditCartPrice && !isExpanded && (
@@ -132,7 +132,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         )}
                         {item.quantity > 1 && !isExpanded && (
                           <span style={{ color: "var(--ion-color-medium)", fontSize: "0.8rem" }}>
-                            × {item.quantity} = ₭{fmtK(item.unitPrice * item.quantity)}
+                            × {item.quantity} = {fmtK(item.unitPrice * item.quantity)} ກີບ
                           </span>
                         )}
                       </p>
@@ -211,7 +211,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: "0.78rem", color: "#78716c" }}>ລາຍ {i + 1}</span>
                           <span style={{ fontWeight: 700, color: "var(--ion-color-primary)", fontSize: "0.92rem" }}>
-                            ₭{fmtK(item.unitPrice)}
+                            {fmtK(item.unitPrice)} ກີບ
                           </span>
                         </p>
                       </IonLabel>
@@ -251,7 +251,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: "1.1rem" }}>
                 <span>ຍອດລວມ</span>
                 <span style={{ fontWeight: 700, color: "var(--ion-color-primary)" }}>
-                  ₭{fmtK(total)}
+                  {fmtK(total)} ກີບ
                 </span>
               </div>
               <IonButton expand="block" onClick={onCheckout} style={{ minHeight: 54, "--border-radius": "14px" }}>
@@ -286,7 +286,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
               {priceEditItem?.isBundle
                 ? "ຊຸດ"
                 : fmtVariant(priceEditItem?.variant.size, priceEditItem?.variant.color)}
-              {" · "}ລາຄາເດີມ ₭{fmtK(priceEditItem?.unitPrice ?? 0)}
+              {" · "}ລາຄາເດີມ {fmtK(priceEditItem?.unitPrice ?? 0)} ກີບ
               {fromSubRow && ` · ແຍກ 1 ລາຍ`}
             </p>
             <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "#57534e" }}>
@@ -305,7 +305,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
             />
             {fromSubRow && (priceEditItem?.quantity ?? 1) > 1 && (
               <p style={{ margin: "10px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
-                ລາຍ 1 ຈະໄດ້ລາຄາໃໝ່ / ທີ່ເຫຼືອ {(priceEditItem?.quantity ?? 1) - 1} ລາຍ ລາຄາເກົ່າ ₭{fmtK(priceEditItem?.unitPrice ?? 0)}
+                ລາຍ 1 ຈະໄດ້ລາຄາໃໝ່ / ທີ່ເຫຼືອ {(priceEditItem?.quantity ?? 1) - 1} ລາຍ ລາຄາເກົ່າ {fmtK(priceEditItem?.unitPrice ?? 0)} ກີບ
               </p>
             )}
           </div>

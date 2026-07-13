@@ -165,10 +165,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
     if (!name.trim()) newErrors.name = "ກະລຸນາໃສ່ຊື່ສິນຄ້າ";
     if (name.trim().length > 0 && name.trim().length < 2) newErrors.name = "ຊື່ສິນຄ້າຕ້ອງຢ່າງໜ້ອຍ 2 ຕົວອັກສອນ";
-    if (price <= 0) newErrors.price = "ຕ້ອງໃສ່ລາຄາຂາຍ ຫຼາຍກວ່າ 0 ₭";
-    if (costPrice <= 0) newErrors.cost = "ຕ້ອງໃສ່ລາຄາຕົ້ນທຶນ ຫຼາຍກວ່າ 0 ₭";
+    if (price <= 0) newErrors.price = "ຕ້ອງໃສ່ລາຄາຂາຍ ຫຼາຍກວ່າ 0 ກີບ";
+    if (costPrice <= 0) newErrors.cost = "ຕ້ອງໃສ່ລາຄາຕົ້ນທຶນ ຫຼາຍກວ່າ 0 ກີບ";
     if (price > 0 && costPrice > 0 && price < costPrice) {
-      newErrors.priceWarn = `ລາຄາຂາຍ (${fmtK(price)} ₭) ຕ່ຳກວ່າຕົ້ນທຶນ (${fmtK(costPrice)} ₭) — ຂາຍຂາດທຶນ!`;
+      newErrors.priceWarn = `ລາຄາຂາຍ (${fmtK(price)} ກີບ) ຕ່ຳກວ່າຕົ້ນທຶນ (${fmtK(costPrice)} ກີບ) — ຂາຍຂາດທຶນ!`;
     }
 
     // Validate each variant row

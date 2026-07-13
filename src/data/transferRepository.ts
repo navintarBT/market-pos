@@ -31,12 +31,14 @@ export async function getTransfersByDateRange(
   from: Date,
   to: Date,
 ): Promise<TransferRecord[]> {
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(to);
   end.setHours(23, 59, 59, 999);
   const snap = await getDocs(
     query(
       collection(db, "shops", shopId, "transfers"),
-      where("createdAt", ">=", Timestamp.fromDate(from)),
+      where("createdAt", ">=", Timestamp.fromDate(start)),
       where("createdAt", "<=", Timestamp.fromDate(end)),
       orderBy("createdAt", "desc"),
     ),

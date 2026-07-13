@@ -3,7 +3,6 @@ import {
   IonPage,
   IonHeader,
   IonToolbar,
-  IonTitle,
   IonContent,
   IonGrid,
   IonRow,
@@ -33,6 +32,7 @@ import ProductDetailSheet from "../components/ProductDetailSheet";
 import BundleManager from "../components/BundleManager";
 import ReturnForm from "../components/ReturnForm";
 import RestockModal from "../components/RestockModal";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 import type { Product, Category } from "../data/types";
 import { useIonViewWillEnter } from "@ionic/react";
 
@@ -128,7 +128,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>ສິນຄ້າ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <IonButtons slot="end">
             <IonButton onClick={() => setInventoryOpen(true)}>
               <IonIcon slot="icon-only" icon={cubeOutline} />

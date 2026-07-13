@@ -30,6 +30,7 @@ import { getBundles } from "../data/bundleRepository";
 import VariantPicker from "../components/VariantPicker";
 import CartSheet from "../components/CartSheet";
 import CheckoutModal from "../components/CheckoutModal";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 import type { Bundle, BundleItem, Product, ProductVariant } from "../data/types";
 
 const Sell: React.FC = () => {
@@ -144,7 +145,7 @@ const Sell: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ຂາຍ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
             {count > 0 && (
               <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>

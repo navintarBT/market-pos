@@ -13,6 +13,7 @@ import { getShopUsers } from "../data/shopRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
 import type { Sale, ShopUser, Expense } from "../data/types";
 import { fmtK } from "../utils/format";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 
 function toDateInputValue(date: Date) {
   const y = date.getFullYear();
@@ -188,7 +189,7 @@ const SalesHistory: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ປະຫວັດການຂາຍ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>

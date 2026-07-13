@@ -33,8 +33,6 @@ import {
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
-import { getShopProfile } from "../data/shopRepository";
-import type { ShopProfile } from "../data/types";
 import Sell from "./Sell";
 import Products from "./Products";
 import Summary from "./Summary";
@@ -61,9 +59,8 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, signOut, features, tenant, availableShops, showShopPicker } = useAuth();
+  const { shopId, role, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile } = useAuth();
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
-  const [shop, setShop] = useState<ShopProfile | null>(null);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
 
   useEffect(() => {
@@ -71,14 +68,6 @@ const MainTabs: React.FC = () => {
       setShowExpiryAlert(true);
     }
   }, [tenant]);
-
-  useEffect(() => {
-    if (!shopId) {
-      setShop(null);
-      return;
-    }
-    getShopProfile(shopId).then(setShop).catch(() => setShop(null));
-  }, [shopId]);
 
   return (
     <CartProvider>
@@ -101,14 +90,14 @@ const MainTabs: React.FC = () => {
               justifyContent: "center",
               marginBottom: 10,
             }}>
-              {shop?.profileUrl ? (
-                <img src={shop.profileUrl} alt={shop.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {shopProfile?.profileUrl ? (
+                <img src={shopProfile.profileUrl} alt={shopProfile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "#e07b39" }} />
               )}
             </div>
             <h2 style={{ margin: 0, color: "#1c1917", fontSize: "1.05rem", fontWeight: 800 }}>
-              {shop?.name ?? "Minny ONE"}
+              {shopProfile?.name ?? "Minny ONE"}
             </h2>
             <p style={{ margin: "3px 0 0", color: "#78716c", fontSize: "0.78rem", fontWeight: 600 }}>
               {role === "customer" ? "Owner" : "Staff"}
@@ -216,7 +205,7 @@ const MainTabs: React.FC = () => {
           <Route exact path="/tabs/summary"><Summary /></Route>
           <Route exact path="/tabs/finance"><Finance /></Route>
           <Route exact path="/tabs/history"><SalesHistory /></Route>
-          <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShop} /></Route>
+          <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShopProfile} /></Route>
           <Route exact path="/tabs/staff"><StaffSettings /></Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>

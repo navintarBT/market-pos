@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
+  IonPage, IonHeader, IonToolbar, IonContent,
   IonRefresher, IonRefresherContent,
   IonSpinner, IonButtons, IonMenuButton, useIonViewWillEnter,
 } from "@ionic/react";
@@ -11,6 +11,7 @@ import { getReturnsByDateRange } from "../data/returnRepository";
 import { getProducts } from "../data/productRepository";
 import type { Sale, Product, ReturnRecord } from "../data/types";
 import { fmtK } from "../utils/format";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 
 function toDateStr(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -496,7 +497,7 @@ const Summary: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ສະຫຼຸບ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <IonButtons slot="end"><IonMenuButton autoHide={false} /></IonButtons>
         </IonToolbar>
       </IonHeader>

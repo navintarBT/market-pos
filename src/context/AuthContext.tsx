@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import type { StaffPermissions, ShopFeatures } from "../data/types";
+import type { StaffPermissions, ShopFeatures, ShopProfile } from "../data/types";
 
 export interface TenantInfo {
   plan: "trial" | "monthly" | "yearly" | "unlimited";
@@ -40,6 +40,7 @@ interface AuthState {
   loading: boolean;
   permissions: StaffPermissions;
   features: ShopFeatures;
+  shopProfile: ShopProfile | null;
   availableShops: { id: string; name: string; profileUrl?: string }[];
   needsShopPick: boolean;
 }
@@ -49,6 +50,7 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   switchShop: (shopId: string) => Promise<void>;
   showShopPicker: () => void;
+  setShopProfile: (profile: ShopProfile) => void;
 }
 
 function parseTenant(data: Record<string, unknown>): TenantInfo {
@@ -85,7 +87,7 @@ const BLANK_STATE: AuthState = {
   user: null, shopId: null, role: null, displayName: "",
   tenant: null, blocked: false, loading: false,
   permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
-  availableShops: [], needsShopPick: false,
+  shopProfile: null, availableShops: [], needsShopPick: false,
 };
 
 async function loadShopData(user: User, userData: Record<string, unknown>, shopId: string) {
@@ -95,6 +97,7 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
   let permissions: StaffPermissions = NO_PERMISSIONS;
   let displayName = user.email ?? "";
   let features: ShopFeatures = DEFAULT_FEATURES;
+  let shopProfile: ShopProfile = { id: shopId, name: "Minny ONE" };
 
   try {
     const tSnap = await getDoc(doc(db, "tenants", shopId));
@@ -126,15 +129,21 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
 
   try {
     const shopSnap = await getDoc(doc(db, "shops", shopId));
-    const f = shopSnap.data()?.features as Partial<ShopFeatures> | undefined;
+    const shopData = shopSnap.data();
+    const f = shopData?.features as Partial<ShopFeatures> | undefined;
     features = {
       returnEnabled: f?.returnEnabled ?? false,
       returnSummaryEnabled: f?.returnSummaryEnabled ?? false,
       monthlySummaryEnabled: f?.monthlySummaryEnabled ?? false,
     };
+    shopProfile = {
+      id: shopId,
+      name: (shopData?.name as string) ?? "Minny ONE",
+      profileUrl: shopData?.profileUrl as string | undefined,
+    };
   } catch { /* shop rules may not allow yet */ }
 
-  return { role, tenant, blocked, permissions, displayName, features };
+  return { role, tenant, blocked, permissions, displayName, features, shopProfile };
 }
 
 function savedShopKey(uid: string) {
@@ -200,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
+          shopProfile: shopData.shopProfile,
           availableShops, needsShopPick: false,
         });
         return;
@@ -213,6 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId: saved, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
+          shopProfile: shopData.shopProfile,
           availableShops, needsShopPick: false,
         });
         return;
@@ -223,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user, shopId: null, role: role as "customer" | "staff", displayName: user.email ?? "",
         tenant: null, blocked: false, loading: false,
         permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
+        shopProfile: null,
         availableShops, needsShopPick: true,
       });
     });
@@ -254,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading: false,
       permissions: shopData.permissions,
       features: shopData.features,
+      shopProfile: shopData.shopProfile,
       needsShopPick: false,
     }));
   }
@@ -262,8 +275,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, shopId: null, needsShopPick: true }));
   }
 
+  function setShopProfile(profile: ShopProfile) {
+    setState(prev => ({ ...prev, shopProfile: profile }));
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker, setShopProfile }}>
       {children}
     </AuthContext.Provider>
   );

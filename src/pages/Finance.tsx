@@ -13,6 +13,7 @@ import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "..
 import { fmtK } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 
 function todayStr() {
   const d = new Date();
@@ -284,7 +285,7 @@ const Finance: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ການເງິນ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>

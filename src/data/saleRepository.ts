@@ -157,12 +157,14 @@ async function recordSaleProvisional(
 }
 
 export async function getSalesByDateRange(shopId: string, from: Date, to: Date): Promise<Sale[]> {
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(to);
   end.setHours(23, 59, 59, 999);
 
   const q = query(
     salesCol(shopId),
-    where("createdAt", ">=", Timestamp.fromDate(from)),
+    where("createdAt", ">=", Timestamp.fromDate(start)),
     where("createdAt", "<=", Timestamp.fromDate(end)),
     orderBy("createdAt", "desc")
   );

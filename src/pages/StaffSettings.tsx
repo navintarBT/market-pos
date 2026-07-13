@@ -14,7 +14,6 @@ import {
   IonPage,
   IonSpinner,
   IonText,
-  IonTitle,
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
@@ -22,6 +21,7 @@ import { addOutline, closeOutline, createOutline, peopleOutline, trashOutline } 
 import { useAuth } from "../context/AuthContext";
 import { createStaffUser, deleteStaffUser, getShopUsers, resetStaffPassword, updateStaffEmail, updateStaffPermissions, updateStaffUser } from "../data/shopRepository";
 import type { ShopUser, StaffPermissions } from "../data/types";
+import ShopHeaderTag from "../components/ShopHeaderTag";
 
 const cardStyle: React.CSSProperties = {
   background: "#ffffff",
@@ -243,7 +243,7 @@ const StaffSettings: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ພະນັກງານ</IonTitle>
+          <div slot="start"><ShopHeaderTag /></div>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>

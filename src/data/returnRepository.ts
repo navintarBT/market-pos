@@ -23,11 +23,13 @@ export async function getReturnsByDateRange(
   from: Date,
   to: Date,
 ): Promise<ReturnRecord[]> {
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(to);
   end.setHours(23, 59, 59, 999);
   const q = query(
     returnsCol(shopId),
-    where("createdAt", ">=", Timestamp.fromDate(from)),
+    where("createdAt", ">=", Timestamp.fromDate(start)),
     where("createdAt", "<=", Timestamp.fromDate(end)),
     orderBy("createdAt", "desc"),
   );

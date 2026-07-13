@@ -2,7 +2,7 @@ import {
   addDoc, collection, getDocs, orderBy, query, Timestamp, where, runTransaction, doc,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import type { Product } from "./types";
+import type { Product, ProductVariant } from "./types";
 
 export interface TransferRecord {
   id: string;
@@ -48,6 +48,25 @@ export async function getTransfersByDateRange(
     ...(d.data() as Omit<TransferRecord, "id" | "createdAt">),
     createdAt: (d.data().createdAt as Timestamp).toDate(),
   }));
+}
+
+/** Deletes a transfer log and reverses the stock it had removed. */
+export async function deleteTransfer(shopId: string, record: TransferRecord): Promise<void> {
+  const productRef = doc(db, "shops", shopId, "products", record.productId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(productRef);
+    if (snap.exists()) {
+      const variants: ProductVariant[] = [...(snap.data().variants ?? [])];
+      const idx = variants.findIndex(
+        (v) => v.size === record.variantSize && v.color === record.variantColor
+      );
+      if (idx !== -1) {
+        variants[idx] = { ...variants[idx], stock: variants[idx].stock + record.quantity };
+        tx.update(productRef, { variants });
+      }
+    }
+    tx.delete(doc(collection(db, "shops", shopId, "transfers"), record.id));
+  });
 }
 
 export async function processAtomicTransfer(

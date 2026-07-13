@@ -36,7 +36,11 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
     setBusy(true);
     try {
       await recordSale(shopId, items, total, paymentType, user.uid, displayName);
-      setSuccessMsg(`ຮັບເງິນສຳເລັດ ₭${fmtK(total)}`);
+      setSuccessMsg(
+        paymentType === "cod"
+          ? `ບັນທຶກອອເດີ COD ແລ້ວ ₭${fmtK(total)} — ລໍຖ້າເກັບເງິນ`
+          : `ຮັບເງິນສຳເລັດ ₭${fmtK(total)}`
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
       setError(msg === "Insufficient stock" ? "ສິນຄ້າບໍ່ພໍຂາຍ ກະລຸນາກວດສອບສະຕ໋ອກ" : msg);
@@ -78,24 +82,33 @@ const CheckoutModal: React.FC<Props> = ({ isOpen, onDismiss, onSuccess }) => {
             </IonText>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <IonButton
               expand="block"
               color="success"
               disabled={busy}
               onClick={() => handlePay("cash")}
-              style={{ minHeight: 72, fontSize: "1.1rem" }}
+              style={{ minHeight: 72, fontSize: "0.92rem" }}
             >
-              {busy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 22, height: 22 }} /> ກຳລັງດຳເນີນການ...</span>) : "💵 ເງິນສົດ"}
+              {busy ? (<IonSpinner name="dots" style={{ width: 20, height: 20 }} />) : "💵 ເງິນສົດ"}
             </IonButton>
             <IonButton
               expand="block"
               color="tertiary"
               disabled={busy}
               onClick={() => handlePay("qr")}
-              style={{ minHeight: 72, fontSize: "1.1rem" }}
+              style={{ minHeight: 72, fontSize: "0.92rem" }}
             >
-              {busy ? (<span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 22, height: 22 }} /> ກຳລັງດຳເນີນການ...</span>) : "📱 QR ໂອນ"}
+              {busy ? (<IonSpinner name="dots" style={{ width: 20, height: 20 }} />) : "📱 ໂອນ"}
+            </IonButton>
+            <IonButton
+              expand="block"
+              color="warning"
+              disabled={busy}
+              onClick={() => handlePay("cod")}
+              style={{ minHeight: 72, fontSize: "0.92rem" }}
+            >
+              {busy ? (<IonSpinner name="dots" style={{ width: 20, height: 20 }} />) : "📦 COD"}
             </IonButton>
           </div>
         </IonContent>

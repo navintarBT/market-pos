@@ -10,31 +10,38 @@ import { addOutline, closeOutline, createOutline, trashOutline } from "ionicons/
 import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
+import { getWalletBalances } from "../data/walletRepository";
 import { fmtK } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import WalletCard from "../components/WalletCard";
 
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function PaymentToggle({
+type PaymentKind = "cash" | "transfer" | "cod";
+
+const PAYMENT_TOGGLE_STYLE: Record<PaymentKind, { label: string; color: string }> = {
+  cash: { label: "💵 ເງິນສົດ", color: "#16a34a" },
+  transfer: { label: "📱 ໂອນ", color: "#2563eb" },
+  cod: { label: "📦 COD", color: "#d97706" },
+};
+
+function PaymentToggle<T extends PaymentKind>({
   value,
   onChange,
+  options,
 }: {
-  value: "cash" | "transfer";
-  onChange: (v: "cash" | "transfer") => void;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly T[];
 }) {
   return (
     <div style={{ display: "flex", gap: 8 }}>
-      {(
-        [
-          { v: "cash" as const, label: "💵 ເງິນສົດ" },
-          { v: "transfer" as const, label: "📱 ໂອນ" },
-        ] as const
-      ).map(({ v, label }) => (
+      {options.map((v) => (
         <button
           key={v}
           onClick={() => onChange(v)}
@@ -43,7 +50,7 @@ function PaymentToggle({
             padding: "10px 0",
             borderRadius: 10,
             border: "none",
-            background: value === v ? (v === "cash" ? "#16a34a" : "#2563eb") : "#f5f0eb",
+            background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "#f5f0eb",
             color: value === v ? "#fff" : "#57534e",
             fontWeight: 700,
             fontSize: "0.88rem",
@@ -51,12 +58,15 @@ function PaymentToggle({
             transition: "all 0.15s",
           }}
         >
-          {label}
+          {PAYMENT_TOGGLE_STYLE[v].label}
         </button>
       ))}
     </div>
   );
 }
+
+const EXPENSE_PAYMENT_OPTIONS = ["cash", "transfer"] as const;
+const INCOME_PAYMENT_OPTIONS = ["cash", "transfer", "cod"] as const;
 
 const Finance: React.FC = () => {
   const { shopId, permissions } = useAuth();
@@ -89,9 +99,28 @@ const Finance: React.FC = () => {
   const [incDeleteError, setIncDeleteError] = useState<string | null>(null);
   const [incDesc, setIncDesc] = useState("");
   const [incAmount, setIncAmount] = useState(0);
-  const [incPayment, setIncPayment] = useState<"cash" | "transfer">("cash");
+  const [incPayment, setIncPayment] = useState<Income["paymentType"]>("cash");
   const [incBusy, setIncBusy] = useState(false);
   const [incDeleting, setIncDeleting] = useState(false);
+
+  // Wallet state — all-time balances, independent of the date filter above
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [cashBalance, setCashBalance] = useState(0);
+  const [transferBalance, setTransferBalance] = useState(0);
+  const [codOutstanding, setCodOutstanding] = useState(0);
+
+  const loadWallet = useCallback(async () => {
+    if (!shopId) return;
+    setWalletLoading(true);
+    try {
+      const balances = await getWalletBalances(shopId);
+      setCashBalance(balances.cashBalance);
+      setTransferBalance(balances.transferBalance);
+      setCodOutstanding(balances.codOutstanding);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [shopId]);
 
   const loadExpenses = useCallback(async () => {
     if (!shopId) return;
@@ -116,6 +145,7 @@ const Finance: React.FC = () => {
   useIonViewWillEnter(() => {
     loadExpenses();
     loadIncomes();
+    loadWallet();
   });
 
   useEffect(() => {
@@ -123,8 +153,12 @@ const Finance: React.FC = () => {
     loadIncomes();
   }, [loadExpenses, loadIncomes]);
 
+  useEffect(() => {
+    loadWallet();
+  }, [loadWallet]);
+
   async function handleRefresh(e: CustomEvent) {
-    await Promise.all([loadExpenses(), loadIncomes()]);
+    await Promise.all([loadExpenses(), loadIncomes(), loadWallet()]);
     (e.target as HTMLIonRefresherElement).complete();
   }
 
@@ -174,6 +208,7 @@ const Finance: React.FC = () => {
         setExpenses((prev) => [newItem, ...prev]);
       }
       dismissExpModal();
+      loadWallet();
     } finally {
       setExpBusy(false);
     }
@@ -187,6 +222,7 @@ const Finance: React.FC = () => {
     try {
       await deleteExpense(shopId, id);
       setExpenses((prev) => prev.filter((e) => e.id !== id));
+      loadWallet();
     } catch {
       setExpDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
@@ -237,6 +273,7 @@ const Finance: React.FC = () => {
         setIncomes((prev) => [newItem, ...prev]);
       }
       dismissIncModal();
+      loadWallet();
     } finally {
       setIncBusy(false);
     }
@@ -250,6 +287,7 @@ const Finance: React.FC = () => {
     try {
       await deleteIncome(shopId, id);
       setIncomes((prev) => prev.filter((i) => i.id !== id));
+      loadWallet();
     } catch {
       setIncDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
@@ -274,6 +312,9 @@ const Finance: React.FC = () => {
   const incTransfer = incomes
     .filter((i) => i.paymentType === "transfer")
     .reduce((s, i) => s + i.amount, 0);
+  const incCod = incomes
+    .filter((i) => i.paymentType === "cod")
+    .reduce((s, i) => s + i.amount, 0);
 
   const isExpTab = activeTab === "expense";
   const loading = isExpTab ? expLoading : incLoading;
@@ -297,6 +338,16 @@ const Finance: React.FC = () => {
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent />
         </IonRefresher>
+
+        {/* Wallet — all-time balances, independent of the date filter below */}
+        <div style={{ margin: "12px 16px 0" }}>
+          <WalletCard
+            loading={walletLoading}
+            cashBalance={cashBalance}
+            transferBalance={transferBalance}
+            codOutstanding={codOutstanding}
+          />
+        </div>
 
         {/* Tab switcher */}
         <div
@@ -389,6 +440,7 @@ const Finance: React.FC = () => {
                 { label: "ທັງໝົດ", value: isExpTab ? expTotal : incTotal },
                 { label: "💵 ເງິນສົດ", value: isExpTab ? expCash : incCash },
                 { label: "📱 ໂອນ", value: isExpTab ? expTransfer : incTransfer },
+                ...(isExpTab ? [] : [{ label: "📦 COD", value: incCod }]),
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <p
@@ -633,7 +685,7 @@ const Finance: React.FC = () => {
                         color: "#78716c",
                       }}
                     >
-                      {item.paymentType === "cash" ? "💵 ເງິນສົດ" : "📱 ໂອນ"}
+                      {PAYMENT_TOGGLE_STYLE[item.paymentType].label}
                     </span>
                   </div>
                   {permissions.canAddExpenses && (
@@ -792,7 +844,7 @@ const Finance: React.FC = () => {
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
                 ປະເພດການຈ່າຍ
               </p>
-              <PaymentToggle value={expPayment} onChange={setExpPayment} />
+              <PaymentToggle value={expPayment} onChange={setExpPayment} options={EXPENSE_PAYMENT_OPTIONS} />
             </div>
             <button
               onClick={handleExpSave}
@@ -903,7 +955,7 @@ const Finance: React.FC = () => {
               >
                 ປະເພດການຮັບ
               </p>
-              <PaymentToggle value={incPayment} onChange={setIncPayment} />
+              <PaymentToggle value={incPayment} onChange={setIncPayment} options={INCOME_PAYMENT_OPTIONS} />
             </div>
             <button
               onClick={handleIncSave}

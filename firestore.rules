@@ -148,9 +148,10 @@ service cloud.firestore {
       }
 
       match /returns/{returnId} {
-        allow read:           if isControlAdmin() || isShopMember(shopId);
-        allow create:         if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts')) && validReturn(request.resource.data);
-        allow update, delete: if false;
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts')) && validReturn(request.resource.data);
+        allow update: if false;
+        allow delete: if isControlAdmin() || isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
       }
 
       match /users/{uid} {
@@ -159,9 +160,10 @@ service cloud.firestore {
       }
 
       match /transfers/{transferId} {
-        allow read:          if isControlAdmin() || isShopMember(shopId);
-        allow create:        if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
-        allow update, delete: if false;
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        allow update: if false;
+        allow delete: if isControlAdmin() || isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
       }
     }
 

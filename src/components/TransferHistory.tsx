@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
-  IonContent, IonIcon, IonSpinner,
+  IonContent, IonIcon, IonSpinner, IonAlert,
 } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
+import { closeOutline, trashOutline } from "ionicons/icons";
 import { fmtK } from "../utils/format";
-import { getTransfersByDateRange } from "../data/transferRepository";
+import { getTransfersByDateRange, deleteTransfer } from "../data/transferRepository";
 import type { TransferRecord } from "../data/transferRepository";
 
 interface Props {
@@ -28,6 +28,9 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
   const [toDate, setToDate] = useState(todayStr);
   const [records, setRecords] = useState<TransferRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TransferRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,6 +39,21 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
       .then(setRecords)
       .finally(() => setLoading(false));
   }, [isOpen, fromDate, toDate, shopId]);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setDeletingId(target.id);
+    try {
+      await deleteTransfer(shopId, target);
+      setRecords((prev) => prev.filter((r) => r.id !== target.id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const totalQty = records.reduce((s, r) => s + r.quantity, 0);
   const totalCost = records.reduce((s, r) => s + r.costPrice * r.quantity, 0);
@@ -142,15 +160,29 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                           </p>
                         )}
                       </div>
-                      <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-                        <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#dc2626" }}>
-                          -{r.quantity} ຊິ້ນ
-                        </p>
-                        {r.costPrice > 0 && (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
-                            ₭{fmtK(cost)}
+                      <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
+                        <div style={{ textAlign: "right" }}>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#dc2626" }}>
+                            -{r.quantity} ຊິ້ນ
                           </p>
-                        )}
+                          {r.costPrice > 0 && (
+                            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                              ₭{fmtK(cost)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setDeleteTarget(r)}
+                          disabled={deletingId === r.id}
+                          style={{
+                            background: "none", border: "none", padding: "6px 4px", marginLeft: 4,
+                            cursor: deletingId === r.id ? "default" : "pointer", color: "#d1d5db", lineHeight: 0, flexShrink: 0,
+                          }}
+                        >
+                          {deletingId === r.id
+                            ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                            : <IonIcon icon={trashOutline} style={{ fontSize: 17, display: "block" }} />}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -160,6 +192,24 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
           </>
         )}
       </IonContent>
+
+      <IonAlert
+        isOpen={!!deleteTarget}
+        header="ລຶບລາຍການຍ້າຍ"
+        message={deleteTarget ? `ຕ້ອງການລຶບ "${deleteTarget.productName}" ແມ່ນບໍ່? stock ຈະຖືກຄືນ` : ""}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
+          { text: "ລຶບ", role: "destructive", handler: handleDelete },
+        ]}
+        onDidDismiss={() => setDeleteTarget(null)}
+      />
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
     </IonModal>
   );
 };

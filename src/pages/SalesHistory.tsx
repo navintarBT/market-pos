@@ -21,6 +21,12 @@ function saleItemLabel(item: Sale["items"][number]): string {
   return v ? `${item.productName} (${v})` : item.productName;
 }
 
+const PAYMENT_BADGE: Record<Sale["paymentType"], { label: string; bg: string; color: string }> = {
+  cash: { label: "💵 ສົດ", bg: "#dcfce7", color: "#166534" },
+  qr: { label: "📱 ໂອນ", bg: "#eff6ff", color: "#1d4ed8" },
+  cod: { label: "📦 COD", bg: "#fef3c7", color: "#b45309" },
+};
+
 function toDateInputValue(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -159,6 +165,7 @@ const SalesHistory: React.FC = () => {
   const totalRevenue = sales.reduce((s, t) => s + t.total, 0);
   const cashTotal = sales.filter((s) => s.paymentType === "cash").reduce((s, t) => s + t.total, 0);
   const qrTotal = sales.filter((s) => s.paymentType === "qr").reduce((s, t) => s + t.total, 0);
+  const codTotal = sales.filter((s) => s.paymentType === "cod").reduce((s, t) => s + t.total, 0);
   const itemCount = sales.reduce((s, sale) => s + sale.items.reduce((is, i) => is + i.quantity, 0), 0);
   const totalDiscount = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) =>
@@ -292,7 +299,7 @@ const SalesHistory: React.FC = () => {
                     <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                       {selectedStaff.sales.map((sale) => {
                         const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
-                        const isCash = sale.paymentType === "cash";
+                        const badge = PAYMENT_BADGE[sale.paymentType];
                         const names = sale.items.map(saleItemLabel).join(", ");
                         return (
                           <div
@@ -328,11 +335,11 @@ const SalesHistory: React.FC = () => {
                               </div>
                               <div style={{
                                 fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
-                                color: isCash ? "#166534" : "#1d4ed8",
-                                background: isCash ? "#dcfce7" : "#eff6ff",
+                                color: badge.color,
+                                background: badge.bg,
                                 padding: "1px 6px", borderRadius: 4, display: "inline-block",
                               }}>
-                                {isCash ? "💵 ສົດ" : "📱 QR"}
+                                {badge.label}
                               </div>
                             </div>
                           </div>
@@ -426,13 +433,17 @@ const SalesHistory: React.FC = () => {
 
               <IonGrid style={{ padding: 0, marginBottom: 12 }}>
                 <IonRow>
-                  <IonCol style={{ paddingLeft: 0, paddingRight: 6 }}>
+                  <IonCol style={{ paddingLeft: 0, paddingRight: 4 }}>
                     <StatCard label="ເງິນສົດ" value={`₭${fmtK(cashTotal)}`}
                       icon="💵" bg="#f0fdf4" color="#16a34a" />
                   </IonCol>
-                  <IonCol style={{ paddingRight: 0, paddingLeft: 6 }}>
-                    <StatCard label="QR ໂອນ" value={`₭${fmtK(qrTotal)}`}
+                  <IonCol style={{ paddingRight: 4, paddingLeft: 4 }}>
+                    <StatCard label="ໂອນ" value={`₭${fmtK(qrTotal)}`}
                       icon="📱" bg="#eff6ff" color="#2563eb" />
+                  </IonCol>
+                  <IonCol style={{ paddingRight: 0, paddingLeft: 4 }}>
+                    <StatCard label="COD" value={`₭${fmtK(codTotal)}`}
+                      icon="📦" bg="#fffbeb" color="#d97706" />
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -545,7 +556,7 @@ const SalesHistory: React.FC = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {sales.map((sale) => {
                     const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
-                    const isCash = sale.paymentType === "cash";
+                    const badge = PAYMENT_BADGE[sale.paymentType];
                     const hasLoss = sale.items.some(
                       (i) => i.costPrice != null && i.unitPrice < i.costPrice
                     );
@@ -613,11 +624,11 @@ const SalesHistory: React.FC = () => {
                             </div>
                             <div style={{
                               fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
-                              color: isCash ? "#166534" : "#1d4ed8",
-                              background: isCash ? "#dcfce7" : "#eff6ff",
+                              color: badge.color,
+                              background: badge.bg,
                               padding: "1px 6px", borderRadius: 4, display: "inline-block",
                             }}>
-                              {isCash ? "💵 ສົດ" : "📱 QR"}
+                              {badge.label}
                             </div>
                           </div>
                           {permissions.canDeleteSales && (
@@ -669,11 +680,13 @@ const SalesHistory: React.FC = () => {
                 📅 {formatDateTime(selectedSale.createdAt)}
               </span>
               <span style={{
-                background: selectedSale.paymentType === "cash" ? "#dcfce7" : "#eff6ff",
-                color: selectedSale.paymentType === "cash" ? "#166534" : "#1d4ed8",
+                background: PAYMENT_BADGE[selectedSale.paymentType].bg,
+                color: PAYMENT_BADGE[selectedSale.paymentType].color,
                 borderRadius: 8, padding: "4px 12px", fontWeight: 700, fontSize: "0.85rem",
               }}>
-                {selectedSale.paymentType === "cash" ? "💵 ເງິນສົດ" : "📱 QR ໂອນ"}
+                {selectedSale.paymentType === "cash" ? "💵 ເງິນສົດ"
+                  : selectedSale.paymentType === "qr" ? "📱 ໂອນ"
+                  : "📦 COD"}
               </span>
             </div>
 

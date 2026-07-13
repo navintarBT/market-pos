@@ -179,6 +179,19 @@ export async function getSalesByDateRange(shopId: string, from: Date, to: Date):
   });
 }
 
+export async function getCodSales(shopId: string): Promise<Sale[]> {
+  const q = query(salesCol(shopId), where("paymentType", "==", "cod"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate(),
+    } as Sale;
+  });
+}
+
 /** Deletes a sale and restores the stock it had decremented. */
 export async function deleteSale(shopId: string, sale: Sale): Promise<void> {
   await runTransaction(db, async (tx) => {

@@ -60,6 +60,11 @@ export async function getExpensesByDateRange(
   return snap.docs.map(mapExpense);
 }
 
+export async function getAllExpenses(shopId: string): Promise<Expense[]> {
+  const snap = await getDocs(expensesCol(shopId));
+  return snap.docs.map(mapExpense);
+}
+
 export async function addExpense(
   shopId: string,
   description: string,

@@ -2,7 +2,7 @@ import {
   collection, addDoc, getDocs, query, where, orderBy, Timestamp, runTransaction, doc,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import type { ReturnRecord, Product } from "./types";
+import type { ReturnRecord, Product, ProductVariant } from "./types";
 
 function returnsCol(shopId: string) {
   return collection(db, "shops", shopId, "returns");
@@ -44,10 +44,43 @@ export async function getReturnsByDateRange(
   });
 }
 
+export async function getCodReturns(shopId: string): Promise<ReturnRecord[]> {
+  const q = query(returnsCol(shopId), where("paymentType", "==", "cod"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate(),
+    } as ReturnRecord;
+  });
+}
+
+/** Deletes a return log and reverses the stock it had added back (clamped at 0). */
+export async function deleteReturn(shopId: string, record: ReturnRecord): Promise<void> {
+  const productRef = doc(db, "shops", shopId, "products", record.productId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(productRef);
+    if (snap.exists()) {
+      const variants: ProductVariant[] = [...(snap.data().variants ?? [])];
+      const idx = variants.findIndex(
+        (v) => v.size === record.variantSize && v.color === record.variantColor
+      );
+      if (idx !== -1) {
+        variants[idx] = { ...variants[idx], stock: Math.max(0, variants[idx].stock - record.quantity) };
+        tx.update(productRef, { variants });
+      }
+    }
+    tx.delete(doc(returnsCol(shopId), record.id));
+  });
+}
+
 export async function processAtomicReturn(
   shopId: string,
   product: Product,
   variantQtys: { size: string; color: string; qty: number; costPrice: number; sellingPrice: number }[],
+  paymentType: ReturnRecord["paymentType"],
 ): Promise<void> {
   const productRef = doc(db, "shops", shopId, "products", product.id);
   await runTransaction(db, async (tx) => {
@@ -74,6 +107,7 @@ export async function processAtomicReturn(
           quantity: qty,
           costPrice,
           sellingPrice,
+          paymentType,
           createdAt: Timestamp.now(),
         },
       });

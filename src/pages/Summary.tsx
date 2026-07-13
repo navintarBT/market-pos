@@ -9,9 +9,11 @@ import { getSalesByDateRange } from "../data/saleRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
 import { getReturnsByDateRange } from "../data/returnRepository";
 import { getProducts } from "../data/productRepository";
+import { getWalletBalances } from "../data/walletRepository";
 import type { Sale, Product, ReturnRecord } from "../data/types";
 import { fmtK } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import WalletCard from "../components/WalletCard";
 
 function toDateStr(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -37,7 +39,7 @@ const dateInputStyle: React.CSSProperties = {
 };
 
 type InnerTab = "today" | "monthly";
-type SubSection = "sales" | "inventory";
+type SubSection = "sales" | "inventory" | "returns";
 
 const Summary: React.FC = () => {
   const { shopId, features } = useAuth();
@@ -65,6 +67,25 @@ const Summary: React.FC = () => {
   const [monthExpenses, setMonthExpenses] = useState(0);
   const [monthReturns,  setMonthReturns]  = useState<ReturnRecord[]>([]);
   const [monthLoading,  setMonthLoading]  = useState(false);
+
+  // ── Wallet state — all-time balances ─────────────────────────────────
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [cashBalance, setCashBalance] = useState(0);
+  const [transferBalance, setTransferBalance] = useState(0);
+  const [codOutstanding, setCodOutstanding] = useState(0);
+
+  const loadWallet = useCallback(async () => {
+    if (!shopId) return;
+    setWalletLoading(true);
+    try {
+      const balances = await getWalletBalances(shopId);
+      setCashBalance(balances.cashBalance);
+      setTransferBalance(balances.transferBalance);
+      setCodOutstanding(balances.codOutstanding);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [shopId]);
 
   // ── Loaders ──────────────────────────────────────────────────────────
   const loadToday = useCallback(async () => {
@@ -105,16 +126,19 @@ const Summary: React.FC = () => {
 
   useEffect(() => { if (showToday)   loadToday();   }, [loadToday]);
   useEffect(() => { if (showMonthly) loadMonthly(); }, [loadMonthly]);
+  useEffect(() => { loadWallet(); }, [loadWallet]);
 
   useIonViewWillEnter(() => {
     if (showToday)   loadToday();
     if (showMonthly) loadMonthly();
+    loadWallet();
   });
 
   async function handleRefresh(e: CustomEvent) {
     await Promise.all([
       showToday   ? loadToday()   : Promise.resolve(),
       showMonthly ? loadMonthly() : Promise.resolve(),
+      loadWallet(),
     ]);
     (e.target as HTMLIonRefresherElement).complete();
   }
@@ -123,6 +147,7 @@ const Summary: React.FC = () => {
   const tRevenue    = todaySales.reduce((s, t) => s + t.total, 0);
   const tCash       = todaySales.filter(s => s.paymentType === "cash").reduce((s, t) => s + t.total, 0);
   const tQR         = todaySales.filter(s => s.paymentType === "qr").reduce((s, t) => s + t.total, 0);
+  const tCod        = todaySales.filter(s => s.paymentType === "cod").reduce((s, t) => s + t.total, 0);
   const tDiscount   = todaySales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) =>
       is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity, 0), 0);
@@ -228,26 +253,34 @@ const Summary: React.FC = () => {
         sub: hasInvCost ? "ມູນຄ່ານຕ໋ອກ" : "ບໍ່ມີຂໍ້ມູນ",
         color: "#d97706", bg: "#fef3c7",
       },
+      ...(showMonthly ? [{
+        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ",
+        value: hasReturns ? `−₭${fmtK(mRetRevenue)}` : "—",
+        sub: hasReturns ? `${monthReturns.length} ລາຍການ` : "ບໍ່ມີຕີກັບ",
+        color: "#dc2626", bg: "#fef2f2",
+      }] : []),
     ];
 
     return (
       <>
-        <DateFilter from={tFrom} to={tTo} setFrom={setTFrom} setTo={setTTo} />
+        {activeSub === "returns"
+          ? <DateFilter from={mFrom} to={mTo} setFrom={setMFrom} setTo={setMTo} />
+          : <DateFilter from={tFrom} to={tTo} setFrom={setTFrom} setTo={setTTo} />}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: navCards.length === 3 ? "1fr 1fr 1fr" : "1fr 1fr", gap: 10, marginBottom: 16 }}>
           {navCards.map(card => {
             const isActive = activeSub === card.id;
             return (
               <button key={card.id} onClick={() => setActiveSub(card.id)} style={{
                 background: isActive ? card.bg : "#ffffff",
                 border: `2px solid ${isActive ? card.color : "#f3f4f6"}`,
-                borderRadius: 16, padding: "16px 14px", textAlign: "left",
+                borderRadius: 16, padding: navCards.length === 3 ? "14px 10px" : "16px 14px", textAlign: "left",
                 cursor: "pointer", transition: "all 0.15s",
                 boxShadow: isActive ? `0 4px 14px ${card.color}30` : "0 1px 4px rgba(0,0,0,0.06)",
               }}>
-                <div style={{ fontSize: 28, marginBottom: 6 }}>{card.icon}</div>
+                <div style={{ fontSize: navCards.length === 3 ? 22 : 28, marginBottom: 6 }}>{card.icon}</div>
                 <p style={{ margin: 0, fontSize: "0.7rem", color: "#78716c", fontWeight: 600 }}>{card.label}</p>
-                <p style={{ margin: "3px 0 0", fontSize: "1.1rem", fontWeight: 800, lineHeight: 1.2, color: isActive ? card.color : "#1c1917" }}>{card.value}</p>
+                <p style={{ margin: "3px 0 0", fontSize: navCards.length === 3 ? "0.95rem" : "1.1rem", fontWeight: 800, lineHeight: 1.2, color: isActive ? card.color : "#1c1917" }}>{card.value}</p>
                 <p style={{ margin: "2px 0 0", fontSize: "0.67rem", color: "#a8a29e" }}>{card.sub}</p>
               </button>
             );
@@ -273,14 +306,18 @@ const Summary: React.FC = () => {
 
               {todaySales.length > 0 && (
                 <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: tDiscount > 0 ? 8 : 10 }}>
-                    <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "9px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>💵 ເງິນສົດ</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.95rem", fontWeight: 800, color: "#16a34a" }}>₭{fmtK(tCash)}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: tDiscount > 0 ? 8 : 10 }}>
+                    <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "9px 10px" }}>
+                      <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>💵 ສົດ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#16a34a" }}>₭{fmtK(tCash)}</p>
                     </div>
-                    <div style={{ background: "#eff6ff", borderRadius: 10, padding: "9px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>📱 QR ໂອນ</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.95rem", fontWeight: 800, color: "#2563eb" }}>₭{fmtK(tQR)}</p>
+                    <div style={{ background: "#eff6ff", borderRadius: 10, padding: "9px 10px" }}>
+                      <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>📱 ໂອນ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#2563eb" }}>₭{fmtK(tQR)}</p>
+                    </div>
+                    <div style={{ background: "#fffbeb", borderRadius: 10, padding: "9px 10px" }}>
+                      <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>📦 COD</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#d97706" }}>₭{fmtK(tCod)}</p>
                     </div>
                   </div>
                   {tDiscount > 0 && (
@@ -345,7 +382,7 @@ const Summary: React.FC = () => {
                 <p style={{ textAlign: "center", color: "#a8a29e", paddingTop: 8 }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
               )}
             </>
-          ) : (
+          ) : activeSub === "inventory" ? (
             <>
               {!hasInvCost ? (
                 <p style={{ textAlign: "center", color: "#a8a29e", padding: "16px 0" }}>
@@ -392,100 +429,98 @@ const Summary: React.FC = () => {
                 </div>
               )}
             </>
-          )}
-        </div>
-      </>
-    );
-  }
-
-  // ── Monthly section render ───────────────────────────────────────────
-  function renderMonthly() {
-    if (monthLoading) return (
-      <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-        <IonSpinner name="crescent" color="primary" />
-      </div>
-    );
-
-    return (
-      <>
-        <DateFilter from={mFrom} to={mTo} setFrom={setMFrom} setTo={setMTo} />
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{
-            background: "linear-gradient(135deg, #e07b39, #c25e1e)",
-            borderRadius: 20, padding: "18px 20px", color: "#fff",
-            boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
-          }}>
-            <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ຍອດຂາຍ (ກ່ອນຫັກຕີກັບ)</p>
-            <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>₭{fmtK(mRevenue)}</p>
-            <p style={{ margin: "4px 0 0", fontSize: "0.75rem", opacity: 0.8 }}>
-              {monthSales.length} ລາຍການ · {mDiscount > 0 ? `ສ່ວນຫຼຸດ −₭${fmtK(mDiscount)}` : "ບໍ່ມີສ່ວນຫຼຸດ"}
-            </p>
-          </div>
-
-          {mHasCost && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <Row label="🏷️ ຕົ້ນທຶນຂາຍ" value={`₭${fmtK(mCost)}`} bg="#fef3c7" color="#92400e" />
-              <Row label="📊 ກຳໄລຂາຍ"  value={`₭${fmtK(mGross)}`} bg="#f0fdf4" color="#16a34a" />
-            </div>
-          )}
-
-          {hasReturns && (
-            <div style={{
-              background: "#fff", borderRadius: 16, padding: "16px",
-              border: "1.5px solid #fcd34d", boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-            }}>
-              <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.82rem", color: "#92400e" }}>
-                📦 ສິນຄ້າຕີກັບ ({monthReturns.length} ລາຍການ)
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <Row label="💸 ຍອດຄືນລູກຄ້າ"  value={`−₭${fmtK(mRetRevenue)}`} bg="#fef2f2" color="#dc2626" />
-                {mHasCost && (
-                  <>
-                    <Row label="🏷️ ຕົ້ນທຶນທີ່ໄດ້ຄືນ" value={`+₭${fmtK(mRetCost)}`}    bg="#f0fdf4" color="#16a34a" />
-                    <Row label="📉 ກຳໄລທີ່ເສຍ"      value={`−₭${fmtK(mRetProfit)}`}  bg="#fef2f2" color="#dc2626" />
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {hasReturns && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-              <span style={{ fontSize: "0.72rem", color: "#a8a29e", fontWeight: 600 }}>ຍອດສຸດທິຫຼັງຫັກຕີກັບ</span>
-              <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <Row label="💰 ຍອດຂາຍສຸດທິ" value={`₭${fmtK(mNetRevenue)}`} bg="#fff7ed" color="#c2410c" bold />
-            {mHasCost && (
-              <Row label="🏷️ ຕົ້ນທຶນສຸດທິ" value={`₭${fmtK(mNetCost)}`} bg="#fef3c7" color="#92400e" />
-            )}
-            {monthExpenses > 0 && (
-              <Row label="📋 ລາຍຈ່າຍ" value={`−₭${fmtK(monthExpenses)}`} bg="#f5f5f4" color="#78716c" />
-            )}
-            {mHasCost && (
-              <div style={{
-                background: mNetProfit >= 0
-                  ? "linear-gradient(135deg, #16a34a, #15803d)"
-                  : "linear-gradient(135deg, #dc2626, #b91c1c)",
-                borderRadius: 14, padding: "14px 18px", color: "#fff",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-              }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
-                  <p style={{ margin: "3px 0 0", fontSize: "1.5rem", fontWeight: 800 }}>₭{fmtK(mNetProfit)}</p>
+          ) : (
+            <>
+              {monthLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+                  <IonSpinner name="crescent" color="primary" />
                 </div>
-                <span style={{ fontSize: 32 }}>{mNetProfit >= 0 ? "📈" : "📉"}</span>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{
+                    background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                    borderRadius: 20, padding: "18px 20px", color: "#fff",
+                    boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
+                  }}>
+                    <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ຍອດຂາຍ (ກ່ອນຫັກຕີກັບ)</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>₭{fmtK(mRevenue)}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "0.75rem", opacity: 0.8 }}>
+                      {monthSales.length} ລາຍການ · {mDiscount > 0 ? `ສ່ວນຫຼຸດ −₭${fmtK(mDiscount)}` : "ບໍ່ມີສ່ວນຫຼຸດ"}
+                    </p>
+                  </div>
 
-          {monthSales.length === 0 && (
-            <p style={{ textAlign: "center", color: "#a8a29e", padding: "24px 0" }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                  {mHasCost && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <Row label="🏷️ ຕົ້ນທຶນຂາຍ" value={`₭${fmtK(mCost)}`} bg="#fef3c7" color="#92400e" />
+                      <Row label="📊 ກຳໄລຂາຍ"  value={`₭${fmtK(mGross)}`} bg="#f0fdf4" color="#16a34a" />
+                    </div>
+                  )}
+
+                  {hasReturns && (
+                    <div style={{
+                      background: "#fff", borderRadius: 16, padding: "16px",
+                      border: "1.5px solid #fcd34d", boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+                    }}>
+                      <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.82rem", color: "#92400e" }}>
+                        📦 ສິນຄ້າຕີກັບ ({monthReturns.length} ລາຍການ)
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <Row label="💸 ຍອດຄືນລູກຄ້າ"  value={`−₭${fmtK(mRetRevenue)}`} bg="#fef2f2" color="#dc2626" />
+                        {mHasCost && (
+                          <>
+                            <Row label="🏷️ ຕົ້ນທຶນທີ່ໄດ້ຄືນ" value={`+₭${fmtK(mRetCost)}`} bg="#f0fdf4" color="#16a34a" />
+                            <Row
+                              label={mRetProfit >= 0 ? "📉 ກຳໄລທີ່ເສຍ" : "📈 ກຳໄລທີ່ໄດ້ຄືນ"}
+                              value={`${mRetProfit >= 0 ? "−" : "+"}₭${fmtK(Math.abs(mRetProfit))}`}
+                              bg={mRetProfit >= 0 ? "#fef2f2" : "#f0fdf4"}
+                              color={mRetProfit >= 0 ? "#dc2626" : "#16a34a"}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasReturns && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                      <span style={{ fontSize: "0.72rem", color: "#a8a29e", fontWeight: 600 }}>ຍອດສຸດທິຫຼັງຫັກຕີກັບ</span>
+                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <Row label="💰 ຍອດຂາຍສຸດທິ" value={`₭${fmtK(mNetRevenue)}`} bg="#fff7ed" color="#c2410c" bold />
+                    {mHasCost && (
+                      <Row label="🏷️ ຕົ້ນທຶນສຸດທິ" value={`₭${fmtK(mNetCost)}`} bg="#fef3c7" color="#92400e" />
+                    )}
+                    {monthExpenses > 0 && (
+                      <Row label="📋 ລາຍຈ່າຍ" value={`−₭${fmtK(monthExpenses)}`} bg="#f5f5f4" color="#78716c" />
+                    )}
+                    {mHasCost && (
+                      <div style={{
+                        background: mNetProfit >= 0
+                          ? "linear-gradient(135deg, #16a34a, #15803d)"
+                          : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                        borderRadius: 14, padding: "14px 18px", color: "#fff",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+                      }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
+                          <p style={{ margin: "3px 0 0", fontSize: "1.5rem", fontWeight: 800 }}>₭{fmtK(mNetProfit)}</p>
+                        </div>
+                        <span style={{ fontSize: 32 }}>{mNetProfit >= 0 ? "📈" : "📉"}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {monthSales.length === 0 && (
+                    <p style={{ textAlign: "center", color: "#a8a29e", padding: "24px 0" }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </>
@@ -517,7 +552,7 @@ const Summary: React.FC = () => {
             }}>
               {([
                 { id: "today" as InnerTab, label: "ສະຫຼຸບຍອດ" },
-                { id: "monthly" as InnerTab, label: "ສະຫຼຸບເດືອນ" },
+                { id: "monthly" as InnerTab, label: "ສະຫຼຸບການເງິນ" },
               ] as const).map(tab => (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                   flex: 1, padding: "8px 0", border: "none", borderRadius: 9,
@@ -534,8 +569,15 @@ const Summary: React.FC = () => {
             </div>
           )}
 
-          {activeTab === "today"   && showToday   && renderToday()}
-          {activeTab === "monthly" && showMonthly && renderMonthly()}
+          {activeTab === "today" && showToday && renderToday()}
+          {activeTab === "monthly" && showMonthly && (
+            <WalletCard
+              loading={walletLoading}
+              cashBalance={cashBalance}
+              transferBalance={transferBalance}
+              codOutstanding={codOutstanding}
+            />
+          )}
         </div>
       </IonContent>
     </IonPage>

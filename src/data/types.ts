@@ -13,6 +13,7 @@ export interface ReturnRecord {
   quantity: number;
   costPrice: number;
   sellingPrice: number;
+  paymentType?: "cash" | "transfer" | "cod";
   createdAt: Date;
 }
 
@@ -90,7 +91,7 @@ export interface ShopUser {
   permissions?: StaffPermissions;
 }
 
-export type PaymentType = "cash" | "qr";
+export type PaymentType = "cash" | "qr" | "cod";
 
 export type ExpenseCategory = "capital" | "general";
 
@@ -107,7 +108,7 @@ export interface Income {
   id: string;
   description: string;
   amount: number;
-  paymentType: "cash" | "transfer";
+  paymentType: "cash" | "transfer" | "cod";
   createdAt: Date;
 }
 

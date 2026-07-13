@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
-  IonContent, IonIcon, IonSpinner,
+  IonContent, IonIcon, IonSpinner, IonAlert,
 } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
+import { closeOutline, trashOutline } from "ionicons/icons";
 import { fmtK } from "../utils/format";
-import { getReturnsByDateRange } from "../data/returnRepository";
+import { getReturnsByDateRange, deleteReturn } from "../data/returnRepository";
 import type { ReturnRecord } from "../data/types";
 
 interface Props {
@@ -23,11 +23,20 @@ function toDateInputValue(date: Date) {
 
 const todayStr = toDateInputValue(new Date());
 
+const PAYMENT_BADGE: Record<"cash" | "transfer" | "cod", { label: string; bg: string; color: string }> = {
+  cash: { label: "💵 ສົດ", bg: "#dcfce7", color: "#166534" },
+  transfer: { label: "📱 ໂອນ", bg: "#eff6ff", color: "#1d4ed8" },
+  cod: { label: "📦 COD", bg: "#fef3c7", color: "#b45309" },
+};
+
 const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
   const [fromDate, setFromDate] = useState(todayStr);
   const [toDate, setToDate] = useState(todayStr);
   const [records, setRecords] = useState<ReturnRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ReturnRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,6 +45,21 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
       .then(setRecords)
       .finally(() => setLoading(false));
   }, [isOpen, fromDate, toDate, shopId]);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setDeletingId(target.id);
+    try {
+      await deleteReturn(shopId, target);
+      setRecords((prev) => prev.filter((r) => r.id !== target.id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const totalQty = records.reduce((s, r) => s + r.quantity, 0);
   const totalCost = records.reduce((s, r) => s + r.costPrice * r.quantity, 0);
@@ -139,15 +163,40 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                         {" · "}{dateStr} {timeStr}
                       </p>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-                      <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
-                        +{r.quantity} ຊິ້ນ
-                      </p>
-                      {r.costPrice > 0 && (
-                        <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
-                          ຕົ້ນທຶນ ₭{fmtK(cost)}
+                    <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
+                      <div style={{ textAlign: "right" }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
+                          +{r.quantity} ຊິ້ນ
                         </p>
-                      )}
+                        {r.costPrice > 0 && (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                            ຕົ້ນທຶນ ₭{fmtK(cost)}
+                          </p>
+                        )}
+                        {r.paymentType && (
+                          <div style={{
+                            marginTop: 4, display: "inline-block",
+                            fontSize: "0.62rem", fontWeight: 700,
+                            padding: "1px 6px", borderRadius: 4,
+                            background: PAYMENT_BADGE[r.paymentType].bg,
+                            color: PAYMENT_BADGE[r.paymentType].color,
+                          }}>
+                            {PAYMENT_BADGE[r.paymentType].label}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setDeleteTarget(r)}
+                        disabled={deletingId === r.id}
+                        style={{
+                          background: "none", border: "none", padding: "6px 4px", marginLeft: 4,
+                          cursor: deletingId === r.id ? "default" : "pointer", color: "#d1d5db", lineHeight: 0, flexShrink: 0,
+                        }}
+                      >
+                        {deletingId === r.id
+                          ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                          : <IonIcon icon={trashOutline} style={{ fontSize: 17, display: "block" }} />}
+                      </button>
                     </div>
                   </div>
                 );
@@ -156,6 +205,24 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
           </>
         )}
       </IonContent>
+
+      <IonAlert
+        isOpen={!!deleteTarget}
+        header="ລຶບລາຍການຕີກັບ"
+        message={deleteTarget ? `ຕ້ອງການລຶບ "${deleteTarget.productName}" ແມ່ນບໍ່? stock ຈະຖືກຫັກຄືນ` : ""}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
+          { text: "ລຶບ", role: "destructive", handler: handleDelete },
+        ]}
+        onDidDismiss={() => setDeleteTarget(null)}
+      />
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
     </IonModal>
   );
 };

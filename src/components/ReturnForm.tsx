@@ -127,6 +127,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const [rStep, setRStep] = useState<"product" | "detail">("product");
   const [rProduct, setRProduct] = useState<Product | null>(null);
   const [rQtys, setRQtys] = useState<Record<number, number>>({});
+  const [rPayment, setRPayment] = useState<"cash" | "transfer" | "cod">("cash");
   const [rSaving, setRSaving] = useState(false);
   const [rError, setRError] = useState(false);
   const [rHistoryOpen, setRHistoryOpen] = useState(false);
@@ -147,7 +148,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const filteredProducts = listCat === "all" ? products : products.filter((p) => p.category === listCat);
 
   function resetAll() {
-    setRStep("product"); setRProduct(null); setRQtys({});
+    setRStep("product"); setRProduct(null); setRQtys({}); setRPayment("cash");
     setTStep("product"); setTProduct(null); setTQtys({}); setTNote("");
     setActiveTab("return");
     setListCat("all");
@@ -169,7 +170,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
       const variantQtys = rProduct.variants
         .map((v, idx) => ({ size: v.size, color: v.color, qty: rQtys[idx] ?? 0, costPrice: rProduct.costPrice ?? 0, sellingPrice: rProduct.price ?? 0 }))
         .filter((x) => x.qty > 0);
-      await processAtomicReturn(shopId, rProduct, variantQtys);
+      await processAtomicReturn(shopId, rProduct, variantQtys, rPayment);
       const updatedProduct: Product = {
         ...rProduct,
         variants: rProduct.variants.map((v, idx) => {
@@ -178,7 +179,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
         }),
       };
       onSaved(updatedProduct);
-      setRStep("product"); setRProduct(null); setRQtys({});
+      setRStep("product"); setRProduct(null); setRQtys({}); setRPayment("cash");
     } catch {
       setRError(true);
     } finally {
@@ -352,7 +353,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "#78716c" }}>
                     ເລືອກສິນຄ້າທີ່ຕ້ອງການຕີກັບ
                   </p>
-                  <ProductList onSelect={(p) => { setRProduct(p); setRQtys({}); setRStep("detail"); }} />
+                  <ProductList onSelect={(p) => { setRProduct(p); setRQtys({}); setRPayment("cash"); setRStep("detail"); }} />
                 </>
               )}
               {rStep === "detail" && rProduct && (
@@ -371,6 +372,36 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                     product={rProduct} qtys={rQtys} setQty={rSetQty}
                     accentColor="var(--ion-color-primary)"
                   />
+
+                  {/* Original payment method — determines which balance the return nets against */}
+                  <div style={{ marginTop: 20 }}>
+                    <p style={{ margin: "0 0 8px", fontSize: "0.8rem", fontWeight: 600, color: "#78716c" }}>
+                      ບິນເດີມຈ່າຍດ້ວຍຫຍັງ?
+                    </p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {(
+                        [
+                          { v: "cash" as const, label: "💵 ສົດ", color: "#16a34a" },
+                          { v: "transfer" as const, label: "📱 ໂອນ", color: "#2563eb" },
+                          { v: "cod" as const, label: "📦 COD", color: "#d97706" },
+                        ] as const
+                      ).map(({ v, label, color }) => (
+                        <button
+                          key={v}
+                          onClick={() => setRPayment(v)}
+                          style={{
+                            flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
+                            background: rPayment === v ? color : "#f5f0eb",
+                            color: rPayment === v ? "#fff" : "#57534e",
+                            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </>

@@ -7,10 +7,11 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange } from "../data/saleRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
+import { getIncomesByDateRange } from "../data/incomeRepository";
 import { getReturnsByDateRange } from "../data/returnRepository";
 import { getProducts } from "../data/productRepository";
 import { getWalletBalances } from "../data/walletRepository";
-import type { Sale, Product, ReturnRecord } from "../data/types";
+import type { Sale, Product, ReturnRecord, Income, Expense } from "../data/types";
 import { fmtK } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import WalletCard from "../components/WalletCard";
@@ -87,6 +88,29 @@ const Summary: React.FC = () => {
     }
   }, [shopId]);
 
+  // ── Finance section state (income/expense for "ສະຫຼຸບການເງິນ" tab) ────
+  const [finFrom, setFinFrom] = useState(monthStartStr);
+  const [finTo,   setFinTo]   = useState(todayStr);
+  const [finIncomes,  setFinIncomes]  = useState<Income[]>([]);
+  const [finExpenses, setFinExpenses] = useState<Expense[]>([]);
+  const [finLoading,  setFinLoading]  = useState(false);
+
+  const loadFinance = useCallback(async () => {
+    if (!shopId) return;
+    setFinLoading(true);
+    try {
+      const [from, to] = parseRange(finFrom, finTo);
+      const [incs, exps] = await Promise.all([
+        getIncomesByDateRange(shopId, from, to),
+        getExpensesByDateRange(shopId, from, to),
+      ]);
+      setFinIncomes(incs);
+      setFinExpenses(exps);
+    } finally {
+      setFinLoading(false);
+    }
+  }, [shopId, finFrom, finTo]);
+
   // ── Loaders ──────────────────────────────────────────────────────────
   const loadToday = useCallback(async () => {
     if (!shopId) return;
@@ -126,11 +150,13 @@ const Summary: React.FC = () => {
 
   useEffect(() => { if (showToday)   loadToday();   }, [loadToday]);
   useEffect(() => { if (showMonthly) loadMonthly(); }, [loadMonthly]);
+  useEffect(() => { if (showMonthly) loadFinance();  }, [loadFinance]);
   useEffect(() => { loadWallet(); }, [loadWallet]);
 
   useIonViewWillEnter(() => {
     if (showToday)   loadToday();
     if (showMonthly) loadMonthly();
+    if (showMonthly) loadFinance();
     loadWallet();
   });
 
@@ -138,6 +164,7 @@ const Summary: React.FC = () => {
     await Promise.all([
       showToday   ? loadToday()   : Promise.resolve(),
       showMonthly ? loadMonthly() : Promise.resolve(),
+      showMonthly ? loadFinance() : Promise.resolve(),
       loadWallet(),
     ]);
     (e.target as HTMLIonRefresherElement).complete();
@@ -197,6 +224,18 @@ const Summary: React.FC = () => {
   const mNetCost    = mCost - mRetCost;
   const mGross      = mRevenue - mCost;
   const mNetProfit  = mNetRevenue - mNetCost - monthExpenses;
+
+  // ── Finance section calculations ────────────────────────────────────
+  const finIncomeTotal    = finIncomes.reduce((s, i) => s + i.amount, 0);
+  const finIncomeCash     = finIncomes.filter(i => i.paymentType === "cash").reduce((s, i) => s + i.amount, 0);
+  const finIncomeTransfer = finIncomes.filter(i => i.paymentType === "transfer").reduce((s, i) => s + i.amount, 0);
+  const finIncomeCod      = finIncomes.filter(i => i.paymentType === "cod").reduce((s, i) => s + i.amount, 0);
+
+  const finExpenseTotal    = finExpenses.reduce((s, e) => s + e.amount, 0);
+  const finExpenseBusiness = finExpenses.filter(e => e.category === "capital").reduce((s, e) => s + e.amount, 0);
+  const finExpensePersonal = finExpenses.filter(e => e.category === "general").reduce((s, e) => s + e.amount, 0);
+
+  const finNet = finIncomeTotal - finExpenseTotal;
 
   // ── Shared sub-components ────────────────────────────────────────────
   function DateFilter({ from, to, setFrom, setTo }: {
@@ -571,12 +610,91 @@ const Summary: React.FC = () => {
 
           {activeTab === "today" && showToday && renderToday()}
           {activeTab === "monthly" && showMonthly && (
-            <WalletCard
-              loading={walletLoading}
-              cashBalance={cashBalance}
-              transferBalance={transferBalance}
-              codOutstanding={codOutstanding}
-            />
+            <>
+              <WalletCard
+                loading={walletLoading}
+                cashBalance={cashBalance}
+                transferBalance={transferBalance}
+                codOutstanding={codOutstanding}
+              />
+
+              <div style={{ marginTop: 16 }}>
+                <DateFilter from={finFrom} to={finTo} setFrom={setFinFrom} setTo={setFinTo} />
+              </div>
+
+              {finLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+                  <IonSpinner name="crescent" color="primary" />
+                </div>
+              ) : (
+                <div style={{ background: "#fff", borderRadius: 20, padding: "20px 16px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+                    <Row label="💰 ລາຍຮັບລວມ" value={`₭${fmtK(finIncomeTotal)}`} bg="#f0fdf4" color="#16a34a" bold />
+                    <Row label="💸 ລາຍຈ່າຍລວມ" value={`−₭${fmtK(finExpenseTotal)}`} bg="#fef2f2" color="#dc2626" bold />
+                  </div>
+
+                  {finIncomeTotal > 0 && (
+                    <>
+                      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "#78716c" }}>
+                        ລາຍຮັບແຍກຕາມປະເພດ
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+                        <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "9px 10px" }}>
+                          <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>💵 ສົດ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#16a34a" }}>₭{fmtK(finIncomeCash)}</p>
+                        </div>
+                        <div style={{ background: "#eff6ff", borderRadius: 10, padding: "9px 10px" }}>
+                          <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>📱 ໂອນ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#2563eb" }}>₭{fmtK(finIncomeTransfer)}</p>
+                        </div>
+                        <div style={{ background: "#fffbeb", borderRadius: 10, padding: "9px 10px" }}>
+                          <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>📦 COD</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#d97706" }}>₭{fmtK(finIncomeCod)}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {finExpenseTotal > 0 && (
+                    <>
+                      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "#78716c" }}>
+                        ລາຍຈ່າຍແຍກຕາມປະເພດ
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                        <div style={{ background: "#eff6ff", borderRadius: 10, padding: "9px 10px" }}>
+                          <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>🏪 ທຸລະກິດ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#1d4ed8" }}>₭{fmtK(finExpenseBusiness)}</p>
+                        </div>
+                        <div style={{ background: "#fff7ed", borderRadius: 10, padding: "9px 10px" }}>
+                          <p style={{ margin: 0, fontSize: "0.65rem", color: "#78716c", fontWeight: 600 }}>👤 ສ່ວນຕົວ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#c2410c" }}>₭{fmtK(finExpensePersonal)}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{
+                    background: finNet >= 0
+                      ? "linear-gradient(135deg, #16a34a, #15803d)"
+                      : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                    borderRadius: 14, padding: "14px 18px", color: "#fff",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                  }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.85 }}>ສຸດທິ (ລາຍຮັບ − ລາຍຈ່າຍ)</p>
+                      <p style={{ margin: "3px 0 0", fontSize: "1.4rem", fontWeight: 800 }}>₭{fmtK(finNet)}</p>
+                    </div>
+                    <span style={{ fontSize: 28 }}>{finNet >= 0 ? "📈" : "📉"}</span>
+                  </div>
+
+                  {finIncomeTotal === 0 && finExpenseTotal === 0 && (
+                    <p style={{ textAlign: "center", color: "#a8a29e", padding: "8px 0 0" }}>
+                      ຍັງບໍ່ມີລາຍຮັບ-ລາຍຈ່າຍໃນຊ່ວງນີ້
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </IonContent>

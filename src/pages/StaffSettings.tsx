@@ -14,6 +14,7 @@ import {
   IonPage,
   IonSpinner,
   IonText,
+  IonTitle,
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
@@ -244,6 +245,7 @@ const StaffSettings: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <div slot="start"><ShopHeaderTag /></div>
+          <IonTitle style={{ fontWeight: 700 }}>ພະນັກງານ</IonTitle>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>

@@ -3,6 +3,7 @@ import {
   IonPage,
   IonHeader,
   IonToolbar,
+  IonTitle,
   IonContent,
   IonGrid,
   IonRow,
@@ -129,6 +130,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
       <IonHeader>
         <IonToolbar>
           <div slot="start"><ShopHeaderTag /></div>
+          <IonTitle>ສິນຄ້າ</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => setInventoryOpen(true)}>
               <IonIcon slot="icon-only" icon={cubeOutline} />

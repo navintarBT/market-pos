@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  IonPage, IonHeader, IonToolbar, IonContent,
+  IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonRefresher, IonRefresherContent,
   IonSpinner, IonButtons, IonMenuButton, useIonViewWillEnter,
 } from "@ionic/react";
@@ -498,6 +498,7 @@ const Summary: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <div slot="start"><ShopHeaderTag /></div>
+          <IonTitle style={{ fontWeight: 700 }}>ສະຫຼຸບ</IonTitle>
           <IonButtons slot="end"><IonMenuButton autoHide={false} /></IonButtons>
         </IonToolbar>
       </IonHeader>

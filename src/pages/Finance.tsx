@@ -286,6 +286,7 @@ const Finance: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <div slot="start"><ShopHeaderTag /></div>
+          <IonTitle style={{ fontWeight: 700 }}>ການເງິນ</IonTitle>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>

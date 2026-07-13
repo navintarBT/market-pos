@@ -18,7 +18,7 @@ import {
 import { trashOutline, addOutline, removeOutline, createOutline, chevronDownOutline, chevronUpOutline } from "ionicons/icons";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { fmtK } from "../utils/format";
+import { fmtK, fmtVariant } from "../utils/format";
 import NumInput from "./NumInput";
 import type { SaleItem } from "../data/types";
 
@@ -88,7 +88,8 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
             {items.map((item) => {
               const key = itemKey(item);
               const isExpanded = expandedKey === key;
-              const canExpand = item.quantity > 1 && !item.isBundle;
+              const canExpand = item.quantity > 1;
+              const variantLabel = fmtVariant(item.variant.size, item.variant.color);
 
               return (
                 <div key={key}>
@@ -105,11 +106,16 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                           }}>ຊຸດ</span>
                         )}
                       </h3>
-                      <p style={{ fontSize: "0.78rem", color: "#78716c" }}>
-                        {item.isBundle
-                          ? (item.bundleItems ?? []).map((bi) => `${bi.productName} ×${bi.quantity}`).join(" + ")
-                          : `${item.variant.size} / ${item.variant.color}`}
-                      </p>
+                      {(item.isBundle || variantLabel) && (
+                        <p style={{ fontSize: "0.78rem", color: "#78716c" }}>
+                          {item.isBundle
+                            ? (item.bundleItems ?? []).map((bi) => {
+                                const v = fmtVariant(bi.variantSize, bi.variantColor);
+                                return `${bi.productName}${v ? ` (${v})` : ""} ×${bi.quantity}`;
+                              }).join(" + ")
+                            : variantLabel}
+                        </p>
+                      )}
                       <p style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
                           ₭{fmtK(item.unitPrice)}
@@ -279,7 +285,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
             <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "#78716c" }}>
               {priceEditItem?.isBundle
                 ? "ຊຸດ"
-                : `${priceEditItem?.variant.size} / ${priceEditItem?.variant.color}`}
+                : fmtVariant(priceEditItem?.variant.size, priceEditItem?.variant.color)}
               {" · "}ລາຄາເດີມ ₭{fmtK(priceEditItem?.unitPrice ?? 0)}
               {fromSubRow && ` · ແຍກ 1 ລາຍ`}
             </p>

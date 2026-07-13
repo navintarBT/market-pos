@@ -12,8 +12,14 @@ import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/sal
 import { getShopUsers } from "../data/shopRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
 import type { Sale, ShopUser, Expense } from "../data/types";
-import { fmtK } from "../utils/format";
+import { fmtK, fmtVariant } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+
+function saleItemLabel(item: Sale["items"][number]): string {
+  if (item.isBundle) return item.productName;
+  const v = fmtVariant(item.variant.size, item.variant.color);
+  return v ? `${item.productName} (${v})` : item.productName;
+}
 
 function toDateInputValue(date: Date) {
   const y = date.getFullYear();
@@ -190,6 +196,7 @@ const SalesHistory: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <div slot="start"><ShopHeaderTag /></div>
+          <IonTitle style={{ fontWeight: 700 }}>ປະຫວັດການຂາຍ</IonTitle>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>
@@ -286,7 +293,7 @@ const SalesHistory: React.FC = () => {
                       {selectedStaff.sales.map((sale) => {
                         const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
                         const isCash = sale.paymentType === "cash";
-                        const names = sale.items.map((i) => i.productName).join(", ");
+                        const names = sale.items.map(saleItemLabel).join(", ");
                         return (
                           <div
                             key={sale.id}
@@ -542,7 +549,7 @@ const SalesHistory: React.FC = () => {
                     const hasLoss = sale.items.some(
                       (i) => i.costPrice != null && i.unitPrice < i.costPrice
                     );
-                    const names = sale.items.map((i) => i.productName).join(", ");
+                    const names = sale.items.map(saleItemLabel).join(", ");
                     return (
                       <div
                         key={sale.id}
@@ -711,9 +718,18 @@ const SalesHistory: React.FC = () => {
                             </span>
                           )}
                         </p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
-                          {item.variant.size} · {item.variant.color}
-                        </p>
+                        {item.isBundle ? (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
+                            {(item.bundleItems ?? []).map((bi) => {
+                              const v = fmtVariant(bi.variantSize, bi.variantColor);
+                              return `${bi.productName}${v ? ` (${v})` : ""} ×${bi.quantity}`;
+                            }).join(" + ")}
+                          </p>
+                        ) : fmtVariant(item.variant.size, item.variant.color) && (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
+                            {fmtVariant(item.variant.size, item.variant.color)}
+                          </p>
+                        )}
                         <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#78716c", display: "flex", alignItems: "center", gap: 4 }}>
                           {canExpand ? (
                             <button

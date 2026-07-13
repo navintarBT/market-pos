@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   IonBadge,
   IonContent,
@@ -11,6 +11,7 @@ import {
   IonMenuToggle,
   IonModal,
   IonRouterOutlet,
+  IonSpinner,
   IonTabBar,
   IonTabButton,
   IonTabs,
@@ -33,13 +34,22 @@ import {
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
-import Sell from "./Sell";
-import Products from "./Products";
-import Summary from "./Summary";
-import Finance from "./Finance";
-import SalesHistory from "./SalesHistory";
-import ShopProfileSettings from "./ShopProfileSettings";
-import StaffSettings from "./StaffSettings";
+
+const Sell = lazy(() => import("./Sell"));
+const Products = lazy(() => import("./Products"));
+const Summary = lazy(() => import("./Summary"));
+const Finance = lazy(() => import("./Finance"));
+const SalesHistory = lazy(() => import("./SalesHistory"));
+const ShopProfileSettings = lazy(() => import("./ShopProfileSettings"));
+const StaffSettings = lazy(() => import("./StaffSettings"));
+
+function RouteFallback() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", paddingTop: 80 }}>
+      <IonSpinner name="crescent" color="primary" />
+    </div>
+  );
+}
 
 function useStockAlertCount(shopId: string | null) {
   const [count, setCount] = useState(0);
@@ -200,13 +210,27 @@ const MainTabs: React.FC = () => {
 
       <IonTabs>
         <IonRouterOutlet id="main-content">
-          <Route exact path="/tabs/sell"><Sell /></Route>
-          <Route exact path="/tabs/products"><Products onStockChanged={refreshAlerts} /></Route>
-          <Route exact path="/tabs/summary"><Summary /></Route>
-          <Route exact path="/tabs/finance"><Finance /></Route>
-          <Route exact path="/tabs/history"><SalesHistory /></Route>
-          <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShopProfile} /></Route>
-          <Route exact path="/tabs/staff"><StaffSettings /></Route>
+          <Route exact path="/tabs/sell">
+            <Suspense fallback={<RouteFallback />}><Sell /></Suspense>
+          </Route>
+          <Route exact path="/tabs/products">
+            <Suspense fallback={<RouteFallback />}><Products onStockChanged={refreshAlerts} /></Suspense>
+          </Route>
+          <Route exact path="/tabs/summary">
+            <Suspense fallback={<RouteFallback />}><Summary /></Suspense>
+          </Route>
+          <Route exact path="/tabs/finance">
+            <Suspense fallback={<RouteFallback />}><Finance /></Suspense>
+          </Route>
+          <Route exact path="/tabs/history">
+            <Suspense fallback={<RouteFallback />}><SalesHistory /></Suspense>
+          </Route>
+          <Route exact path="/tabs/shop-profile">
+            <Suspense fallback={<RouteFallback />}><ShopProfileSettings onShopUpdated={setShopProfile} /></Suspense>
+          </Route>
+          <Route exact path="/tabs/staff">
+            <Suspense fallback={<RouteFallback />}><StaffSettings /></Suspense>
+          </Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>
 

@@ -1,6 +1,5 @@
 /// <reference types="vitest" />
 
-import legacy from "@vitejs/plugin-legacy";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -8,7 +7,6 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   plugins: [
     react(),
-    legacy(),
     VitePWA({
       registerType: "autoUpdate",
       // manifest is managed in public/manifest.json
@@ -16,6 +14,8 @@ export default defineConfig({
       workbox: {
         // Precache all build output
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        // Default 2 MiB is too small now that the app has grown — raise the cap
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // SPA fallback — serve index.html for all navigation requests
         navigateFallback: "/index.html",
         // Don't intercept Firebase or emulator requests

@@ -123,7 +123,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType', 'createdAt'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
-          && request.resource.data.paymentType in ['cash', 'transfer'];
+          && request.resource.data.paymentType in ['cash', 'transfer', 'cod'];
         allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType'])
           && request.resource.data.amount is number
@@ -206,7 +206,7 @@ service cloud.firestore {
       return data.keys().hasAll(['items', 'total', 'paymentType', 'createdAt'])
         && data.total is number
         && data.total > 0
-        && (data.paymentType == 'cash' || data.paymentType == 'qr');
+        && (data.paymentType == 'cash' || data.paymentType == 'qr' || data.paymentType == 'cod');
     }
 
     function validReturn(data) {

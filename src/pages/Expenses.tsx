@@ -15,7 +15,8 @@ import { fmtK } from "../utils/format";
 import NumInput from "../components/NumInput";
 
 const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
-  capital: "ທຸລະກິດ",
+  shop: "ລາຍຈ່າຍຮ້ານ",
+  capital: "ທຶນທຸລະກິດ",
   general: "ສ່ວນຕົວ",
 };
 
@@ -200,6 +201,7 @@ const Expenses: React.FC = () => {
             style={{ marginBottom: 16 }}
           >
             <IonSegmentButton value="all">ທັງໝົດ</IonSegmentButton>
+            <IonSegmentButton value="shop">{CATEGORY_LABEL.shop}</IonSegmentButton>
             <IonSegmentButton value="capital">{CATEGORY_LABEL.capital}</IonSegmentButton>
             <IonSegmentButton value="general">{CATEGORY_LABEL.general}</IonSegmentButton>
           </IonSegment>
@@ -297,6 +299,7 @@ const Expenses: React.FC = () => {
             onIonChange={(e) => setFormCategory(e.detail.value as ExpenseCategory)}
             style={{ marginBottom: 12 }}
           >
+            <IonSegmentButton value="shop">{CATEGORY_LABEL.shop}</IonSegmentButton>
             <IonSegmentButton value="capital">{CATEGORY_LABEL.capital}</IonSegmentButton>
             <IonSegmentButton value="general">{CATEGORY_LABEL.general}</IonSegmentButton>
           </IonSegment>

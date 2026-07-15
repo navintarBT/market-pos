@@ -42,6 +42,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   const [price, setPrice] = useState<number>(0);
   const [costPrice, setCostPrice] = useState<number>(0);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
+  const [canBeGift, setCanBeGift] = useState(false);
   const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
@@ -65,6 +66,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
       const cp = product?.costPrice ?? 0;
       setCostPrice(cp);
       setPhotoUrl(product?.photoUrl);
+      setCanBeGift(product?.canBeGift ?? false);
       setPendingDataUrl(null);
       const vArr = product?.variants.length ? [...product.variants] : [emptyVariant()];
       setVariants(vArr);
@@ -217,6 +219,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         costPrice,
         photoUrl: finalPhotoUrl,
         variants: validVariants.map(v => ({ ...v, stock: Number(v.stock) || 0 })),
+        canBeGift,
       });
       onDismiss();
     } catch {
@@ -333,6 +336,38 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
             <p style={{ ...warnText, margin: 0 }}>⚠ {errors.priceWarn}</p>
           </div>
         )}
+
+        {/* Gift eligibility */}
+        <div
+          onClick={() => setCanBeGift((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            margin: "8px 0", padding: "12px 14px", borderRadius: 10,
+            background: canBeGift ? "#fff7ed" : "var(--ion-color-step-50, #f5f5f4)",
+            border: `1.5px solid ${canBeGift ? "#e07b39" : "var(--ion-color-step-150, #e5e7eb)"}`,
+            cursor: "pointer",
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#1c1917" }}>
+              🎁 ໃຫ້ເປັນຂອງແຖມໄດ້
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "#78716c" }}>
+              ຖ້າເປີດ ຈະເລືອກສິນຄ້ານີ້ເປັນຂອງແຖມໄດ້ຈາກໜ້າກະຕ່າ
+            </p>
+          </div>
+          <div style={{
+            width: 46, height: 26, borderRadius: 13, flexShrink: 0, marginLeft: 12,
+            background: canBeGift ? "#e07b39" : "var(--ion-color-step-200, #d4d4d0)",
+            position: "relative", transition: "background 0.15s",
+          }}>
+            <div style={{
+              position: "absolute", top: 2, left: canBeGift ? 22 : 2,
+              width: 22, height: 22, borderRadius: "50%", background: "#fff",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.3)", transition: "left 0.15s",
+            }} />
+          </div>
+        </div>
 
         {/* Variants */}
         <IonListHeader style={{ paddingTop: 8 }}>

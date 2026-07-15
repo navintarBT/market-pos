@@ -281,22 +281,10 @@ const Summary: React.FC = () => {
     );
 
     const navCards = [
-      {
-        id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ",
-        value: `${fmtK(tRevenue)} ກີບ`, sub: `${todaySales.length} ລາຍການ`,
-        color: "#e07b39", bg: "#fff7ed",
-      },
-      {
-        id: "inventory" as SubSection, icon: "📦", label: "ສິນຄ້າ",
-        value: hasInvCost ? `${fmtK(invSellTotal)} ກີບ` : "—",
-        sub: hasInvCost ? "ມູນຄ່ານຕ໋ອກ" : "ບໍ່ມີຂໍ້ມູນ",
-        color: "#d97706", bg: "#fef3c7",
-      },
+      { id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ", color: "#e07b39", bg: "#fff7ed" },
+      { id: "inventory" as SubSection, icon: "📦", label: "ຍອດເງິນຄ້າງ", color: "#d97706", bg: "#fef3c7" },
       ...(showMonthly ? [{
-        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ",
-        value: hasReturns ? `−${fmtK(mRetRevenue)} ກີບ` : "—",
-        sub: hasReturns ? `${monthReturns.length} ລາຍການ` : "ບໍ່ມີຕີກັບ",
-        color: "#dc2626", bg: "#fef2f2",
+        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ", color: "#dc2626", bg: "#fef2f2",
       }] : []),
     ];
 
@@ -306,21 +294,23 @@ const Summary: React.FC = () => {
           ? <DateFilter from={mFrom} to={mTo} setFrom={setMFrom} setTo={setMTo} />
           : <DateFilter from={tFrom} to={tTo} setFrom={setTFrom} setTo={setTTo} />}
 
-        <div style={{ display: "grid", gridTemplateColumns: navCards.length === 3 ? "1fr 1fr 1fr" : "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {navCards.map(card => {
             const isActive = activeSub === card.id;
             return (
               <button key={card.id} onClick={() => setActiveSub(card.id)} style={{
+                flex: 1,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 background: isActive ? card.bg : "#ffffff",
                 border: `2px solid ${isActive ? card.color : "#f3f4f6"}`,
-                borderRadius: 16, padding: navCards.length === 3 ? "14px 10px" : "16px 14px", textAlign: "left",
+                borderRadius: 14, padding: "14px 8px",
                 cursor: "pointer", transition: "all 0.15s",
                 boxShadow: isActive ? `0 4px 14px ${card.color}30` : "0 1px 4px rgba(0,0,0,0.06)",
               }}>
-                <div style={{ fontSize: navCards.length === 3 ? 22 : 28, marginBottom: 6 }}>{card.icon}</div>
-                <p style={{ margin: 0, fontSize: "0.7rem", color: "#78716c", fontWeight: 600 }}>{card.label}</p>
-                <p style={{ margin: "3px 0 0", fontSize: navCards.length === 3 ? "0.95rem" : "1.1rem", fontWeight: 800, lineHeight: 1.2, color: isActive ? card.color : "#1c1917" }}>{card.value}</p>
-                <p style={{ margin: "2px 0 0", fontSize: "0.67rem", color: "#a8a29e" }}>{card.sub}</p>
+                <span style={{ fontSize: 24 }}>{card.icon}</span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: isActive ? card.color : "#1c1917" }}>
+                  {card.label}
+                </span>
               </button>
             );
           })}

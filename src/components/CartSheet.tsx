@@ -15,21 +15,23 @@ import {
   IonText,
   IonAlert,
 } from "@ionic/react";
-import { trashOutline, addOutline, removeOutline, createOutline, chevronDownOutline, chevronUpOutline } from "ionicons/icons";
+import { trashOutline, addOutline, removeOutline, createOutline, chevronDownOutline, chevronUpOutline, giftOutline, closeOutline } from "ionicons/icons";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { fmtK, fmtVariant } from "../utils/format";
 import NumInput from "./NumInput";
-import type { SaleItem } from "../data/types";
+import VariantPicker from "./VariantPicker";
+import type { SaleItem, Product, ProductVariant } from "../data/types";
 
 interface Props {
   isOpen: boolean;
+  products: Product[];
   onCheckout: () => void;
   onDismiss: () => void;
 }
 
-const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
-  const { items, total, setQty, setPrice, splitPrice, removeItem, itemKey } = useCart();
+const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss }) => {
+  const { items, total, addItem, setQty, setPrice, splitPrice, removeItem, itemKey } = useCart();
   const { permissions } = useAuth();
 
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -37,6 +39,64 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
   const [editPrice, setEditPrice] = useState(0);
   const [fromSubRow, setFromSubRow] = useState(false);
   const [pendingPrice, setPendingPrice] = useState<{ key: string; price: number; split: boolean } | null>(null);
+
+  const [giftPickerOpen, setGiftPickerOpen] = useState(false);
+  const [giftCategory, setGiftCategory] = useState("all");
+  const [giftVariantProduct, setGiftVariantProduct] = useState<Product | null>(null);
+  const [giftForKey, setGiftForKey] = useState<string | null>(null);
+  const [expandedGiftFor, setExpandedGiftFor] = useState<string | null>(null);
+
+  const giftEligibleProducts = products.filter((p) => p.canBeGift);
+  const giftCategories = [...new Set(giftEligibleProducts.map((p) => p.category).filter(Boolean) as string[])];
+  const giftProducts = giftCategory === "all" ? giftEligibleProducts : giftEligibleProducts.filter((p) => p.category === giftCategory);
+
+  function openGiftPickerFor(key: string) {
+    setGiftForKey(key);
+    setGiftCategory("all");
+    setGiftPickerOpen(true);
+  }
+
+  function handleAddGift(picked: { variant: ProductVariant; quantity: number }[]) {
+    if (!giftVariantProduct || !giftForKey) return;
+    picked.forEach(({ variant, quantity }) => {
+      addItem({
+        productId: giftVariantProduct.id,
+        productName: giftVariantProduct.name,
+        variant,
+        quantity,
+        originalPrice: giftVariantProduct.price,
+        unitPrice: 0,
+        costPrice: giftVariantProduct.costPrice,
+        isGift: true,
+        giftForKey,
+      });
+    });
+  }
+
+  // Gifts are tagged with the parent line's key — group them so they can be
+  // hidden under a collapsed "🎁 ຂອງແຖມ (N)" toggle instead of cluttering the list.
+  const giftsByParent = new Map<string, SaleItem[]>();
+  for (const it of items) {
+    if (!it.giftForKey) continue;
+    const arr = giftsByParent.get(it.giftForKey) ?? [];
+    arr.push(it);
+    giftsByParent.set(it.giftForKey, arr);
+  }
+  const topLevelItems = items.filter((it) => {
+    if (!it.giftForKey) return true;
+    // Orphaned gift (parent no longer in cart) — fall back to showing it plainly.
+    return !items.some((p) => itemKey(p) === it.giftForKey);
+  });
+
+  // Removing a line also removes any gifts attached to it — otherwise they'd
+  // become invisible orphans that still affect stock/total.
+  function removeItemCascade(key: string) {
+    for (const it of items) {
+      if (it.giftForKey === key) removeItem(itemKey(it));
+    }
+    removeItem(key);
+    if (expandedGiftFor === key) setExpandedGiftFor(null);
+  }
 
   function openMainEdit(item: SaleItem) {
     setPriceEditItem(item);
@@ -57,7 +117,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
 
   function removeOneUnit(key: string, currentQty: number) {
     if (currentQty <= 1) {
-      removeItem(key);
+      removeItemCascade(key);
       setExpandedKey(null);
     } else {
       setQty(key, currentQty - 1);
@@ -85,11 +145,14 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
           )}
 
           <IonList>
-            {items.map((item) => {
+            {topLevelItems.map((item) => {
               const key = itemKey(item);
               const isExpanded = expandedKey === key;
               const canExpand = item.quantity > 1;
               const variantLabel = fmtVariant(item.variant.size, item.variant.color);
+              const myGifts = giftsByParent.get(key) ?? [];
+              const giftQtyTotal = myGifts.reduce((s, g) => s + g.quantity, 0);
+              const giftsExpanded = expandedGiftFor === key;
 
               return (
                 <div key={key}>
@@ -104,6 +167,13 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                             borderRadius: 20, background: "#fff7ed", color: "#e07b39",
                             border: "1px solid #fed7aa", flexShrink: 0,
                           }}>ຊຸດ</span>
+                        )}
+                        {item.isGift && (
+                          <span style={{
+                            fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px",
+                            borderRadius: 20, background: "#fff7ed", color: "#e07b39",
+                            border: "1px solid #fed7aa", flexShrink: 0,
+                          }}>🎁 ຂອງແຖມ</span>
                         )}
                       </h3>
                       {(item.isBundle || variantLabel) && (
@@ -120,8 +190,8 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         <span style={{ color: "var(--ion-color-primary)", fontWeight: 600 }}>
                           {fmtK(item.unitPrice)} ກີບ
                         </span>
-                        {/* Price edit — main row only when not expanded */}
-                        {permissions.canEditCartPrice && !isExpanded && (
+                        {/* Price edit — main row only when not expanded (gifts stay locked at ₭0) */}
+                        {permissions.canEditCartPrice && !isExpanded && !item.isGift && (
                           <IonButton
                             fill="clear" size="small"
                             onClick={() => openMainEdit(item)}
@@ -136,6 +206,36 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                           </span>
                         )}
                       </p>
+                      {!item.isGift && !isExpanded && (
+                        myGifts.length === 0 ? (
+                          <button
+                            onClick={() => openGiftPickerFor(key)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 4,
+                              background: "none", border: "none", padding: "2px 0", marginTop: 2,
+                              color: "#e07b39", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            <IonIcon icon={giftOutline} style={{ fontSize: 13 }} />
+                            ໃຫ້ຂອງແຖມ
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setExpandedGiftFor(giftsExpanded ? null : key)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 4,
+                              background: "none", border: "none", padding: "2px 0", marginTop: 2,
+                              color: "#e07b39", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            <IonIcon icon={giftOutline} style={{ fontSize: 13 }} />
+                            ຂອງແຖມ ({giftQtyTotal})
+                            <IonIcon icon={giftsExpanded ? chevronUpOutline : chevronDownOutline} style={{ fontSize: 11 }} />
+                          </button>
+                        )
+                      )}
                     </IonLabel>
 
                     <div slot="end" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -152,7 +252,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         <>
                           <IonButton
                             fill="clear" size="small"
-                            onClick={() => item.quantity > 1 ? setQty(key, item.quantity - 1) : removeItem(key)}
+                            onClick={() => item.quantity > 1 ? setQty(key, item.quantity - 1) : removeItemCascade(key)}
                             style={{ minHeight: 44, minWidth: 44 }}
                           >
                             <IonIcon slot="icon-only" icon={removeOutline} />
@@ -189,7 +289,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
 
                           <IonButton
                             fill="clear" size="small" color="danger"
-                            onClick={() => removeItem(key)}
+                            onClick={() => removeItemCascade(key)}
                             style={{ minHeight: 44, minWidth: 44 }}
                           >
                             <IonIcon slot="icon-only" icon={trashOutline} />
@@ -198,6 +298,61 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                       )}
                     </div>
                   </IonItem>
+
+                  {/* ── Gift sub-rows when expanded ── */}
+                  {giftsExpanded && myGifts.length > 0 && (
+                    <>
+                      {myGifts.map((g) => {
+                        const gKey = itemKey(g);
+                        const gVariantLabel = fmtVariant(g.variant.size, g.variant.color);
+                        return (
+                          <IonItem key={gKey} lines="none" style={{ "--background": "#fff7ed" }}>
+                            <div style={{ width: 20, flexShrink: 0 }} />
+                            <IonLabel>
+                              <p style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{
+                                  fontSize: "0.62rem", fontWeight: 700, padding: "1px 6px",
+                                  borderRadius: 20, background: "#fff", color: "#e07b39",
+                                  border: "1px solid #fed7aa", flexShrink: 0,
+                                }}>🎁</span>
+                                <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#1c1917" }}>
+                                  {g.productName}
+                                </span>
+                                {gVariantLabel && (
+                                  <span style={{ fontSize: "0.74rem", color: "#78716c" }}>{gVariantLabel}</span>
+                                )}
+                                {g.quantity > 1 && (
+                                  <span style={{ fontSize: "0.74rem", color: "#78716c" }}>×{g.quantity}</span>
+                                )}
+                              </p>
+                            </IonLabel>
+                            <IonButton
+                              slot="end" fill="clear" size="small" color="danger"
+                              onClick={() => removeItem(gKey)}
+                              style={{ minHeight: 40, minWidth: 40 }}
+                            >
+                              <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 16 }} />
+                            </IonButton>
+                          </IonItem>
+                        );
+                      })}
+                      <IonItem lines="inset" style={{ "--background": "#fff7ed" }}>
+                        <div style={{ width: 20, flexShrink: 0 }} />
+                        <button
+                          onClick={() => openGiftPickerFor(key)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 4,
+                            background: "none", border: "none", padding: "10px 0",
+                            color: "#e07b39", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <IonIcon icon={giftOutline} style={{ fontSize: 13 }} />
+                          ເພີ່ມຂອງແຖມອີກ
+                        </button>
+                      </IonItem>
+                    </>
+                  )}
 
                   {/* ── Sub-rows when expanded ── */}
                   {isExpanded && Array.from({ length: item.quantity }, (_, i) => (
@@ -216,7 +371,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
                         </p>
                       </IonLabel>
                       <div slot="end" style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        {permissions.canEditCartPrice && (
+                        {permissions.canEditCartPrice && !item.isGift && (
                           <IonButton
                             fill="clear" size="small"
                             onClick={() => openSubEdit(item)}
@@ -352,6 +507,90 @@ const CartSheet: React.FC<Props> = ({ isOpen, onCheckout, onDismiss }) => {
           },
         ]}
         onDidDismiss={() => setPendingPrice(null)}
+      />
+
+      {/* ── Gift product picker ── */}
+      <IonModal isOpen={giftPickerOpen} onDidDismiss={() => setGiftPickerOpen(false)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle style={{ fontSize: "1rem" }}>🎁 ເລືອກຂອງແຖມ</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setGiftPickerOpen(false)}>
+                <IonIcon slot="icon-only" icon={closeOutline} />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+          {giftCategories.length > 0 && (
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 16px 10px", scrollbarWidth: "none" }}>
+              {["all", ...giftCategories].map((cat) => {
+                const isActive = giftCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setGiftCategory(cat)}
+                    style={{
+                      flexShrink: 0, padding: "6px 16px", borderRadius: 24,
+                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                      background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
+                      color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                      fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                    }}
+                  >
+                    {cat === "all" ? "ທັງໝົດ" : cat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: "8px 16px 32px" }}>
+            {giftProducts.length === 0 && (
+              <p style={{ textAlign: "center", color: "#a8a29e", padding: "32px 0" }}>
+                {giftEligibleProducts.length === 0
+                  ? "ຍັງບໍ່ມີສິນຄ້າທີ່ຕັ້ງເປັນຂອງແຖມໄດ້ — ໄປເປີດທີ່ໜ້າສິນຄ້າ"
+                  : "ບໍ່ມີສິນຄ້າໃນໝວດນີ້"}
+              </p>
+            )}
+            {giftProducts.map((p) => {
+              const totalStock = p.variants.reduce((s, v) => s + v.stock, 0);
+              const outOfStock = totalStock === 0;
+              return (
+                <button
+                  key={p.id}
+                  disabled={outOfStock}
+                  onClick={() => { setGiftPickerOpen(false); setGiftVariantProduct(p); }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: outOfStock ? "not-allowed" : "pointer",
+                    background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
+                    border: "1.5px solid #e5e7eb", opacity: outOfStock ? 0.5 : 1,
+                    display: "flex", alignItems: "center", gap: 14,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  {p.photoUrl
+                    ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+                    : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>{p.name}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                      {outOfStock ? "ໝົດ" : `stock ${totalStock} ຊິ້ນ`}
+                    </p>
+                  </div>
+                  <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
+                </button>
+              );
+            })}
+          </div>
+        </IonContent>
+      </IonModal>
+
+      <VariantPicker
+        product={giftVariantProduct}
+        isOpen={!!giftVariantProduct}
+        onAdd={handleAddGift}
+        onDismiss={() => setGiftVariantProduct(null)}
       />
     </>
   );

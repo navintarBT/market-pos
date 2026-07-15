@@ -424,7 +424,7 @@ const Sell: React.FC = () => {
 
       <VariantPicker product={pickerProduct} isOpen={!!pickerProduct}
         onAdd={handleAddToCart} onDismiss={() => setPickerProduct(null)} />
-      <CartSheet isOpen={cartOpen} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
+      <CartSheet isOpen={cartOpen} products={products} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
       <CheckoutModal isOpen={checkoutOpen} onDismiss={() => setCheckoutOpen(false)}
         onSuccess={(soldItems) => {
           setCheckoutOpen(false);

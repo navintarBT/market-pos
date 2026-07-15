@@ -32,6 +32,7 @@ export interface Product {
   costPrice?: number;
   photoUrl?: string;
   variants: ProductVariant[];
+  canBeGift?: boolean;
 }
 
 export interface BundleItem {
@@ -61,6 +62,8 @@ export interface SaleItem {
   costPrice?: number;
   isBundle?: boolean;
   bundleItems?: BundleItem[];
+  isGift?: boolean;
+  giftForKey?: string;
   splitId?: string;
 }
 
@@ -93,7 +96,7 @@ export interface ShopUser {
 
 export type PaymentType = "cash" | "qr" | "cod";
 
-export type ExpenseCategory = "capital" | "general";
+export type ExpenseCategory = "capital" | "general" | "shop";
 
 export interface Expense {
   id: string;

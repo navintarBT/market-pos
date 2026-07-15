@@ -6,12 +6,11 @@ import {
   IonButtons, IonMenuButton, IonModal, IonButton, IonIcon,
   IonSegment, IonSegmentButton, useIonViewWillEnter,
 } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline } from "ionicons/icons";
+import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline, returnUpBackOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
-import { getExpensesByDateRange } from "../data/expenseRepository";
-import type { Sale, ShopUser, Expense } from "../data/types";
+import type { Sale, ShopUser } from "../data/types";
 import { fmtK, fmtVariant } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 
@@ -19,6 +18,13 @@ function saleItemLabel(item: Sale["items"][number]): string {
   if (item.isBundle) return item.productName;
   const v = fmtVariant(item.variant.size, item.variant.color);
   return v ? `${item.productName} (${v})` : item.productName;
+}
+
+// Mirrors CartContext's itemKey (minus the gift suffix) so a gift's
+// giftForKey can be matched back to its parent line within a saved sale.
+function saleLineKey(item: Sale["items"][number]): string {
+  const base = `${item.productId}__${item.variant.size}__${item.variant.color}`;
+  return item.splitId ? `${base}__${item.splitId}` : base;
 }
 
 const PAYMENT_BADGE: Record<Sale["paymentType"], { label: string; bg: string; color: string }> = {
@@ -84,10 +90,11 @@ const SalesHistory: React.FC = () => {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
+  const [deleteRestoreStock, setDeleteRestoreStock] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null);
+  const [itemRestoreStock, setItemRestoreStock] = useState(true);
   const [removingItem, setRemovingItem] = useState(false);
   const [expandedItemIdx, setExpandedItemIdx] = useState<number | null>(null);
 
@@ -95,14 +102,12 @@ const SalesHistory: React.FC = () => {
     if (!shopId) return;
     setLoading(true);
     try {
-      const [s, u, exp] = await Promise.all([
+      const [s, u] = await Promise.all([
         getSalesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
         getShopUsers(shopId),
-        getExpensesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
       ]);
       setSales(s);
       setUsers(u);
-      setExpenses(exp);
     } finally {
       setLoading(false);
     }
@@ -116,13 +121,13 @@ const SalesHistory: React.FC = () => {
     (e.target as HTMLIonRefresherElement).complete();
   }
 
-  async function handleRemoveItem(idx: number, qty: number) {
+  async function handleRemoveItem(idx: number, qty: number, restoreStock: boolean) {
     if (!shopId || !selectedSale) return;
     setRemoveItemIdx(null);
     setRemovingItem(true);
     const origQty = selectedSale.items[idx]?.quantity ?? 0;
     try {
-      const updated = await removeItemFromSale(shopId, selectedSale, idx, qty);
+      const updated = await removeItemFromSale(shopId, selectedSale, idx, qty, restoreStock);
       if (updated === null) {
         setSales((prev) => prev.filter((s) => s.id !== selectedSale.id));
         setSelectedSale(null);
@@ -139,13 +144,13 @@ const SalesHistory: React.FC = () => {
     }
   }
 
-  async function handleDeleteSale() {
+  async function handleDeleteSale(restoreStock: boolean) {
     if (!shopId || !deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
     setDeletingId(target.id);
     try {
-      await deleteSale(shopId, target);
+      await deleteSale(shopId, target, restoreStock);
       setSales(prev => prev.filter(s => s.id !== target.id));
     } catch {
       setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
@@ -173,8 +178,6 @@ const SalesHistory: React.FC = () => {
   const totalCost = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const grossProfit = totalRevenue - totalCost;
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = grossProfit - totalExpenses;
   const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
   const lossTotal = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {
@@ -510,30 +513,20 @@ const SalesHistory: React.FC = () => {
                       </div>
                     )}
 
-                    {totalExpenses > 0 && (
-                      <div style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
-                      }}>
-                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>💸 ຫັກລາຍຈ່າຍ</span>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−{fmtK(totalExpenses)} ກີບ</span>
-                      </div>
-                    )}
-
                     <div style={{
-                      background: netProfit >= 0
+                      background: grossProfit >= 0
                         ? "linear-gradient(135deg, #16a34a, #15803d)"
                         : "linear-gradient(135deg, #dc2626, #b91c1c)",
                       borderRadius: 14, padding: "14px 20px", color: "#fff",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
                       <div>
-                        <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
+                        <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລ</p>
                         <p style={{ margin: "3px 0 0", fontSize: "1.4rem", fontWeight: 800 }}>
-                          {fmtK(netProfit)} ກີບ
+                          {fmtK(grossProfit)} ກີບ
                         </p>
                       </div>
-                      <span style={{ fontSize: 32 }}>{netProfit >= 0 ? "📈" : "📉"}</span>
+                      <span style={{ fontSize: 32 }}>{grossProfit >= 0 ? "📈" : "📉"}</span>
                     </div>
                   </div>
                 </div>
@@ -632,19 +625,32 @@ const SalesHistory: React.FC = () => {
                             </div>
                           </div>
                           {permissions.canDeleteSales && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(sale); }}
-                              disabled={deletingId === sale.id}
-                              style={{
-                                background: "none", border: "none", padding: "6px 4px",
-                                cursor: deletingId === sale.id ? "default" : "pointer",
-                                lineHeight: 0, color: "#d1d5db", borderRadius: 6,
-                              }}
-                            >
-                              {deletingId === sale.id
-                                ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
-                                : <IonIcon icon={trashOutline} style={{ fontSize: 16, display: "block" }} />}
-                            </button>
+                            deletingId === sale.id ? (
+                              <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                            ) : (
+                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteRestoreStock(true); setDeleteTarget(sale); }}
+                                  title="ຍົກເລີກການຂາຍ (ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "6px 4px",
+                                    cursor: "pointer", lineHeight: 0, color: "#2563eb", borderRadius: 6,
+                                  }}
+                                >
+                                  <IonIcon icon={returnUpBackOutline} style={{ fontSize: 16, display: "block" }} />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteRestoreStock(false); setDeleteTarget(sale); }}
+                                  title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "6px 4px",
+                                    cursor: "pointer", lineHeight: 0, color: "#d1d5db", borderRadius: 6,
+                                  }}
+                                >
+                                  <IonIcon icon={trashOutline} style={{ fontSize: 16, display: "block" }} />
+                                </button>
+                              </div>
+                            )
                           )}
                         </div>
                       </div>
@@ -701,13 +707,24 @@ const SalesHistory: React.FC = () => {
               ລາຍການສິນຄ້າ
             </p>
             <div style={{ borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
-              {selectedSale.items.flatMap((item, idx) => {
+              {(() => {
+                const giftsByParentKey = new Map<string, Sale["items"][number][]>();
+                for (const it of selectedSale.items) {
+                  if (!it.isGift || !it.giftForKey) continue;
+                  const arr = giftsByParentKey.get(it.giftForKey) ?? [];
+                  arr.push(it);
+                  giftsByParentKey.set(it.giftForKey, arr);
+                }
+                return selectedSale.items.flatMap((item, idx) => {
                 const discount = ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
                 const subtotal = item.unitPrice * item.quantity;
-                const isLoss = item.costPrice != null && item.unitPrice < item.costPrice;
+                const isLoss = !item.isGift && item.costPrice != null && item.unitPrice < item.costPrice;
                 const isExpanded = expandedItemIdx === idx;
                 const canExpand = item.quantity > 1;
                 const isLast = idx === selectedSale.items.length - 1;
+                const myGifts = item.isGift ? [] : (giftsByParentKey.get(saleLineKey(item)) ?? []);
+                const giftCostTotal = myGifts.reduce((s, g) => s + (g.costPrice ?? 0) * g.quantity, 0);
+                const itemProfit = (item.unitPrice - (item.costPrice ?? 0)) * item.quantity - giftCostTotal;
 
                 const mainRow = (
                   <div key={`item-${idx}`} style={{
@@ -719,6 +736,17 @@ const SalesHistory: React.FC = () => {
                       <div>
                         <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem" }}>
                           {item.productName}
+                          {item.isGift && (
+                            <span style={{
+                              marginLeft: 7,
+                              background: "#fff7ed", color: "#e07b39",
+                              fontSize: "0.6rem", fontWeight: 700,
+                              padding: "1px 6px", borderRadius: 5,
+                              verticalAlign: "middle",
+                            }}>
+                              🎁 ຂອງແຖມ
+                            </span>
+                          )}
                           {isLoss && (
                             <span style={{
                               marginLeft: 7,
@@ -768,23 +796,43 @@ const SalesHistory: React.FC = () => {
                             ສ່ວນຫຼຸດ −{fmtK(discount)} ກີບ
                           </p>
                         )}
+                        {myGifts.length > 0 && item.costPrice != null && (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#e07b39", fontWeight: 600 }}>
+                            🎁 ຫັກຕົ້ນທຶນຂອງແຖມ −{fmtK(giftCostTotal)} ກີບ → ກຳໄລ {fmtK(itemProfit)} ກີບ
+                          </p>
+                        )}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
                         <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
                           {fmtK(subtotal)} ກີບ
                         </p>
                         {!isExpanded && permissions.canDeleteSales && (
-                          <button
-                            onClick={() => setRemoveItemIdx(idx)}
-                            disabled={removingItem}
-                            style={{
-                              background: "none", border: "none", padding: "2px 4px",
-                              cursor: removingItem ? "default" : "pointer",
-                              color: "#d1d5db", lineHeight: 0,
-                            }}
-                          >
-                            <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <button
+                              onClick={() => { setItemRestoreStock(true); setRemoveItemIdx(idx); }}
+                              disabled={removingItem}
+                              title="ຍົກເລີກ (ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "2px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "#2563eb", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={returnUpBackOutline} style={{ fontSize: 15, display: "block" }} />
+                            </button>
+                            <button
+                              onClick={() => { setItemRestoreStock(false); setRemoveItemIdx(idx); }}
+                              disabled={removingItem}
+                              title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "2px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "#d1d5db", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -809,7 +857,7 @@ const SalesHistory: React.FC = () => {
                     </span>
                     {permissions.canDeleteSales && (
                       <button
-                        onClick={() => handleRemoveItem(idx, 1)}
+                        onClick={() => handleRemoveItem(idx, 1, true)}
                         disabled={removingItem}
                         style={{
                           background: "none", border: "none", padding: "6px 4px",
@@ -824,7 +872,8 @@ const SalesHistory: React.FC = () => {
                 ));
 
                 return [mainRow, ...subRows];
-              })}
+                });
+              })()}
             </div>
 
             {/* Cost / Profit / Loss summary */}
@@ -888,21 +937,29 @@ const SalesHistory: React.FC = () => {
 
       <IonAlert
         isOpen={!!deleteTarget}
-        header="ລຶບລາຍການຂາຍ"
-        message={deleteTarget ? `ຕ້ອງການລຶບລາຍການ ${fmtK(deleteTarget.total)} ກີບ ແມ່ນບໍ?` : ""}
+        header={deleteRestoreStock ? "ຍົກເລີກການຂາຍ" : "ລຶບປະຫວັດ"}
+        message={
+          deleteTarget
+            ? `ລາຍການ ${fmtK(deleteTarget.total)} ກີບ — ${deleteRestoreStock ? "ສິນຄ້າຈະຄືນສູ່ສະຕັອກ" : "ຈະບໍ່ຄືນສະຕັອກ, ລຶບຖາວອນ"}`
+            : ""
+        }
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
-          { text: "ລຶບ", role: "destructive", handler: handleDeleteSale },
+          {
+            text: deleteRestoreStock ? "ຍົກເລີກການຂາຍ" : "ລຶບ",
+            role: "destructive",
+            handler: () => handleDeleteSale(deleteRestoreStock),
+          },
         ]}
         onDidDismiss={() => setDeleteTarget(null)}
       />
 
       <IonAlert
         isOpen={removeItemIdx !== null}
-        header="ລຶບລາຍການ"
+        header={itemRestoreStock ? "ຍົກເລີກລາຍການ" : "ລຶບປະຫວັດລາຍການ"}
         message={
           removeItemIdx !== null && selectedSale
-            ? `${selectedSale.items[removeItemIdx].productName} ×${selectedSale.items[removeItemIdx].quantity}`
+            ? `${selectedSale.items[removeItemIdx].productName} ×${selectedSale.items[removeItemIdx].quantity} — ${itemRestoreStock ? "ສິນຄ້າຈະຄືນສູ່ສະຕັອກ" : "ຈະບໍ່ຄືນສະຕັອກ, ລຶບຖາວອນ"}`
             : ""
         }
         buttons={
@@ -910,12 +967,12 @@ const SalesHistory: React.FC = () => {
             ? [
                 { text: "ຍົກເລີກ", role: "cancel" as const },
                 ...(selectedSale.items[removeItemIdx].quantity > 1
-                  ? [{ text: "ຫຼຸດ 1 ຊິ້ນ", handler: () => handleRemoveItem(removeItemIdx!, 1) }]
+                  ? [{ text: "ຫຼຸດ 1 ຊິ້ນ", handler: () => handleRemoveItem(removeItemIdx!, 1, itemRestoreStock) }]
                   : []),
                 {
-                  text: selectedSale.items[removeItemIdx].quantity > 1 ? "ລຶບທັງໝົດ" : "ລຶບ",
-                  cssClass: "alert-button-confirm",
-                  handler: () => handleRemoveItem(removeItemIdx!, selectedSale!.items[removeItemIdx!].quantity),
+                  text: selectedSale.items[removeItemIdx].quantity > 1 ? "ທັງໝົດ" : "ຢືນຢັນ",
+                  role: "destructive" as const,
+                  handler: () => handleRemoveItem(removeItemIdx!, selectedSale!.items[removeItemIdx!].quantity, itemRestoreStock),
                 },
               ]
             : []

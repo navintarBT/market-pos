@@ -15,9 +15,10 @@ type CartAction =
   | { type: "REMOVE"; key: string }
   | { type: "CLEAR" };
 
-function itemKey(item: Pick<CartItem, "productId" | "variant" | "splitId">) {
+function itemKey(item: Pick<CartItem, "productId" | "variant" | "splitId" | "giftForKey">) {
   const base = `${item.productId}__${item.variant.size}__${item.variant.color}`;
-  return item.splitId ? `${base}__${item.splitId}` : base;
+  const withSplit = item.splitId ? `${base}__${item.splitId}` : base;
+  return item.giftForKey ? `${withSplit}__gift-for-${item.giftForKey}` : withSplit;
 }
 
 function reducer(state: CartState, action: CartAction): CartState {

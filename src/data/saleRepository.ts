@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -192,8 +193,16 @@ export async function getCodSales(shopId: string): Promise<Sale[]> {
   });
 }
 
-/** Deletes a sale and restores the stock it had decremented. */
-export async function deleteSale(shopId: string, sale: Sale): Promise<void> {
+/**
+ * Deletes a sale record. By default also restores the stock it had decremented
+ * ("cancel the sale"). Pass restoreStock=false to just delete the history entry
+ * as-is, leaving stock untouched (e.g. fixing a duplicate/mistaken record).
+ */
+export async function deleteSale(shopId: string, sale: Sale, restoreStock = true): Promise<void> {
+  if (!restoreStock) {
+    await deleteDoc(doc(salesCol(shopId), sale.id));
+    return;
+  }
   await runTransaction(db, async (tx) => {
     const changes = buildStockChanges(sale.items);
 
@@ -231,42 +240,51 @@ export async function deleteSale(shopId: string, sale: Sale): Promise<void> {
   });
 }
 
-/** Removes qty units of one line item from a sale and restores that stock. Returns updated sale, or null if the whole sale was deleted. */
+/**
+ * Removes qty units of one line item from a sale. By default also restores that
+ * stock ("cancel"). Pass restoreStock=false to just delete the history entry
+ * as-is, leaving stock untouched. Returns updated sale, or null if the whole
+ * sale was deleted (last item removed).
+ */
 export async function removeItemFromSale(
   shopId: string,
   sale: Sale,
   itemIndex: number,
-  qtyToRemove: number
+  qtyToRemove: number,
+  restoreStock = true
 ): Promise<Sale | null> {
   return runTransaction<Sale | null>(db, async (tx) => {
     const item = sale.items[itemIndex];
     const actual = Math.min(qtyToRemove, item.quantity);
-    const changes = buildStockChanges([{ ...item, quantity: actual }]);
 
-    const byProduct = new Map<string, StockChange[]>();
-    for (const ch of changes) {
-      const arr = byProduct.get(ch.productId) ?? [];
-      arr.push(ch);
-      byProduct.set(ch.productId, arr);
-    }
+    if (restoreStock) {
+      const changes = buildStockChanges([{ ...item, quantity: actual }]);
 
-    const snaps = new Map<string, any>();
-    for (const productId of byProduct.keys()) {
-      const ref = doc(productsCol(shopId), productId);
-      const snap = await tx.get(ref);
-      if (snap.exists()) snaps.set(productId, snap);
-    }
-
-    for (const [productId, productChanges] of byProduct) {
-      const snap = snaps.get(productId);
-      if (!snap) continue;
-      const ref = doc(productsCol(shopId), productId);
-      const variants: any[] = [...(snap.data().variants ?? [])];
-      for (const ch of productChanges) {
-        const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
-        if (idx !== -1) variants[idx] = { ...variants[idx], stock: variants[idx].stock + ch.qty };
+      const byProduct = new Map<string, StockChange[]>();
+      for (const ch of changes) {
+        const arr = byProduct.get(ch.productId) ?? [];
+        arr.push(ch);
+        byProduct.set(ch.productId, arr);
       }
-      tx.update(ref, { variants });
+
+      const snaps = new Map<string, any>();
+      for (const productId of byProduct.keys()) {
+        const ref = doc(productsCol(shopId), productId);
+        const snap = await tx.get(ref);
+        if (snap.exists()) snaps.set(productId, snap);
+      }
+
+      for (const [productId, productChanges] of byProduct) {
+        const snap = snaps.get(productId);
+        if (!snap) continue;
+        const ref = doc(productsCol(shopId), productId);
+        const variants: any[] = [...(snap.data().variants ?? [])];
+        for (const ch of productChanges) {
+          const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
+          if (idx !== -1) variants[idx] = { ...variants[idx], stock: variants[idx].stock + ch.qty };
+        }
+        tx.update(ref, { variants });
+      }
     }
 
     const newItems: SaleItem[] =

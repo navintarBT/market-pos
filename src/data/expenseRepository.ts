@@ -23,22 +23,10 @@ function mapExpense(d: any): Expense {
     id: d.id,
     description: data.description,
     amount: data.amount,
-    category: data.category ?? "general",
+    category: data.category ?? "shop",
     paymentType: (data.paymentType as "cash" | "transfer") ?? "cash",
     createdAt: (data.createdAt as Timestamp).toDate(),
   };
-}
-
-export async function getExpensesToday(shopId: string): Promise<Expense[]> {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const q = query(
-    expensesCol(shopId),
-    where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
-    orderBy("createdAt", "desc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(mapExpense);
 }
 
 export async function getExpensesByDateRange(

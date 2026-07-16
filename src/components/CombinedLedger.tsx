@@ -8,25 +8,15 @@ import { addOutline, closeOutline, createOutline, trashOutline, chevronBackOutli
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances, type WalletBalances } from "../data/walletRepository";
-import { fmtK } from "../utils/format";
+import { fmtK, fmtDate, fmtTime } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
 import WalletCard from "./WalletCard";
+import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
 
 interface ShopRef { id: string; name: string; profileUrl?: string }
 interface TaggedExpense extends Expense { shopId: string; shopName: string }
 interface TaggedIncome extends Income { shopId: string; shopName: string }
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function monthStartStr() {
-  const d = new Date();
-  d.setDate(1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 type PaymentKind = "cash" | "transfer" | "cod";
 
@@ -274,7 +264,12 @@ export default function CombinedLedger({ shops, onBack }: Props) {
     }
   }
 
-  const scopedExpenses = shopFilter === "all" ? expenses : expenses.filter((e) => e.shopId === shopFilter);
+  // "capital"/"general" expenses are treated as shared/pooled money drawn from all
+  // shops together — they only ever show under the "ທັງໝົດ" (all) view, never when
+  // filtered down to one specific shop, even though they're physically stored under one.
+  const scopedExpenses = shopFilter === "all"
+    ? expenses
+    : expenses.filter((e) => e.shopId === shopFilter && e.category === "shop");
   const scopedIncomes = shopFilter === "all" ? incomes : incomes.filter((i) => i.shopId === shopFilter);
   const scopedShopIds = shopFilter === "all" ? shops.map((s) => s.id) : [shopFilter];
   const cashBalance = scopedShopIds.reduce((s, id) => s + (walletByShop[id]?.cashBalance ?? 0), 0);
@@ -330,16 +325,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px 0" }}>
-          <input type="date" value={fromDate} max={toDate} onChange={(e) => setFromDate(e.target.value)} style={{
-            flex: 1, padding: "8px 10px", borderRadius: 8, border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-            fontSize: "0.82rem", background: "var(--ion-color-step-50, #fafaf9)", color: "var(--ion-text-color, #1c1917)", outline: "none",
-          }} />
-          <span style={{ color: "#a8a29e", fontWeight: 700, fontSize: "0.75rem" }}>—</span>
-          <input type="date" value={toDate} min={fromDate} onChange={(e) => setToDate(e.target.value)} style={{
-            flex: 1, padding: "8px 10px", borderRadius: 8, border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-            fontSize: "0.82rem", background: "var(--ion-color-step-50, #fafaf9)", color: "var(--ion-text-color, #1c1917)", outline: "none",
-          }} />
+        <div style={{ padding: "10px 16px 0" }}>
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} style={{ marginBottom: 0 }} />
         </div>
 
         {/* Shop filter */}
@@ -417,8 +404,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               </div>
             ) : (
               visibleExpenses.map((item) => {
-                const timeStr = item.createdAt.toLocaleTimeString("lo-LA", { hour: "2-digit", minute: "2-digit" });
-                const dateStr = item.createdAt.toLocaleDateString("lo-LA", { day: "numeric", month: "short" });
+                const timeStr = fmtTime(item.createdAt);
+                const dateStr = fmtDate(item.createdAt);
                 return (
                   <div key={`${item.shopId}_${item.id}`} style={{
                     background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
@@ -429,7 +416,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                         {item.description}
                       </p>
                       <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
-                        {dateStr} · {timeStr} · 🏪 {item.shopName}
+                        {dateStr} · {timeStr} · {item.category === "shop" ? `🏪 ${item.shopName}` : "🤝 ສ່ວນກາງ"}
                       </p>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
@@ -465,8 +452,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
             </div>
           ) : (
             scopedIncomes.map((item) => {
-              const timeStr = item.createdAt.toLocaleTimeString("lo-LA", { hour: "2-digit", minute: "2-digit" });
-              const dateStr = item.createdAt.toLocaleDateString("lo-LA", { day: "numeric", month: "short" });
+              const timeStr = fmtTime(item.createdAt);
+              const dateStr = fmtDate(item.createdAt);
               return (
                 <div key={`${item.shopId}_${item.id}`} style={{
                   background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
@@ -521,26 +508,33 @@ export default function CombinedLedger({ shops, onBack }: Props) {
         </IonHeader>
         <IonContent>
           <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຮ້ານ</p>
-              {expEditTarget ? (
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f0eb", fontWeight: 700, color: "#57534e" }}>
-                  🏪 {shopName(expShopId)}
-                </div>
-              ) : (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {shops.map((s) => (
-                    <button key={s.id} onClick={() => setExpShopId(s.id)} style={{
-                      flex: "1 1 auto", padding: "10px 14px", borderRadius: 10, border: "none",
-                      background: expShopId === s.id ? "var(--ion-color-primary)" : "#f5f0eb",
-                      color: expShopId === s.id ? "#fff" : "#57534e", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-                    }}>
-                      🏪 {s.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {expCategory === "shop" && (
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຮ້ານ</p>
+                {expEditTarget ? (
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f0eb", fontWeight: 700, color: "#57534e" }}>
+                    🏪 {shopName(expShopId)}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {shops.map((s) => (
+                      <button key={s.id} onClick={() => setExpShopId(s.id)} style={{
+                        flex: "1 1 auto", padding: "10px 14px", borderRadius: 10, border: "none",
+                        background: expShopId === s.id ? "var(--ion-color-primary)" : "#f5f0eb",
+                        color: expShopId === s.id ? "#fff" : "#57534e", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+                      }}>
+                        🏪 {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {expCategory !== "shop" && (
+              <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f3ff", color: "#7c3aed", fontSize: "0.8rem", fontWeight: 600 }}>
+                🤝 ລາຍຈ່າຍນີ້ຈະຖືກນັບເປັນສ່ວນກາງ ບໍ່ຜູກກັບຮ້ານໃດຮ້ານໜຶ່ງ
+              </div>
+            )}
             <div>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຄຳອະທິບາຍ</p>
               <input type="text" value={expDesc} onChange={(e) => setExpDesc(e.target.value)} placeholder="ຊື່ລາຍຈ່າຍ" style={{

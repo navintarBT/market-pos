@@ -203,8 +203,15 @@ export async function deleteSale(shopId: string, sale: Sale, restoreStock = true
     await deleteDoc(doc(salesCol(shopId), sale.id));
     return;
   }
+  const saleRef = doc(salesCol(shopId), sale.id);
   await runTransaction(db, async (tx) => {
-    const changes = buildStockChanges(sale.items);
+    // Re-read the sale itself inside the transaction — restoring stock based on the
+    // caller's (possibly stale) in-memory copy risks double-restoring items that a
+    // concurrent edit (e.g. removeItemFromSale) already restored and removed.
+    const saleSnap = await tx.get(saleRef);
+    if (!saleSnap.exists()) return; // already deleted by someone else — nothing to do
+    const freshItems = (saleSnap.data().items ?? []) as SaleItem[];
+    const changes = buildStockChanges(freshItems);
 
     const byProduct = new Map<string, StockChange[]>();
     for (const ch of changes) {
@@ -236,7 +243,7 @@ export async function deleteSale(shopId: string, sale: Sale, restoreStock = true
       tx.update(ref, { variants });
     }
 
-    tx.delete(doc(salesCol(shopId), sale.id));
+    tx.delete(saleRef);
   });
 }
 
@@ -253,8 +260,15 @@ export async function removeItemFromSale(
   qtyToRemove: number,
   restoreStock = true
 ): Promise<Sale | null> {
+  const saleRef = doc(salesCol(shopId), sale.id);
   return runTransaction<Sale | null>(db, async (tx) => {
-    const item = sale.items[itemIndex];
+    // Re-read the sale itself inside the transaction, same reasoning as deleteSale —
+    // otherwise a concurrent edit can be silently overwritten or stock double-restored.
+    const saleSnap = await tx.get(saleRef);
+    if (!saleSnap.exists()) return null; // already deleted by someone else
+    const freshItems = (saleSnap.data().items ?? []) as SaleItem[];
+    const item = freshItems[itemIndex];
+    if (!item) return { ...sale, items: freshItems };
     const actual = Math.min(qtyToRemove, item.quantity);
 
     if (restoreStock) {
@@ -289,10 +303,9 @@ export async function removeItemFromSale(
 
     const newItems: SaleItem[] =
       item.quantity <= actual
-        ? sale.items.filter((_, i) => i !== itemIndex)
-        : sale.items.map((it, i) => (i === itemIndex ? { ...it, quantity: it.quantity - actual } : it));
+        ? freshItems.filter((_, i) => i !== itemIndex)
+        : freshItems.map((it, i) => (i === itemIndex ? { ...it, quantity: it.quantity - actual } : it));
 
-    const saleRef = doc(salesCol(shopId), sale.id);
     if (newItems.length === 0) {
       tx.delete(saleRef);
       return null;
@@ -301,25 +314,5 @@ export async function removeItemFromSale(
     const newTotal = newItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
     tx.update(saleRef, { items: newItems, total: newTotal });
     return { ...sale, items: newItems, total: newTotal };
-  });
-}
-
-export async function getSalesToday(shopId: string): Promise<Sale[]> {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const q = query(
-    salesCol(shopId),
-    where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
-    orderBy("createdAt", "desc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      ...data,
-      createdAt: (data.createdAt as Timestamp).toDate(),
-    } as Sale;
   });
 }

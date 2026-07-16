@@ -28,6 +28,7 @@ const DEFAULT_FEATURES: ShopFeatures = {
   returnEnabled: false,
   returnSummaryEnabled: false,
   monthlySummaryEnabled: false,
+  ledgerEnabled: false,
 };
 
 interface AuthState {
@@ -135,6 +136,7 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
       returnEnabled: f?.returnEnabled ?? false,
       returnSummaryEnabled: f?.returnSummaryEnabled ?? false,
       monthlySummaryEnabled: f?.monthlySummaryEnabled ?? false,
+      ledgerEnabled: f?.ledgerEnabled ?? false,
     };
     shopProfile = {
       id: shopId,

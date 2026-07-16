@@ -4,9 +4,10 @@ import {
   IonContent, IonIcon, IonSpinner, IonAlert,
 } from "@ionic/react";
 import { closeOutline, trashOutline } from "ionicons/icons";
-import { fmtK } from "../utils/format";
+import { fmtK, fmtDate, fmtTime } from "../utils/format";
 import { getTransfersByDateRange, deleteTransfer } from "../data/transferRepository";
 import type { TransferRecord } from "../data/transferRepository";
+import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
 
 interface Props {
   isOpen: boolean;
@@ -14,18 +15,9 @@ interface Props {
   onDismiss: () => void;
 }
 
-function toDateInputValue(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-const todayStr = toDateInputValue(new Date());
-
 const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
-  const [fromDate, setFromDate] = useState(todayStr);
-  const [toDate, setToDate] = useState(todayStr);
+  const [fromDate, setFromDate] = useState(monthStartStr());
+  const [toDate, setToDate] = useState(todayStr());
   const [records, setRecords] = useState<TransferRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TransferRecord | null>(null);
@@ -73,31 +65,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
 
       <IonContent>
         {/* Date range filter */}
-        <div style={{
-          background: "#fff", borderRadius: 12, padding: "10px 14px", margin: "12px 16px 8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          display: "flex", alignItems: "center", gap: 8,
-        }}>
-          <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
-          <input
-            type="date" value={fromDate} max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={{
-              flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-            }}
-          />
-          <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
-          <input
-            type="date" value={toDate} min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={{
-              flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-            }}
-          />
+        <div style={{ margin: "12px 16px 0" }}>
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} />
         </div>
 
         {loading && (
@@ -138,8 +107,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             <div style={{ padding: "0 16px 32px" }}>
               {records.map((r) => {
                 const cost = r.costPrice * r.quantity;
-                const timeStr = r.createdAt.toLocaleTimeString("lo-LA", { hour: "2-digit", minute: "2-digit" });
-                const dateStr = r.createdAt.toLocaleDateString("lo-LA", { day: "numeric", month: "short" });
+                const timeStr = fmtTime(r.createdAt);
+                const dateStr = fmtDate(r.createdAt);
                 return (
                   <div key={r.id} style={{
                     background: "#fff", borderRadius: 14, padding: "14px 16px",

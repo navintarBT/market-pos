@@ -11,16 +11,12 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances } from "../data/walletRepository";
-import { fmtK } from "../utils/format";
+import { fmtK, fmtDate, fmtTime } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import WalletCard from "../components/WalletCard";
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
 
 type PaymentKind = "cash" | "transfer" | "cod";
 
@@ -75,11 +71,11 @@ const EXPENSE_PAYMENT_OPTIONS = ["cash", "transfer"] as const;
 const INCOME_PAYMENT_OPTIONS = ["cash", "transfer", "cod"] as const;
 
 const Finance: React.FC = () => {
-  const { shopId, permissions } = useAuth();
+  const { shopId, permissions, features } = useAuth();
 
   const [section, setSection] = useState<"menu" | "shopExpense" | "ledger">("menu");
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
-  const [fromDate, setFromDate] = useState(todayStr());
+  const [fromDate, setFromDate] = useState(monthStartStr());
   const [toDate, setToDate] = useState(todayStr());
 
   // Expense state
@@ -392,30 +388,32 @@ const Finance: React.FC = () => {
               <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
             </button>
 
-            <button
-              onClick={() => setSection("ledger")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "20px 18px",
-                borderRadius: 18,
-                border: "none",
-                background: "linear-gradient(135deg, #e07b39, #c25e1e)",
-                boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <div style={{ fontSize: 30 }}><IonIcon icon={walletOutline} style={{ color: "#fff" }} /></div>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1.05rem" }}>ບັນຊີລາຍຮັບລາຍຈ່າຍ</p>
-                <p style={{ margin: "3px 0 0", color: "rgba(255,255,255,0.85)", fontSize: "0.78rem" }}>
-                  ລາຍຮັບ, ລາຍຈ່າຍ ແລະ ກະເປົາເງິນທັງໝົດ
-                </p>
-              </div>
-              <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
-            </button>
+            {features.ledgerEnabled && (
+              <button
+                onClick={() => setSection("ledger")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "20px 18px",
+                  borderRadius: 18,
+                  border: "none",
+                  background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                  boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontSize: 30 }}><IonIcon icon={walletOutline} style={{ color: "#fff" }} /></div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1.05rem" }}>ບັນຊີລາຍຮັບລາຍຈ່າຍ</p>
+                  <p style={{ margin: "3px 0 0", color: "rgba(255,255,255,0.85)", fontSize: "0.78rem" }}>
+                    ລາຍຮັບ, ລາຍຈ່າຍ ແລະ ກະເປົາເງິນທັງໝົດ
+                  </p>
+                </div>
+                <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
+              </button>
+            )}
           </div>
         )}
 
@@ -470,40 +468,8 @@ const Finance: React.FC = () => {
         )}
 
         {/* Date filter */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px 0" }}>
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-              fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)",
-              color: "var(--ion-text-color, #1c1917)",
-              outline: "none",
-            }}
-          />
-          <span style={{ color: "#a8a29e", fontWeight: 700, fontSize: "0.75rem" }}>—</span>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-              fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)",
-              color: "var(--ion-text-color, #1c1917)",
-              outline: "none",
-            }}
-          />
+        <div style={{ padding: "10px 16px 0" }}>
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} style={{ marginBottom: 0 }} />
         </div>
 
         <div style={{ padding: "12px 16px 100px" }}>
@@ -592,14 +558,8 @@ const Finance: React.FC = () => {
               </div>
             ) : (
               visibleExpenses.map((item) => {
-                const timeStr = item.createdAt.toLocaleTimeString("lo-LA", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                const dateStr = item.createdAt.toLocaleDateString("lo-LA", {
-                  day: "numeric",
-                  month: "short",
-                });
+                const timeStr = fmtTime(item.createdAt);
+                const dateStr = fmtDate(item.createdAt);
                 return (
                   <div
                     key={item.id}
@@ -708,14 +668,8 @@ const Finance: React.FC = () => {
             </div>
           ) : (
             incomes.map((item) => {
-              const timeStr = item.createdAt.toLocaleTimeString("lo-LA", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-              const dateStr = item.createdAt.toLocaleDateString("lo-LA", {
-                day: "numeric",
-                month: "short",
-              });
+              const timeStr = fmtTime(item.createdAt);
+              const dateStr = fmtDate(item.createdAt);
               return (
                 <div
                   key={item.id}

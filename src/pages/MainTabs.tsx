@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   IonBadge,
   IonContent,
@@ -53,10 +53,15 @@ function RouteFallback() {
 
 function useStockAlertCount(shopId: string | null) {
   const [count, setCount] = useState(0);
+  // Guards against a slower, older request's response landing after a newer one's,
+  // which would otherwise setCount() a stale value for the wrong shop/moment.
+  const requestIdRef = useRef(0);
 
   async function refresh() {
     if (!shopId) return;
+    const requestId = ++requestIdRef.current;
     const products = await getProducts(shopId);
+    if (requestId !== requestIdRef.current) return; // superseded by a newer refresh
     const n = products.filter((p) =>
       p.variants.some((v) => v.stock <= (v.minStock ?? 5))
     ).length;

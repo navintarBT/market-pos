@@ -1,21 +1,11 @@
 import {
-  collection, addDoc, getDocs, query, where, orderBy, Timestamp, runTransaction, doc,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, doc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { ReturnRecord, Product, ProductVariant } from "./types";
 
 function returnsCol(shopId: string) {
   return collection(db, "shops", shopId, "returns");
-}
-
-export async function logReturn(
-  shopId: string,
-  data: Omit<ReturnRecord, "id">,
-): Promise<void> {
-  await addDoc(returnsCol(shopId), {
-    ...data,
-    createdAt: Timestamp.fromDate(data.createdAt),
-  });
 }
 
 export async function getReturnsByDateRange(

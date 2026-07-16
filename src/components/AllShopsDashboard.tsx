@@ -6,6 +6,7 @@ import { getExpensesByDateRange } from "../data/expenseRepository";
 import { getIncomesByDateRange } from "../data/incomeRepository";
 import { fmtK } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
+import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
 
 interface ShopSummary {
   id: string;
@@ -24,22 +25,11 @@ interface Props {
   onBack: () => void;
 }
 
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 const EXPENSE_CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   shop: "🏪 ລາຍຈ່າຍຮ້ານ",
   capital: "💼 ທຶນທຸລະກິດ",
   general: "👤 ສ່ວນຕົວ",
 };
-
-function monthStart(): Date {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 function parseRange(from: string, to: string): [Date, Date] {
   const f = new Date(from); f.setHours(0, 0, 0, 0);
@@ -47,16 +37,9 @@ function parseRange(from: string, to: string): [Date, Date] {
   return [f, t];
 }
 
-const dateInputStyle: React.CSSProperties = {
-  flex: 1, border: "none", outline: "none",
-  fontSize: "0.82rem", background: "transparent",
-  color: "#374151", fontFamily: "inherit",
-};
-
 export default function AllShopsDashboard({ shops, onBack }: Props) {
-  const todayStr = toDateStr(new Date());
-  const [from, setFrom] = useState(toDateStr(monthStart()));
-  const [to, setTo] = useState(todayStr);
+  const [from, setFrom] = useState(monthStartStr());
+  const [to, setTo] = useState(todayStr());
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ShopSummary[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
@@ -79,7 +62,10 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
             0
           );
           const grossProfit = revenue - cost;
-          const expense = expenses.reduce((s, e) => s + e.amount, 0);
+          // Only "shop"-category expenses count toward this shop's own P&L —
+          // "capital"/"general" are shared/pooled across shops (see CombinedLedger)
+          // and are only ever reflected in the grand total below, not per-shop.
+          const expense = expenses.filter((e) => e.category === "shop").reduce((s, e) => s + e.amount, 0);
           const income = incomes.reduce((s, i) => s + i.amount, 0);
           const netProfit = grossProfit + income - expense;
           return { summary: { id: shop.id, name: shop.name, profileUrl: shop.profileUrl, revenue, cost, grossProfit, income, expense, netProfit }, expenses, incomes };
@@ -109,9 +95,11 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
   const incCash = allIncomes.filter((i) => i.paymentType === "cash").reduce((s, i) => s + i.amount, 0);
   const incTransfer = allIncomes.filter((i) => i.paymentType === "transfer").reduce((s, i) => s + i.amount, 0);
   const incCod = allIncomes.filter((i) => i.paymentType === "cod").reduce((s, i) => s + i.amount, 0);
-  const totalExpense = rows.reduce((s, r) => s + r.expense, 0);
+  // Grand totals count every expense (shop + shared capital/general), unlike the
+  // per-shop rows above which only reflect that shop's own "shop"-category costs.
+  const totalExpense = allExpenses.reduce((s, e) => s + e.amount, 0);
   const totalIncome = rows.reduce((s, r) => s + r.income, 0);
-  const totalNetProfit = rows.reduce((s, r) => s + r.netProfit, 0);
+  const totalNetProfit = totalGrossProfit + totalIncome - totalExpense;
 
   return (
     <IonPage>
@@ -128,15 +116,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
       <IonContent style={{ "--background": "#fef6ee" }}>
         <div style={{ padding: "16px 16px 40px" }}>
           {/* Date filter */}
-          <div style={{
-            background: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 14,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span>📅</span>
-            <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} style={dateInputStyle} />
-            <span style={{ color: "#9ca3af" }}>—</span>
-            <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} style={dateInputStyle} />
-          </div>
+          <DateRangeFilter from={from} to={to} setFrom={setFrom} setTo={setTo} />
 
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>

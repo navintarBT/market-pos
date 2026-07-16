@@ -104,10 +104,16 @@ const Sell: React.FC = () => {
       return { ...item, variantSize: chosen?.size ?? "", variantColor: chosen?.color ?? "" };
     });
     const costPrice = bundleItemsWithVariants.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
+    // Fingerprint the chosen sub-variants into the cart's itemKey so two adds of the
+    // same bundle with DIFFERENT variant picks (e.g. size S then size L) get separate
+    // cart lines instead of merging into one quantity and silently dropping a pick.
+    const variantFingerprint = bundleItemsWithVariants
+      .map((bi) => `${bi.productId}:${bi.variantSize ?? ""}:${bi.variantColor ?? ""}`)
+      .join("|");
     addItem({
       productId: bundlePickerTarget.id,
       productName: bundlePickerTarget.name,
-      variant: { size: "__bundle__", color: "", stock: 99 },
+      variant: { size: "__bundle__", color: variantFingerprint, stock: 99 },
       quantity: 1,
       originalPrice: bundlePickerTarget.price,
       unitPrice: bundlePickerTarget.price,

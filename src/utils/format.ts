@@ -7,3 +7,22 @@ export function fmtK(n: number): string {
 export function fmtVariant(size?: string, color?: string): string {
   return [size, color].filter(Boolean).join("/");
 }
+
+/** dd/mm/yyyy */
+export function fmtDate(date: Date): string {
+  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${d}/${m}/${date.getFullYear()}`;
+}
+
+/** HH:mm */
+export function fmtTime(date: Date): string {
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+}
+
+/** dd/mm/yyyy HH:mm */
+export function fmtDateTime(date: Date): string {
+  return `${fmtDate(date)} ${fmtTime(date)}`;
+}

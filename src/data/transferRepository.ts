@@ -1,5 +1,5 @@
 import {
-  addDoc, collection, getDocs, orderBy, query, Timestamp, where, runTransaction, doc,
+  collection, getDocs, orderBy, query, Timestamp, where, runTransaction, doc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Product, ProductVariant } from "./types";
@@ -14,16 +14,6 @@ export interface TransferRecord {
   costPrice: number;
   note?: string;
   createdAt: Date;
-}
-
-export async function logTransfer(
-  shopId: string,
-  data: Omit<TransferRecord, "id">,
-): Promise<void> {
-  await addDoc(collection(db, "shops", shopId, "transfers"), {
-    ...data,
-    createdAt: Timestamp.fromDate(data.createdAt),
-  });
 }
 
 export async function getTransfersByDateRange(

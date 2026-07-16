@@ -2,6 +2,7 @@ export interface ShopFeatures {
   returnEnabled: boolean;
   returnSummaryEnabled: boolean;
   monthlySummaryEnabled: boolean;
+  ledgerEnabled: boolean;
 }
 
 export interface ReturnRecord {

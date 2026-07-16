@@ -11,8 +11,9 @@ import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
 import type { Sale, ShopUser } from "../data/types";
-import { fmtK, fmtVariant } from "../utils/format";
+import { fmtK, fmtVariant, fmtDate, fmtTime, fmtDateTime } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
 
 function saleItemLabel(item: Sale["items"][number]): string {
   if (item.isBundle) return item.productName;
@@ -33,30 +34,6 @@ const PAYMENT_BADGE: Record<Sale["paymentType"], { label: string; bg: string; co
   cod: { label: "📦 COD", bg: "#fef3c7", color: "#b45309" },
 };
 
-function toDateInputValue(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function formatDateTime(date: Date) {
-  const d = String(date.getDate()).padStart(2, "0");
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const y = date.getFullYear();
-  const h = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${d}/${m}/${y} ${h}:${min}`;
-}
-
-function formatTime(date: Date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatShortDate(date: Date) {
-  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
 interface StatCardProps {
   label: string;
   value: string;
@@ -76,8 +53,6 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, bg, color }) =>
   </div>
 );
 
-const today = new Date();
-
 const SalesHistory: React.FC = () => {
   const { shopId, role, permissions } = useAuth();
   const isOwner = role === "customer";
@@ -85,8 +60,8 @@ const SalesHistory: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [users, setUsers] = useState<ShopUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fromDate, setFromDate] = useState(toDateInputValue(today));
-  const [toDate, setToDate] = useState(toDateInputValue(today));
+  const [fromDate, setFromDate] = useState(monthStartStr());
+  const [toDate, setToDate] = useState(todayStr());
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
@@ -159,14 +134,6 @@ const SalesHistory: React.FC = () => {
     }
   }
 
-  function handleFromChange(val: string) {
-    setFromDate(val);
-  }
-
-  function handleToChange(val: string) {
-    setToDate(val);
-  }
-
   const totalRevenue = sales.reduce((s, t) => s + t.total, 0);
   const cashTotal = sales.filter((s) => s.paymentType === "cash").reduce((s, t) => s + t.total, 0);
   const qrTotal = sales.filter((s) => s.paymentType === "qr").reduce((s, t) => s + t.total, 0);
@@ -233,35 +200,8 @@ const SalesHistory: React.FC = () => {
             </IonSegment>
           )}
 
-          {/* Date range filter — compact single row */}
-          <div style={{
-            background: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 14,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
-            <input
-              type="date" value={fromDate} max={toDate}
-              disabled={loading}
-              onChange={(e) => handleFromChange(e.target.value)}
-              style={{
-                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-                border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-                background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-              }}
-            />
-            <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
-            <input
-              type="date" value={toDate} min={fromDate}
-              disabled={loading}
-              onChange={(e) => handleToChange(e.target.value)}
-              style={{
-                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-                border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-                background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-              }}
-            />
-          </div>
+          {/* Date range filter */}
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} disabled={loading} />
 
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
@@ -316,12 +256,12 @@ const SalesHistory: React.FC = () => {
                               display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
                             }}
                           >
-                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
+                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
                               <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
-                                {formatTime(sale.createdAt)}
+                                {fmtTime(sale.createdAt)}
                               </div>
                               <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
-                                {formatShortDate(sale.createdAt)}
+                                {fmtDate(sale.createdAt)}
                               </div>
                             </div>
                             <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
@@ -573,12 +513,12 @@ const SalesHistory: React.FC = () => {
                         }}
                       >
                         {/* Time column */}
-                        <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
+                        <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
                           <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
-                            {formatTime(sale.createdAt)}
+                            {fmtTime(sale.createdAt)}
                           </div>
                           <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
-                            {formatShortDate(sale.createdAt)}
+                            {fmtDate(sale.createdAt)}
                           </div>
                         </div>
 
@@ -685,7 +625,7 @@ const SalesHistory: React.FC = () => {
             {/* Meta */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <span style={{ fontSize: "0.82rem", color: "#78716c" }}>
-                📅 {formatDateTime(selectedSale.createdAt)}
+                📅 {fmtDateTime(selectedSale.createdAt)}
               </span>
               <span style={{
                 background: PAYMENT_BADGE[selectedSale.paymentType].bg,

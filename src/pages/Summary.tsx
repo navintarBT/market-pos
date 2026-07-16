@@ -15,17 +15,7 @@ import type { Sale, Product, ReturnRecord, Income, Expense } from "../data/types
 import { fmtK } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import WalletCard from "../components/WalletCard";
-
-function toDateStr(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function monthStart(): Date {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import DateRangeFilter, { todayStr as getTodayStr, monthStartStr as getMonthStartStr } from "../components/DateRangeFilter";
 
 function parseRange(from: string, to: string): [Date, Date] {
   const f = new Date(from); f.setHours(0, 0, 0, 0);
@@ -33,27 +23,24 @@ function parseRange(from: string, to: string): [Date, Date] {
   return [f, t];
 }
 
-const dateInputStyle: React.CSSProperties = {
-  flex: 1, border: "none", outline: "none",
-  fontSize: "0.82rem", background: "transparent",
-  color: "#374151", fontFamily: "inherit",
-};
-
 type InnerTab = "today" | "monthly";
 type SubSection = "sales" | "inventory" | "returns";
 
 const Summary: React.FC = () => {
   const { shopId, features } = useAuth();
-  const todayStr      = toDateStr(new Date());
-  const monthStartStr = toDateStr(monthStart());
+  const todayStr      = getTodayStr();
+  const monthStartStr = getMonthStartStr();
 
   const showToday   = features.returnSummaryEnabled;
   const showMonthly = features.monthlySummaryEnabled;
+  // The "ສະຫຼຸບການເງິນ" tab specifically also needs the ledger feature — unlike
+  // showMonthly (used by ຍອດຕີກັບ and the monthly data loader), which is unrelated.
+  const showFinanceSummary = showMonthly && features.ledgerEnabled;
 
   const [activeTab, setActiveTab] = useState<InnerTab>(showToday ? "today" : "monthly");
 
   // ── Today section state ──────────────────────────────────────────────
-  const [tFrom, setTFrom] = useState(todayStr);
+  const [tFrom, setTFrom] = useState(monthStartStr);
   const [tTo,   setTTo]   = useState(todayStr);
   const [todaySales,    setTodaySales]    = useState<Sale[]>([]);
   const [todayExpenses, setTodayExpenses] = useState(0);
@@ -150,13 +137,13 @@ const Summary: React.FC = () => {
 
   useEffect(() => { if (showToday)   loadToday();   }, [loadToday]);
   useEffect(() => { if (showMonthly) loadMonthly(); }, [loadMonthly]);
-  useEffect(() => { if (showMonthly) loadFinance();  }, [loadFinance]);
+  useEffect(() => { if (showFinanceSummary) loadFinance();  }, [loadFinance]);
   useEffect(() => { loadWallet(); }, [loadWallet]);
 
   useIonViewWillEnter(() => {
     if (showToday)   loadToday();
     if (showMonthly) loadMonthly();
-    if (showMonthly) loadFinance();
+    if (showFinanceSummary) loadFinance();
     loadWallet();
   });
 
@@ -164,7 +151,7 @@ const Summary: React.FC = () => {
     await Promise.all([
       showToday   ? loadToday()   : Promise.resolve(),
       showMonthly ? loadMonthly() : Promise.resolve(),
-      showMonthly ? loadFinance() : Promise.resolve(),
+      showFinanceSummary ? loadFinance() : Promise.resolve(),
       loadWallet(),
     ]);
     (e.target as HTMLIonRefresherElement).complete();
@@ -242,26 +229,6 @@ const Summary: React.FC = () => {
   const finNet = finIncomeTotal - finExpenseTotal;
 
   // ── Shared sub-components ────────────────────────────────────────────
-  function DateFilter({ from, to, setFrom, setTo }: {
-    from: string; to: string;
-    setFrom: (v: string) => void;
-    setTo: (v: string) => void;
-  }) {
-    return (
-      <div style={{
-        background: "#fff", borderRadius: 10, padding: "7px 12px", marginBottom: 8,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 8,
-      }}>
-        <span>📅</span>
-        <input type="date" value={from} max={to}
-          onChange={e => setFrom(e.target.value)} style={dateInputStyle} />
-        <span style={{ color: "#9ca3af" }}>—</span>
-        <input type="date" value={to} min={from}
-          onChange={e => setTo(e.target.value)} style={dateInputStyle} />
-      </div>
-    );
-  }
-
   function Row({ label, value, bg, color, bold }: {
     label: string; value: string; bg: string; color: string; bold?: boolean;
   }) {
@@ -295,8 +262,8 @@ const Summary: React.FC = () => {
     return (
       <>
         {activeSub === "returns"
-          ? <DateFilter from={mFrom} to={mTo} setFrom={setMFrom} setTo={setMTo} />
-          : <DateFilter from={tFrom} to={tTo} setFrom={setTFrom} setTo={setTTo} />}
+          ? <DateRangeFilter from={mFrom} to={mTo} setFrom={setMFrom} setTo={setMTo} />
+          : <DateRangeFilter from={tFrom} to={tTo} setFrom={setTFrom} setTo={setTTo} />}
 
         <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           {navCards.map(card => {
@@ -578,7 +545,7 @@ const Summary: React.FC = () => {
 
         <div style={{ padding: "12px 14px 24px" }}>
           {/* Inner tab switcher — only when both sections are enabled */}
-          {showToday && showMonthly && (
+          {showToday && showFinanceSummary && (
             <div style={{
               display: "flex", background: "#f3f4f6", borderRadius: 11,
               padding: 4, marginBottom: 10,
@@ -603,7 +570,7 @@ const Summary: React.FC = () => {
           )}
 
           {activeTab === "today" && showToday && renderToday()}
-          {activeTab === "monthly" && showMonthly && (
+          {activeTab === "monthly" && showFinanceSummary && (
             <>
               <WalletCard
                 loading={walletLoading}
@@ -613,7 +580,7 @@ const Summary: React.FC = () => {
               />
 
               <div style={{ marginTop: 10 }}>
-                <DateFilter from={finFrom} to={finTo} setFrom={setFinFrom} setTo={setFinTo} />
+                <DateRangeFilter from={finFrom} to={finTo} setFrom={setFinFrom} setTo={setFinTo} />
               </div>
 
               {finLoading ? (

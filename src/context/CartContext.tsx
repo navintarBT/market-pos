@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import type { SaleItem } from "../data/types";
+import { useAuth } from "./AuthContext";
 
 type CartItem = SaleItem;
 
@@ -84,11 +85,15 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const STORAGE_KEY = "mpos_cart";
+// Cart is scoped per-shop so switching shops never leaks one shop's cart
+// items (and their productIds/prices) into another shop's cart.
+function storageKey(shopId: string | null) {
+  return `mpos_cart_${shopId ?? "none"}`;
+}
 
-function loadCart(): CartState {
+function loadCart(shopId: string | null): CartState {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey(shopId));
     return saved ? JSON.parse(saved) : { items: [] };
   } catch {
     return { items: [] };
@@ -96,11 +101,12 @@ function loadCart(): CartState {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadCart);
+  const { shopId } = useAuth();
+  const [state, dispatch] = useReducer(reducer, shopId, loadCart);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    localStorage.setItem(storageKey(shopId), JSON.stringify(state));
+  }, [state, shopId]);
 
   const total = state.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   const count = state.items.reduce((sum, i) => sum + i.quantity, 0);

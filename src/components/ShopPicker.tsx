@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { IonPage, IonContent, IonIcon, IonSpinner } from "@ionic/react";
-import { logOutOutline } from "ionicons/icons";
+import { logOutOutline, statsChartOutline, walletOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
+import AllShopsDashboard from "./AllShopsDashboard";
+import CombinedLedger from "./CombinedLedger";
+
+type View = "picker" | "dashboard" | "ledger";
 
 export default function ShopPicker() {
   const { availableShops, switchShop, signOut } = useAuth();
   const [pickingId, setPickingId] = useState<string | null>(null);
+  const [view, setView] = useState<View>("picker");
 
   async function handlePick(id: string) {
     setPickingId(id);
@@ -14,6 +19,13 @@ export default function ShopPicker() {
     } finally {
       setPickingId(null);
     }
+  }
+
+  if (view === "dashboard") {
+    return <AllShopsDashboard shops={availableShops} onBack={() => setView("picker")} />;
+  }
+  if (view === "ledger") {
+    return <CombinedLedger shops={availableShops} onBack={() => setView("picker")} />;
   }
 
   return (
@@ -40,6 +52,41 @@ export default function ShopPicker() {
                 ທ່ານມີ {availableShops.length} ຮ້ານ — ກະລຸນາເລືອກ
               </p>
             </div>
+
+            {availableShops.length > 1 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                <button
+                  onClick={() => setView("dashboard")}
+                  style={{
+                    width: "100%", padding: "13px 16px",
+                    borderRadius: 16, border: "1.5px solid #fed7aa",
+                    background: "#fff7ed", display: "flex", alignItems: "center", gap: 10,
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <IonIcon icon={statsChartOutline} style={{ fontSize: 20, color: "#c2410c", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#c2410c", flex: 1, textAlign: "left" }}>
+                    ພາບລວມທຸກຮ້ານ
+                  </span>
+                  <span style={{ color: "#e07b39", fontSize: "1.1rem" }}>›</span>
+                </button>
+                <button
+                  onClick={() => setView("ledger")}
+                  style={{
+                    width: "100%", padding: "13px 16px",
+                    borderRadius: 16, border: "1.5px solid #99f6e4",
+                    background: "#f0fdfa", display: "flex", alignItems: "center", gap: 10,
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <IonIcon icon={walletOutline} style={{ fontSize: 20, color: "#0f766e", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f766e", flex: 1, textAlign: "left" }}>
+                    ບັນຊີລາຍຮັບລາຍຈ່າຍລວມ
+                  </span>
+                  <span style={{ color: "#0f766e", fontSize: "1.1rem" }}>›</span>
+                </button>
+              </div>
+            )}
 
             {/* Shop list */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

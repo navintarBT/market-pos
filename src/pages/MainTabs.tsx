@@ -244,13 +244,13 @@ const MainTabs: React.FC = () => {
             <IonLabel>ສິນຄ້າ</IonLabel>
             {alertCount > 0 && <IonBadge color="danger">{alertCount}</IonBadge>}
           </IonTabButton>
-          <IonTabButton tab="finance" href="/tabs/finance">
-            <IonIcon icon={walletOutline} />
-            <IonLabel>ການເງິນ</IonLabel>
-          </IonTabButton>
           <IonTabButton tab="history" href="/tabs/history">
             <IonIcon icon={timeOutline} />
             <IonLabel>ປະຫວັດການຂາຍ</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="finance" href="/tabs/finance">
+            <IonIcon icon={walletOutline} />
+            <IonLabel>ການເງິນ</IonLabel>
           </IonTabButton>
           {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && (
             <IonTabButton tab="summary" href="/tabs/summary">

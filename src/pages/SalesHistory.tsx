@@ -173,15 +173,17 @@ const SalesHistory: React.FC = () => {
   const codTotal = sales.filter((s) => s.paymentType === "cod").reduce((s, t) => s + t.total, 0);
   const itemCount = sales.reduce((s, sale) => s + sale.items.reduce((is, i) => is + i.quantity, 0), 0);
   const totalDiscount = sales.reduce((s, sale) =>
-    s + sale.items.reduce((is, item) =>
-      is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity, 0), 0);
+    s + sale.items.reduce((is, item) => {
+      if (item.isGift) return is;
+      return is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
+    }, 0), 0);
   const totalCost = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const grossProfit = totalRevenue - totalCost;
   const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
   const lossTotal = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {
-      if (item.costPrice != null && item.unitPrice < item.costPrice) {
+      if (!item.isGift && item.costPrice != null && item.unitPrice < item.costPrice) {
         return is + (item.costPrice - item.unitPrice) * item.quantity;
       }
       return is;
@@ -551,7 +553,7 @@ const SalesHistory: React.FC = () => {
                     const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
                     const badge = PAYMENT_BADGE[sale.paymentType];
                     const hasLoss = sale.items.some(
-                      (i) => i.costPrice != null && i.unitPrice < i.costPrice
+                      (i) => !i.isGift && i.costPrice != null && i.unitPrice < i.costPrice
                     );
                     const names = sale.items.map(saleItemLabel).join(", ");
                     return (
@@ -716,7 +718,7 @@ const SalesHistory: React.FC = () => {
                   giftsByParentKey.set(it.giftForKey, arr);
                 }
                 return selectedSale.items.flatMap((item, idx) => {
-                const discount = ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
+                const discount = item.isGift ? 0 : ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
                 const subtotal = item.unitPrice * item.quantity;
                 const isLoss = !item.isGift && item.costPrice != null && item.unitPrice < item.costPrice;
                 const isExpanded = expandedItemIdx === idx;
@@ -884,7 +886,7 @@ const SalesHistory: React.FC = () => {
               const hasCostData = selectedSale.items.some((i) => i.costPrice != null);
               const saleProfit = selectedSale.total - saleCost;
               const lossItems = selectedSale.items.filter(
-                (i) => i.costPrice != null && i.unitPrice < i.costPrice
+                (i) => !i.isGift && i.costPrice != null && i.unitPrice < i.costPrice
               );
               const totalLoss = lossItems.reduce(
                 (s, i) => s + (i.costPrice! - i.unitPrice) * i.quantity, 0

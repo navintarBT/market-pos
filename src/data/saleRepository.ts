@@ -316,3 +316,65 @@ export async function removeItemFromSale(
     return { ...sale, items: newItems, total: newTotal };
   });
 }
+
+/**
+ * Corrects the unit price of one line item on an already-recorded sale
+ * (e.g. fixing a typo at checkout). Only the price changes — quantity and
+ * stock are untouched. Returns the updated sale, or null if it no longer exists.
+ */
+export async function updateItemPrice(
+  shopId: string,
+  sale: Sale,
+  itemIndex: number,
+  newPrice: number
+): Promise<Sale | null> {
+  const saleRef = doc(salesCol(shopId), sale.id);
+  return runTransaction<Sale | null>(db, async (tx) => {
+    const saleSnap = await tx.get(saleRef);
+    if (!saleSnap.exists()) return null;
+    const freshItems = (saleSnap.data().items ?? []) as SaleItem[];
+    if (!freshItems[itemIndex]) return { ...sale, items: freshItems };
+
+    const newItems = freshItems.map((it, i) => (i === itemIndex ? { ...it, unitPrice: newPrice } : it));
+    const newTotal = newItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+    tx.update(saleRef, { items: newItems, total: newTotal });
+    return { ...sale, items: newItems, total: newTotal };
+  });
+}
+
+/**
+ * Splits ONE unit off a multi-quantity line item and gives it its own price
+ * (e.g. correcting the price of a single piece within "×2"), mirroring the
+ * cart's SPLIT_PRICE action but applied to an already-recorded sale. If the
+ * line only has 1 unit left, this just behaves like updateItemPrice.
+ */
+export async function splitItemPrice(
+  shopId: string,
+  sale: Sale,
+  itemIndex: number,
+  newPrice: number
+): Promise<Sale | null> {
+  const saleRef = doc(salesCol(shopId), sale.id);
+  return runTransaction<Sale | null>(db, async (tx) => {
+    const saleSnap = await tx.get(saleRef);
+    if (!saleSnap.exists()) return null;
+    const freshItems = (saleSnap.data().items ?? []) as SaleItem[];
+    const item = freshItems[itemIndex];
+    if (!item) return { ...sale, items: freshItems };
+
+    let newItems: SaleItem[];
+    if (item.quantity <= 1) {
+      newItems = freshItems.map((it, i) => (i === itemIndex ? { ...it, unitPrice: newPrice } : it));
+    } else {
+      const splitId = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      const splitItem: SaleItem = { ...item, quantity: 1, unitPrice: newPrice, splitId };
+      newItems = [
+        ...freshItems.map((it, i) => (i === itemIndex ? { ...it, quantity: it.quantity - 1 } : it)),
+        splitItem,
+      ];
+    }
+    const newTotal = newItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+    tx.update(saleRef, { items: newItems, total: newTotal });
+    return { ...sale, items: newItems, total: newTotal };
+  });
+}

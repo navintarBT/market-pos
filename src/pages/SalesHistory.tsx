@@ -6,14 +6,15 @@ import {
   IonButtons, IonMenuButton, IonModal, IonButton, IonIcon,
   IonSegment, IonSegmentButton, useIonViewWillEnter,
 } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline, returnUpBackOutline } from "ionicons/icons";
+import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline, returnUpBackOutline, createOutline, closeOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/saleRepository";
+import { getSalesByDateRange, deleteSale, removeItemFromSale, updateItemPrice, splitItemPrice } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
 import type { Sale, ShopUser } from "../data/types";
 import { fmtK, fmtVariant, fmtDate, fmtTime, fmtDateTime } from "../utils/format";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
+import NumInput from "../components/NumInput";
 
 function saleItemLabel(item: Sale["items"][number]): string {
   if (item.isBundle) return item.productName;
@@ -72,6 +73,11 @@ const SalesHistory: React.FC = () => {
   const [itemRestoreStock, setItemRestoreStock] = useState(true);
   const [removingItem, setRemovingItem] = useState(false);
   const [expandedItemIdx, setExpandedItemIdx] = useState<number | null>(null);
+  const [editPriceIdx, setEditPriceIdx] = useState<number | null>(null);
+  const [editPriceMode, setEditPriceMode] = useState<"whole" | "split">("whole");
+  const [editPriceValue, setEditPriceValue] = useState(0);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [editPriceError, setEditPriceError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -116,6 +122,38 @@ const SalesHistory: React.FC = () => {
       setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
       setRemovingItem(false);
+    }
+  }
+
+  function openEditPrice(idx: number, mode: "whole" | "split") {
+    if (!selectedSale) return;
+    setEditPriceValue(selectedSale.items[idx].unitPrice);
+    setEditPriceMode(mode);
+    setEditPriceIdx(idx);
+  }
+
+  function dismissEditPrice() {
+    setEditPriceIdx(null);
+    setEditPriceValue(0);
+  }
+
+  async function handleEditPrice() {
+    if (!shopId || !selectedSale || editPriceIdx === null) return;
+    const idx = editPriceIdx;
+    setEditingPrice(true);
+    try {
+      const updated = editPriceMode === "split"
+        ? await splitItemPrice(shopId, selectedSale, idx, editPriceValue)
+        : await updateItemPrice(shopId, selectedSale, idx, editPriceValue);
+      if (updated) {
+        setSales((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        setSelectedSale(updated);
+      }
+      dismissEditPrice();
+    } catch {
+      setEditPriceError("ບັນທຶກບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setEditingPrice(false);
     }
   }
 
@@ -748,32 +786,50 @@ const SalesHistory: React.FC = () => {
                         <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
                           {fmtK(subtotal)} ກີບ
                         </p>
-                        {!isExpanded && permissions.canDeleteSales && (
+                        {!isExpanded && (permissions.canEditCartPrice || permissions.canDeleteSales) && (
                           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                            <button
-                              onClick={() => { setItemRestoreStock(true); setRemoveItemIdx(idx); }}
-                              disabled={removingItem}
-                              title="ຍົກເລີກ (ຄືນສະຕັອກ)"
-                              style={{
-                                background: "none", border: "none", padding: "2px 4px",
-                                cursor: removingItem ? "default" : "pointer",
-                                color: "#2563eb", lineHeight: 0,
-                              }}
-                            >
-                              <IonIcon icon={returnUpBackOutline} style={{ fontSize: 15, display: "block" }} />
-                            </button>
-                            <button
-                              onClick={() => { setItemRestoreStock(false); setRemoveItemIdx(idx); }}
-                              disabled={removingItem}
-                              title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
-                              style={{
-                                background: "none", border: "none", padding: "2px 4px",
-                                cursor: removingItem ? "default" : "pointer",
-                                color: "#d1d5db", lineHeight: 0,
-                              }}
-                            >
-                              <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
-                            </button>
+                            {permissions.canEditCartPrice && (
+                              <button
+                                onClick={() => openEditPrice(idx, "whole")}
+                                disabled={editingPrice}
+                                title="ແກ້ໄຂລາຄາ"
+                                style={{
+                                  background: "none", border: "none", padding: "2px 4px",
+                                  cursor: editingPrice ? "default" : "pointer",
+                                  color: "#78716c", lineHeight: 0,
+                                }}
+                              >
+                                <IonIcon icon={createOutline} style={{ fontSize: 15, display: "block" }} />
+                              </button>
+                            )}
+                            {permissions.canDeleteSales && (
+                              <>
+                                <button
+                                  onClick={() => { setItemRestoreStock(true); setRemoveItemIdx(idx); }}
+                                  disabled={removingItem}
+                                  title="ຍົກເລີກ (ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "2px 4px",
+                                    cursor: removingItem ? "default" : "pointer",
+                                    color: "#2563eb", lineHeight: 0,
+                                  }}
+                                >
+                                  <IonIcon icon={returnUpBackOutline} style={{ fontSize: 15, display: "block" }} />
+                                </button>
+                                <button
+                                  onClick={() => { setItemRestoreStock(false); setRemoveItemIdx(idx); }}
+                                  disabled={removingItem}
+                                  title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "2px 4px",
+                                    cursor: removingItem ? "default" : "pointer",
+                                    color: "#d1d5db", lineHeight: 0,
+                                  }}
+                                >
+                                  <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -797,18 +853,51 @@ const SalesHistory: React.FC = () => {
                     <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
                       ລາຍ {i + 1} · {fmtK(item.unitPrice)} ກີບ
                     </span>
-                    {permissions.canDeleteSales && (
-                      <button
-                        onClick={() => handleRemoveItem(idx, 1, true)}
-                        disabled={removingItem}
-                        style={{
-                          background: "none", border: "none", padding: "6px 4px",
-                          cursor: removingItem ? "default" : "pointer",
-                          color: "#d1d5db", lineHeight: 0,
-                        }}
-                      >
-                        <IonIcon icon={trashOutline} style={{ fontSize: 14, display: "block" }} />
-                      </button>
+                    {(permissions.canEditCartPrice || permissions.canDeleteSales) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        {permissions.canEditCartPrice && (
+                          <button
+                            onClick={() => openEditPrice(idx, "split")}
+                            disabled={editingPrice}
+                            title="ແກ້ໄຂລາຄາ (ແຍກຊິ້ນນີ້)"
+                            style={{
+                              background: "none", border: "none", padding: "6px 4px",
+                              cursor: editingPrice ? "default" : "pointer",
+                              color: "#78716c", lineHeight: 0,
+                            }}
+                          >
+                            <IonIcon icon={createOutline} style={{ fontSize: 14, display: "block" }} />
+                          </button>
+                        )}
+                        {permissions.canDeleteSales && (
+                          <>
+                            <button
+                              onClick={() => handleRemoveItem(idx, 1, true)}
+                              disabled={removingItem}
+                              title="ຍົກເລີກ (ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "6px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "#2563eb", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={returnUpBackOutline} style={{ fontSize: 14, display: "block" }} />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveItem(idx, 1, false)}
+                              disabled={removingItem}
+                              title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "6px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "#d1d5db", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={trashOutline} style={{ fontSize: 14, display: "block" }} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 ));
@@ -920,6 +1009,75 @@ const SalesHistory: React.FC = () => {
             : []
         }
         onDidDismiss={() => setRemoveItemIdx(null)}
+      />
+
+      <IonModal
+        isOpen={editPriceIdx !== null}
+        onDidDismiss={dismissEditPrice}
+        initialBreakpoint={0.4}
+        breakpoints={[0, 0.4]}
+        canDismiss={async () => !editingPrice}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonButton onClick={dismissEditPrice} disabled={editingPrice}>
+                <IonIcon slot="icon-only" icon={closeOutline} />
+              </IonButton>
+            </IonButtons>
+            <IonTitle style={{ fontWeight: 700 }}>
+              {editPriceMode === "split" ? "ແກ້ໄຂລາຄາ (ແຍກຊິ້ນນີ້)" : "ແກ້ໄຂລາຄາ"}
+            </IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {editPriceIdx !== null && selectedSale && (
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem" }}>
+                  {selectedSale.items[editPriceIdx].productName}
+                </p>
+                {editPriceMode === "split" && selectedSale.items[editPriceIdx].quantity > 1 && (
+                  <p style={{ margin: "3px 0 0", fontSize: "0.78rem", color: "#9333ea" }}>
+                    ຈະແຍກ 1 ຊິ້ນອອກມາໃສ່ລາຄາໃໝ່ ອີກ {selectedSale.items[editPriceIdx].quantity - 1} ຊິ້ນລາຄາເກົ່າຄືເດີມ
+                  </p>
+                )}
+              </div>
+            )}
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ລາຄາ (ກີບ)</p>
+              <NumInput
+                value={editPriceValue}
+                onChange={setEditPriceValue}
+                placeholder="0"
+                style={{
+                  width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb",
+                  fontSize: "1.1rem", fontWeight: 700, outline: "none", background: "#fafaf9",
+                  color: "#1c1917", boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <button
+              onClick={handleEditPrice}
+              disabled={editingPrice}
+              style={{
+                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                background: editingPrice ? "#e5e7eb" : "var(--ion-color-primary)",
+                color: editingPrice ? "#a8a29e" : "#fff",
+                fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginTop: 4,
+              }}
+            >
+              {editingPrice ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກ"}
+            </button>
+          </div>
+        </IonContent>
+      </IonModal>
+      <IonAlert
+        isOpen={!!editPriceError}
+        header="ຂໍ້ຜິດພາດ"
+        message={editPriceError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setEditPriceError(null)}
       />
     </IonPage>
   );

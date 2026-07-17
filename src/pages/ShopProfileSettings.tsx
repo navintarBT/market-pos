@@ -15,7 +15,7 @@ import {
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { businessOutline, closeOutline, createOutline, mailOutline, saveOutline } from "ionicons/icons";
+import { alertCircleOutline, businessOutline, checkmarkCircleOutline, closeOutline, createOutline, mailOutline, ribbonOutline, saveOutline } from "ionicons/icons";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import ImagePicker from "../components/ImagePicker";
 import { useAuth } from "../context/AuthContext";
@@ -36,6 +36,36 @@ function PlanBadge({ status }: { status: string }) {
     <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30` }}>
       {cfg.label}
     </span>
+  );
+}
+
+function SectionHeading({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+        background: "var(--app-accent-surface)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <IonIcon icon={icon} style={{ fontSize: 14, color: "var(--ion-color-primary)" }} />
+      </div>
+      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>{label}</span>
+    </div>
+  );
+}
+
+function AlertBanner({ kind, children }: { kind: "success" | "error"; children: React.ReactNode }) {
+  const success = kind === "success";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      background: success ? "#f0fdf4" : "#fef2f2",
+      border: `1px solid ${success ? "#bbf7d0" : "#fecaca"}`,
+      borderRadius: 14, padding: "12px 14px", marginBottom: 14,
+    }}>
+      <IonIcon icon={success ? checkmarkCircleOutline : alertCircleOutline} style={{ fontSize: 20, color: success ? "#16a34a" : "#dc2626", flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: "0.85rem", color: success ? "#166534" : "#991b1b" }}>{children}</span>
+    </div>
   );
 }
 
@@ -276,7 +306,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
               {tenant && (
                 <div style={{ ...cardStyle, padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>ແພັກເກດ</span>
+                    <SectionHeading icon={ribbonOutline} label="ແພັກເກດ" />
                     <PlanBadge status={tenant.status} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
@@ -296,8 +326,8 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
               <section style={cardStyle}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: emailEditing ? 14 : 0 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>ອີເມວເຂົ້າສູ່ລະບົບ</div>
-                    <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 2 }}>{user?.email}</div>
+                    <SectionHeading icon={mailOutline} label="ອີເມວເຂົ້າສູ່ລະບົບ" />
+                    <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 6, marginLeft: 34 }}>{user?.email}</div>
                   </div>
                   {!emailEditing && (
                     <IonButton
@@ -375,27 +405,11 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                 )}
               </section>
 
-              {emailMessage && (
-                <div style={{
-                  ...cardStyle,
-                  borderLeft: "4px solid #16a34a",
-                  color: "#166534",
-                  fontWeight: 700,
-                }}>
-                  {emailMessage}
-                </div>
-              )}
+              {emailMessage && <AlertBanner kind="success">{emailMessage}</AlertBanner>}
 
               {/* Alert — auto-dismisses after 3 s */}
               {(message || error) && (
-                <div style={{
-                  ...cardStyle,
-                  borderLeft: `4px solid ${error ? "#dc2626" : "#16a34a"}`,
-                  color: error ? "#991b1b" : "#166534",
-                  fontWeight: 700,
-                }}>
-                  {error ?? message}
-                </div>
+                <AlertBanner kind={error ? "error" : "success"}>{error ?? message}</AlertBanner>
               )}
 
               {/* Edit form — shown only when isEditing */}

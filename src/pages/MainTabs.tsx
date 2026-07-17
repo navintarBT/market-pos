@@ -93,64 +93,101 @@ const MainTabs: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
-          <div style={{ padding: "18px 16px 12px", background: "linear-gradient(135deg, var(--app-accent-surface), var(--app-surface))" }}>
+          <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+            {/* ── Profile header ── */}
             <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              background: "var(--app-accent-surface)",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 10,
+              padding: "24px 18px 20px",
+              textAlign: "center",
+              background: `
+                radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px),
+                linear-gradient(135deg, var(--app-accent-surface), var(--app-surface))
+              `,
+              backgroundSize: "18px 18px, 100% 100%",
+              borderBottom: "1px solid var(--app-border)",
             }}>
-              {shopProfile?.profileUrl ? (
-                <img src={shopProfile.profileUrl} alt={shopProfile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "var(--ion-color-primary)" }} />
-              )}
+              <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "var(--app-surface)",
+                border: "3px solid var(--ion-color-primary)",
+                boxShadow: "0 4px 14px rgba(224,123,57,0.28)",
+                overflow: "hidden",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 12px",
+              }}>
+                {shopProfile?.profileUrl ? (
+                  <img src={shopProfile.profileUrl} alt={shopProfile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <IonIcon icon={businessOutline} style={{ fontSize: 32, color: "var(--ion-color-primary)" }} />
+                )}
+              </div>
+              <h2 style={{
+                margin: 0, color: "var(--ion-text-color)", fontSize: "1.1rem", fontWeight: 800,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {shopProfile?.name ?? "Minny ONE"}
+              </h2>
+              <span style={{
+                display: "inline-block", marginTop: 8, padding: "3px 12px", borderRadius: 20,
+                background: role === "customer" ? "var(--ion-color-primary)" : "#0f766e",
+                color: "#fff", fontSize: "0.7rem", fontWeight: 700,
+              }}>
+                {role === "customer" ? "ເຈົ້າຂອງຮ້ານ" : "ພະນັກງານ"}
+              </span>
             </div>
-            <h2 style={{ margin: 0, color: "var(--ion-text-color)", fontSize: "1.05rem", fontWeight: 800 }}>
-              {shopProfile?.name ?? "Minny ONE"}
-            </h2>
-            <p style={{ margin: "3px 0 0", color: "var(--app-text-secondary)", fontSize: "0.78rem", fontWeight: 600 }}>
-              {role === "customer" ? "Owner" : "Staff"}
-            </p>
-          </div>
 
-          <IonList lines="none" style={{ paddingTop: 8 }}>
-            {role === "customer" && (
-              <>
+            {/* ── Menu sections ── */}
+            <div style={{ flex: 1, padding: "8px 0" }}>
+              {role === "customer" && (
+                <>
+                  <div style={{ padding: "12px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
+                    ຈັດການຮ້ານ
+                  </div>
+                  <IonList lines="none">
+                    <IonMenuToggle autoHide={false}>
+                      <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                        <IonIcon slot="start" icon={businessOutline} color="primary" />
+                        <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                      </IonItem>
+                    </IonMenuToggle>
+                    <IonMenuToggle autoHide={false}>
+                      <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "rgba(15,118,110,0.1)" }}>
+                        <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
+                        <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
+                      </IonItem>
+                    </IonMenuToggle>
+                  </IonList>
+                </>
+              )}
+
+              <div style={{ padding: "14px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
+                ບັນຊີ
+              </div>
+              <IonList lines="none">
+                {availableShops.length > 1 && (
+                  <IonMenuToggle autoHide={false}>
+                    <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                      <IonIcon slot="start" icon={swapHorizontalOutline} color="primary" />
+                      <IonLabel style={{ fontWeight: 600, color: "var(--ion-color-primary)" }}>ສຳຮ້ານ</IonLabel>
+                    </IonItem>
+                  </IonMenuToggle>
+                )}
                 <IonMenuToggle autoHide={false}>
-                  <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
-                    <IonIcon slot="start" icon={businessOutline} color="primary" />
-                    <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                  <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "rgba(220,38,38,0.1)" }}>
+                    <IonIcon slot="start" icon={logOutOutline} color="danger" />
+                    <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
                   </IonItem>
                 </IonMenuToggle>
-                <IonMenuToggle autoHide={false}>
-                  <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "#f0fdfa" }}>
-                    <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
-                    <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
-                  </IonItem>
-                </IonMenuToggle>
-              </>
-            )}
-            {availableShops.length > 1 && (
-              <IonMenuToggle autoHide={false}>
-                <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "var(--app-accent-surface)", marginTop: 8 }}>
-                  <IonIcon slot="start" icon={swapHorizontalOutline} style={{ color: "var(--ion-color-primary)" }} />
-                  <IonLabel style={{ fontWeight: 600, color: "#c2410c" }}>ສຳຮ້ານ</IonLabel>
-                </IonItem>
-              </IonMenuToggle>
-            )}
-            <IonMenuToggle autoHide={false}>
-              <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "#fee2e2", marginTop: 4 }}>
-                <IonIcon slot="start" icon={logOutOutline} color="danger" />
-                <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-          </IonList>
+              </IonList>
+            </div>
+
+            {/* ── Brand footer ── */}
+            <div style={{ padding: "16px 18px", textAlign: "center", borderTop: "1px solid var(--app-border)" }}>
+              <div style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: "1rem", lineHeight: 1 }}>
+                <span style={{ color: "var(--ion-text-color)" }}>Minny</span><span style={{ color: "var(--ion-color-primary)" }}>One</span>
+              </div>
+              <p style={{ margin: "4px 0 0", fontSize: "0.68rem", color: "var(--app-text-muted)" }}>ລະບົບຂາຍສິນຄ້າ</p>
+            </div>
+          </div>
         </IonContent>
       </IonMenu>
 

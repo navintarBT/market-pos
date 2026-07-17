@@ -252,7 +252,7 @@ const Summary: React.FC = () => {
     );
 
     const navCards = [
-      { id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ", color: "#e07b39", bg: "#fff7ed" },
+      { id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ", color: "var(--ion-color-primary)", bg: "var(--app-accent-surface)" },
       { id: "inventory" as SubSection, icon: "📦", label: "ຍອດເງິນຄ້າງ", color: "#d97706", bg: "#fef3c7" },
       ...(showMonthly ? [{
         id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ", color: "#dc2626", bg: "#fef2f2",
@@ -272,14 +272,14 @@ const Summary: React.FC = () => {
               <button key={card.id} onClick={() => setActiveSub(card.id)} style={{
                 flex: 1,
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                background: isActive ? card.bg : "#ffffff",
-                border: `2px solid ${isActive ? card.color : "#f3f4f6"}`,
+                background: isActive ? card.bg : "var(--app-surface)",
+                border: `2px solid ${isActive ? card.color : "var(--app-surface-alt)"}`,
                 borderRadius: 12, padding: "10px 6px",
                 cursor: "pointer", transition: "all 0.15s",
                 boxShadow: isActive ? `0 4px 14px ${card.color}30` : "0 1px 4px rgba(0,0,0,0.06)",
               }}>
                 <span style={{ fontSize: 20 }}>{card.icon}</span>
-                <span style={{ fontSize: "0.74rem", fontWeight: 700, color: isActive ? card.color : "#1c1917" }}>
+                <span style={{ fontSize: "0.74rem", fontWeight: 700, color: isActive ? card.color : "var(--ion-text-color)" }}>
                   {card.label}
                 </span>
               </button>
@@ -287,12 +287,12 @@ const Summary: React.FC = () => {
           })}
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 16, padding: "14px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+        <div style={{ background: "var(--app-surface)", borderRadius: 16, padding: "14px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
           {activeSub === "sales" ? (
             <>
               <div style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                 borderRadius: 12, padding: "11px 14px", marginBottom: 8, color: "#fff",
               }}>
                 <div>
@@ -308,15 +308,15 @@ const Summary: React.FC = () => {
                 <>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: tDiscount > 0 ? 6 : 8 }}>
                     <div style={{ background: "#f0fdf4", borderRadius: 9, padding: "7px 8px" }}>
-                      <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>💵 ສົດ</p>
+                      <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💵 ສົດ</p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(tCash)} ກີບ</p>
                     </div>
                     <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
-                      <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>📱 ໂອນ</p>
+                      <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📱 ໂອນ</p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#2563eb" }}>{fmtK(tQR)} ກີບ</p>
                     </div>
                     <div style={{ background: "#fffbeb", borderRadius: 9, padding: "7px 8px" }}>
-                      <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>📦 COD</p>
+                      <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📦 COD</p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#d97706" }}>{fmtK(tCod)} ກີບ</p>
                     </div>
                   </div>
@@ -334,7 +334,7 @@ const Summary: React.FC = () => {
 
               {tHasCost && (
                 <>
-                  <div style={{ height: 1, background: "#f3f4f6", margin: "2px 0 8px" }} />
+                  <div style={{ height: 1, background: "var(--app-surface-alt)", margin: "2px 0 8px" }} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fef3c7", borderRadius: 9, padding: "7px 10px" }}>
                       <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
@@ -359,8 +359,8 @@ const Summary: React.FC = () => {
                     )}
                     {todayExpenses > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f5f5f4", borderRadius: 9, padding: "7px 10px" }}>
-                        <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "#78716c" }}>📋 ລາຍຈ່າຍຮ້ານ</span>
-                        <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "#78716c" }}>−{fmtK(todayExpenses)} ກີບ</span>
+                        <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>📋 ລາຍຈ່າຍຮ້ານ</span>
+                        <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "var(--app-text-secondary)" }}>−{fmtK(todayExpenses)} ກີບ</span>
                       </div>
                     )}
                     <div style={{
@@ -379,13 +379,13 @@ const Summary: React.FC = () => {
               )}
 
               {todaySales.length === 0 && (
-                <p style={{ textAlign: "center", color: "#a8a29e", paddingTop: 6 }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                <p style={{ textAlign: "center", color: "var(--app-text-muted)", paddingTop: 6 }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
               )}
             </>
           ) : activeSub === "inventory" ? (
             <>
               {!hasInvCost ? (
-                <p style={{ textAlign: "center", color: "#a8a29e", padding: "12px 0" }}>
+                <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "12px 0" }}>
                   ຍັງບໍ່ມີຂໍ້ມູນສິນຄ້າ (ຍັງບໍ່ໄດ້ໃສ່ລາຄາຕົ້ນທຶນ)
                 </p>
               ) : (
@@ -410,7 +410,7 @@ const Summary: React.FC = () => {
                       <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#92400e" }}>🏷️ ຕົ້ນທຶນ {costPct}%</span>
                       <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#16a34a" }}>{profitPct}% ກຳໄລ 💰</span>
                     </div>
-                    <div style={{ height: 8, borderRadius: 8, background: "#e5e7eb", overflow: "hidden" }}>
+                    <div style={{ height: 8, borderRadius: 8, background: "var(--app-border)", overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${costPct}%`, background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: "8px 0 0 8px", display: "inline-block", verticalAlign: "top" }} />
                       <div style={{ height: "100%", width: `${profitPct}%`, background: "linear-gradient(90deg, #34d399, #16a34a)", borderRadius: "0 8px 8px 0", display: "inline-block", verticalAlign: "top" }} />
                     </div>
@@ -438,7 +438,7 @@ const Summary: React.FC = () => {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{
-                    background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                    background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                     borderRadius: 16, padding: "14px 16px", color: "#fff",
                     boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
                   }}>
@@ -458,7 +458,7 @@ const Summary: React.FC = () => {
 
                   {hasReturns && (
                     <div style={{
-                      background: "#fff", borderRadius: 14, padding: "12px",
+                      background: "var(--app-surface)", borderRadius: 14, padding: "12px",
                       border: "1.5px solid #fcd34d", boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
                     }}>
                       <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.8rem", color: "#92400e" }}>
@@ -483,19 +483,19 @@ const Summary: React.FC = () => {
 
                   {hasReturns && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-                      <span style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 600 }}>ຍອດສຸດທິຫຼັງຫັກຕີກັບ</span>
-                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                      <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
+                      <span style={{ fontSize: "0.7rem", color: "var(--app-text-muted)", fontWeight: 600 }}>ຍອດສຸດທິຫຼັງຫັກຕີກັບ</span>
+                      <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
                     </div>
                   )}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    <Row label="💰 ຍອດຂາຍສຸດທິ" value={`${fmtK(mNetRevenue)} ກີບ`} bg="#fff7ed" color="#c2410c" bold />
+                    <Row label="💰 ຍອດຂາຍສຸດທິ" value={`${fmtK(mNetRevenue)} ກີບ`} bg="var(--app-accent-surface)" color="#c2410c" bold />
                     {mHasCost && (
                       <Row label="🏷️ ຕົ້ນທຶນສຸດທິ" value={`${fmtK(mNetCost)} ກີບ`} bg="#fef3c7" color="#92400e" />
                     )}
                     {monthExpenses > 0 && (
-                      <Row label="📋 ລາຍຈ່າຍຮ້ານ" value={`−${fmtK(monthExpenses)} ກີບ`} bg="#f5f5f4" color="#78716c" />
+                      <Row label="📋 ລາຍຈ່າຍຮ້ານ" value={`−${fmtK(monthExpenses)} ກີບ`} bg="#f5f5f4" color="var(--app-text-secondary)" />
                     )}
                     {mHasCost && (
                       <div style={{
@@ -516,7 +516,7 @@ const Summary: React.FC = () => {
                   </div>
 
                   {monthSales.length === 0 && (
-                    <p style={{ textAlign: "center", color: "#a8a29e", padding: "20px 0" }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                    <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "20px 0" }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
                   )}
                 </div>
               )}
@@ -547,7 +547,7 @@ const Summary: React.FC = () => {
           {/* Inner tab switcher — only when both sections are enabled */}
           {showToday && showFinanceSummary && (
             <div style={{
-              display: "flex", background: "#f3f4f6", borderRadius: 11,
+              display: "flex", background: "var(--app-surface-alt)", borderRadius: 11,
               padding: 4, marginBottom: 10,
             }}>
               {([
@@ -556,8 +556,8 @@ const Summary: React.FC = () => {
               ] as const).map(tab => (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                   flex: 1, padding: "7px 0", border: "none", borderRadius: 8,
-                  background: activeTab === tab.id ? "#fff" : "transparent",
-                  color: activeTab === tab.id ? "#e07b39" : "#78716c",
+                  background: activeTab === tab.id ? "var(--app-surface)" : "transparent",
+                  color: activeTab === tab.id ? "var(--ion-color-primary)" : "var(--app-text-secondary)",
                   fontWeight: activeTab === tab.id ? 700 : 500,
                   fontSize: "0.83rem", cursor: "pointer",
                   boxShadow: activeTab === tab.id ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
@@ -588,7 +588,7 @@ const Summary: React.FC = () => {
                   <IonSpinner name="crescent" color="primary" />
                 </div>
               ) : (
-                <div style={{ background: "#fff", borderRadius: 16, padding: "14px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                <div style={{ background: "var(--app-surface)", borderRadius: 16, padding: "14px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
                     <Row label="💰 ລາຍຮັບລວມ" value={`${fmtK(finIncomeTotal)} ກີບ`} bg="#f0fdf4" color="#16a34a" bold />
                     <Row label="💸 ລາຍຈ່າຍລວມ" value={`−${fmtK(finExpenseTotal)} ກີບ`} bg="#fef2f2" color="#dc2626" bold />
@@ -596,20 +596,20 @@ const Summary: React.FC = () => {
 
                   {finIncomeTotal > 0 && (
                     <>
-                      <p style={{ margin: "0 0 6px", fontSize: "0.73rem", fontWeight: 700, color: "#78716c" }}>
+                      <p style={{ margin: "0 0 6px", fontSize: "0.73rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                         ລາຍຮັບແຍກຕາມປະເພດ
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 10 }}>
                         <div style={{ background: "#f0fdf4", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>💵 ສົດ</p>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💵 ສົດ</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(finIncomeCash)} ກີບ</p>
                         </div>
                         <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>📱 ໂອນ</p>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📱 ໂອນ</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#2563eb" }}>{fmtK(finIncomeTransfer)} ກີບ</p>
                         </div>
                         <div style={{ background: "#fffbeb", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>📦 COD</p>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📦 COD</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#d97706" }}>{fmtK(finIncomeCod)} ກີບ</p>
                         </div>
                       </div>
@@ -618,16 +618,16 @@ const Summary: React.FC = () => {
 
                   {finExpenseTotal > 0 && (
                     <>
-                      <p style={{ margin: "0 0 6px", fontSize: "0.73rem", fontWeight: 700, color: "#78716c" }}>
+                      <p style={{ margin: "0 0 6px", fontSize: "0.73rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                         ລາຍຈ່າຍແຍກຕາມປະເພດ
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
                         <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>🏪 ທຸລະກິດ</p>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏪 ທຸລະກິດ</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#1d4ed8" }}>{fmtK(finExpenseBusiness)} ກີບ</p>
                         </div>
-                        <div style={{ background: "#fff7ed", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "#78716c", fontWeight: 600 }}>👤 ສ່ວນຕົວ</p>
+                        <div style={{ background: "var(--app-accent-surface)", borderRadius: 9, padding: "7px 8px" }}>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>👤 ສ່ວນຕົວ</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#c2410c" }}>{fmtK(finExpensePersonal)} ກີບ</p>
                         </div>
                       </div>
@@ -649,7 +649,7 @@ const Summary: React.FC = () => {
                   </div>
 
                   {finIncomeTotal === 0 && finExpenseTotal === 0 && (
-                    <p style={{ textAlign: "center", color: "#a8a29e", padding: "6px 0 0" }}>
+                    <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "6px 0 0" }}>
                       ຍັງບໍ່ມີລາຍຮັບ-ລາຍຈ່າຍໃນຊ່ວງນີ້
                     </p>
                   )}

@@ -64,7 +64,7 @@ const StockAlertSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) => {
                     <IonIcon icon={alertCircleOutline} color="danger" slot="start" style={{ fontSize: 22 }} />
                     <IonLabel>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{p.name}</div>
-                      <div style={{ fontSize: "0.82rem", color: "#78716c", marginTop: 2 }}>
+                      <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 2 }}>
                         {v.size} / {v.color}
                       </div>
                       <div style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: 2 }}>ສິນຄ້າໝົດ</div>
@@ -84,7 +84,7 @@ const StockAlertSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) => {
                     <IonIcon icon={warningOutline} color="warning" slot="start" style={{ fontSize: 22 }} />
                     <IonLabel>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{p.name}</div>
-                      <div style={{ fontSize: "0.82rem", color: "#78716c", marginTop: 2 }}>
+                      <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 2 }}>
                         {v.size} / {v.color}
                       </div>
                       <div style={{ fontSize: "0.78rem", color: "#92400e", marginTop: 2 }}>

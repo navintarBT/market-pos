@@ -35,21 +35,21 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
 
   return (
     <div style={{
-      background: "#fff", borderRadius: 12, padding: "10px 14px",
-      border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
+      background: "var(--app-surface)", borderRadius: 12, padding: "10px 14px",
+      border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "var(--app-border)"}`,
       boxShadow: isActive ? `0 2px 8px ${accentColor}20` : "0 1px 3px rgba(0,0,0,0.04)",
       display: "flex", alignItems: "center", gap: 10, transition: "border-color 0.15s",
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#1c1917" }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "var(--ion-text-color)" }}>
           {v.size}{v.color ? ` / ${v.color}` : ""}
         </p>
         {isReduce ? (
-          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "#ef4444" : isActive ? "#dc2626" : "#a8a29e" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "#ef4444" : isActive ? "#dc2626" : "var(--app-text-muted)" }}>
             {isOver ? `⚠ stock ມີ ${v.stock} ຊິ້ນ — ເກີນ!` : isActive ? `${v.stock} → ${v.stock - parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
           </p>
         ) : (
-          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "#16a34a" : "#a8a29e" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "#16a34a" : "var(--app-text-muted)" }}>
             {isActive ? `${v.stock} → ${v.stock + parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
           </p>
         )}
@@ -58,8 +58,8 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
         <button onClick={() => commit(parsed - 1)} disabled={parsed <= 0}
           style={{
             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            border: "1.5px solid #e5e7eb",
-            background: parsed <= 0 ? "#f5f5f4" : "#fff",
+            border: "1.5px solid var(--app-border)",
+            background: parsed <= 0 ? "var(--app-surface-alt)" : "var(--app-surface)",
             cursor: parsed <= 0 ? "not-allowed" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
@@ -72,20 +72,20 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
           onBlur={() => commit(parsed)}
           style={{
             width: 52, height: 32, borderRadius: 8,
-            border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "#e5e7eb"}`,
+            border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "var(--app-border)"}`,
             textAlign: "center", fontSize: "1rem", fontWeight: 800,
-            color: isOver ? "#ef4444" : isActive ? accentColor : "#a8a29e",
-            background: "#fff", outline: "none",
+            color: isOver ? "#ef4444" : isActive ? accentColor : "var(--app-text-muted)",
+            background: "var(--app-surface)", outline: "none",
           }}
         />
         <button onClick={() => commit(parsed + 1)} disabled={!!isReduce && parsed >= v.stock}
           style={{
             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            border: `1.5px solid ${isActive && !isOver ? accentColor : "#e5e7eb"}`,
-            background: isActive && !isOver ? accentColor : "#fff",
+            border: `1.5px solid ${isActive && !isOver ? accentColor : "var(--app-border)"}`,
+            background: isActive && !isOver ? accentColor : "var(--app-surface)",
             cursor: !!isReduce && parsed >= v.stock ? "not-allowed" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: isActive && !isOver ? "#fff" : "#57534e",
+            color: isActive && !isOver ? "#fff" : "var(--app-text-secondary)",
             opacity: !!isReduce && parsed >= v.stock ? 0.4 : 1,
           }}>
           <IonIcon icon={addOutline} style={{ fontSize: 16 }} />
@@ -241,9 +241,9 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   style={{
                     flexShrink: 0, padding: "6px 16px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
                     cursor: "pointer", transition: "all 0.15s",
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                     background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
-                    color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                    color: isActive ? "#fff" : "var(--ion-text-color, var(--app-text-secondary))",
                     boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                   }}
                 >
@@ -255,7 +255,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
         )}
         <div style={{ padding: "4px 16px 32px" }}>
           {filteredProducts.length === 0 && (
-            <p style={{ textAlign: "center", color: "#a8a29e", padding: "24px 0", fontSize: "0.85rem" }}>
+            <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "24px 0", fontSize: "0.85rem" }}>
               ບໍ່ມີສິນຄ້າໃນໝວດນີ້
             </p>
           )}
@@ -265,23 +265,23 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
               onClick={() => onSelect(p)}
               style={{
                 width: "100%", textAlign: "left", cursor: "pointer",
-                background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
-                border: "1.5px solid #e5e7eb",
+                background: "var(--app-surface)", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
+                border: "1.5px solid var(--app-border)",
                 display: "flex", alignItems: "center", gap: 14,
                 boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
               }}
             >
               {p.photoUrl
                 ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
-                : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
+                : <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
               }
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>{p.name}</p>
-                <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>{p.name}</p>
+                <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                   {p.variants.length} variant · stock {p.variants.reduce((s, v) => s + v.stock, 0)} ຊິ້ນ
                 </p>
               </div>
-              <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
+              <span style={{ color: "var(--app-text-muted)", fontSize: 20, flexShrink: 0 }}>›</span>
             </button>
           ))}
         </div>
@@ -331,9 +331,9 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   disabled={rSaving || tSaving}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 10, fontSize: "0.85rem", fontWeight: 700,
-                    border: `1.5px solid ${isActive ? accent : "#e5e7eb"}`,
-                    background: isActive ? accent : "#fafaf9",
-                    color: isActive ? "#fff" : "#78716c",
+                    border: `1.5px solid ${isActive ? accent : "var(--app-border)"}`,
+                    background: isActive ? accent : "var(--app-surface-alt)",
+                    color: isActive ? "#fff" : "var(--app-text-secondary)",
                     cursor: "pointer", transition: "all 0.15s",
                   }}
                 >
@@ -350,7 +350,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
             <>
               {rStep === "product" && (
                 <>
-                  <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "#78716c" }}>
+                  <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     ເລືອກສິນຄ້າທີ່ຕ້ອງການຕີກັບ
                   </p>
                   <ProductList onSelect={(p) => { setRProduct(p); setRQtys({}); setRPayment("cash"); setRStep("detail"); }} />
@@ -361,11 +361,11 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                     {rProduct.photoUrl
                       ? <img src={rProduct.photoUrl} alt={rProduct.name} loading="lazy" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
-                      : <div style={{ width: 48, height: 48, borderRadius: 12, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>👕</div>
+                      : <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>👕</div>
                     }
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#1c1917" }}>{rProduct.name}</p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#78716c" }}>ໃສ່ຈຳນວນທີ່ຕ້ອງການຕີກັບໃນແຕ່ລະ variant</p>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{rProduct.name}</p>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>ໃສ່ຈຳນວນທີ່ຕ້ອງການຕີກັບໃນແຕ່ລະ variant</p>
                     </div>
                   </div>
                   <VariantSteppers
@@ -375,7 +375,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
 
                   {/* Original payment method — determines which balance the return nets against */}
                   <div style={{ marginTop: 20 }}>
-                    <p style={{ margin: "0 0 8px", fontSize: "0.8rem", fontWeight: 600, color: "#78716c" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: "0.8rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
                       ບິນເດີມຈ່າຍດ້ວຍຫຍັງ?
                     </p>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -391,8 +391,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                           onClick={() => setRPayment(v)}
                           style={{
                             flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                            background: rPayment === v ? color : "#f5f0eb",
-                            color: rPayment === v ? "#fff" : "#57534e",
+                            background: rPayment === v ? color : "var(--app-surface-alt)",
+                            color: rPayment === v ? "#fff" : "var(--app-text-secondary)",
                             fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
                             transition: "all 0.15s",
                           }}
@@ -412,7 +412,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
             <>
               {tStep === "product" && (
                 <>
-                  <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "#78716c" }}>
+                  <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     ເລືອກສິນຄ້າທີ່ຕ້ອງການຍ້າຍຈາກສາງ
                   </p>
                   <ProductList onSelect={(p) => { setTProduct(p); setTQtys({}); setTNote(""); setTStep("detail"); }} />
@@ -426,8 +426,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                       : <div style={{ width: 48, height: 48, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>📦</div>
                     }
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#1c1917" }}>{tProduct.name}</p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#78716c" }}>ໃສ່ຈຳນວນທີ່ຕ້ອງການຍ້າຍໃນແຕ່ລະ variant</p>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{tProduct.name}</p>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>ໃສ່ຈຳນວນທີ່ຕ້ອງການຍ້າຍໃນແຕ່ລະ variant</p>
                     </div>
                   </div>
                   <VariantSteppers
@@ -436,7 +436,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   />
                   {/* Note field */}
                   <div style={{ marginTop: 16 }}>
-                    <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 600, color: "#78716c" }}>
+                    <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
                       ໝາຍເຫດ (ບໍ່ບັງຄັບ)
                     </p>
                     <input
@@ -446,8 +446,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                       placeholder="ເຊັ່ນ: ຈາກສາງ A, batch ວັນທີ 5/7"
                       style={{
                         width: "100%", padding: "10px 14px", borderRadius: 10,
-                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.88rem",
-                        background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
+                        border: "1.5px solid var(--ion-color-step-150, var(--app-border))", fontSize: "0.88rem",
+                        background: "var(--ion-color-step-50, var(--app-surface-alt))", outline: "none", color: "var(--ion-text-color, var(--ion-text-color))",
                         boxSizing: "border-box",
                       }}
                     />
@@ -461,14 +461,14 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
         {/* Footer — shown only in detail step */}
         {currentStep === "detail" && (
           <IonFooter>
-            <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+            <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
               {/* Summary chips */}
               {activeTab === "return" && rEntries.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   {rEntries.map(({ v, qty, idx }) => (
                     <span key={idx} style={{
                       fontSize: "0.75rem", fontWeight: 700,
-                      background: "#fff7ed", color: "#e07b39",
+                      background: "var(--app-accent-surface)", color: "var(--ion-color-primary)",
                       padding: "3px 10px", borderRadius: 20,
                     }}>
                       {v.size}{v.color ? `/${v.color}` : ""} +{qty}

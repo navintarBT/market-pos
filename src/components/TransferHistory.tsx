@@ -98,7 +98,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             </div>
 
             {records.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 32px", color: "#a8a29e" }}>
+              <div style={{ textAlign: "center", padding: "48px 32px", color: "var(--app-text-muted)" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📤</div>
                 <p style={{ margin: 0 }}>ບໍ່ມີລາຍການຍ້າຍໃນຊ່ວງເວລານີ້</p>
               </div>
@@ -111,15 +111,15 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                 const dateStr = fmtDate(r.createdAt);
                 return (
                   <div key={r.id} style={{
-                    background: "#fff", borderRadius: 14, padding: "14px 16px",
+                    background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px",
                     marginBottom: 10, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                           {r.productName}
                         </p>
-                        <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                        <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                           {r.variantSize}{r.variantColor ? ` / ${r.variantColor}` : ""}
                           {" · "}{dateStr} {timeStr}
                         </p>
@@ -135,7 +135,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                             -{r.quantity} ຊິ້ນ
                           </p>
                           {r.costPrice > 0 && (
-                            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                               {fmtK(cost)} ກີບ
                             </p>
                           )}

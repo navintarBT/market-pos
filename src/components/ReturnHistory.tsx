@@ -105,7 +105,7 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
 
             {/* Empty */}
             {records.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 32px", color: "#a8a29e" }}>
+              <div style={{ textAlign: "center", padding: "48px 32px", color: "var(--app-text-muted)" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
                 <p style={{ margin: 0 }}>ບໍ່ມີລາຍການຕີກັບໃນຊ່ວງເວລານີ້</p>
               </div>
@@ -119,26 +119,26 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                 const dateStr = fmtDate(r.createdAt);
                 return (
                   <div key={r.id} style={{
-                    background: "#fff", borderRadius: 14, padding: "14px 16px",
+                    background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px",
                     marginBottom: 10, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                         {r.productName}
                       </p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                         {r.variantSize}{r.variantColor ? ` / ${r.variantColor}` : ""}
                         {" · "}{dateStr} {timeStr}
                       </p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "var(--ion-color-primary)" }}>
                           +{r.quantity} ຊິ້ນ
                         </p>
                         {r.costPrice > 0 && (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                             ຕົ້ນທຶນ {fmtK(cost)} ກີບ
                           </p>
                         )}

@@ -12,7 +12,7 @@ export function monthStartStr(): string {
 const dateInputStyle: React.CSSProperties = {
   flex: 1, border: "none", outline: "none",
   fontSize: "0.82rem", background: "transparent",
-  color: "#374151", fontFamily: "inherit",
+  color: "var(--app-text-secondary)", fontFamily: "inherit",
 };
 
 interface Props {
@@ -42,7 +42,7 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
   return (
     <div style={{ marginBottom: 14, ...style }}>
       <div style={{
-        background: "#fff", borderRadius: 12, padding: "10px 14px",
+        background: "var(--app-surface)", borderRadius: 12, padding: "10px 14px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 8,
       }}>
         <span>📅</span>
@@ -59,16 +59,16 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button onClick={setQuickToday} disabled={disabled} style={{
           flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none",
-          background: isToday ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-          color: isToday ? "#fff" : "var(--ion-color-medium, #78716c)",
+          background: isToday ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+          color: isToday ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
           fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
         }}>
           ມື້ນີ້
         </button>
         <button onClick={setQuickMonth} disabled={disabled} style={{
           flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none",
-          background: isMonth ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-          color: isMonth ? "#fff" : "var(--ion-color-medium, #78716c)",
+          background: isMonth ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+          color: isMonth ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
           fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
         }}>
           1 ເດືອນ

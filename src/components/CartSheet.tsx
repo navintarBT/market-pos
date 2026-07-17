@@ -164,20 +164,20 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                         {item.isBundle && (
                           <span style={{
                             fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px",
-                            borderRadius: 20, background: "#fff7ed", color: "#e07b39",
-                            border: "1px solid #fed7aa", flexShrink: 0,
+                            borderRadius: 20, background: "var(--app-accent-surface)", color: "var(--ion-color-primary)",
+                            border: "1px solid var(--app-accent-border)", flexShrink: 0,
                           }}>ຊຸດ</span>
                         )}
                         {item.isGift && (
                           <span style={{
                             fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px",
-                            borderRadius: 20, background: "#fff7ed", color: "#e07b39",
-                            border: "1px solid #fed7aa", flexShrink: 0,
+                            borderRadius: 20, background: "var(--app-accent-surface)", color: "var(--ion-color-primary)",
+                            border: "1px solid var(--app-accent-border)", flexShrink: 0,
                           }}>🎁 ຂອງແຖມ</span>
                         )}
                       </h3>
                       {(item.isBundle || variantLabel) && (
-                        <p style={{ fontSize: "0.78rem", color: "#78716c" }}>
+                        <p style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)" }}>
                           {item.isBundle
                             ? (item.bundleItems ?? []).map((bi) => {
                                 const v = fmtVariant(bi.variantSize, bi.variantColor);
@@ -213,7 +213,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                             style={{
                               display: "flex", alignItems: "center", gap: 4,
                               background: "none", border: "none", padding: "2px 0", marginTop: 2,
-                              color: "#e07b39", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
+                              color: "var(--ion-color-primary)", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
                               fontFamily: "inherit",
                             }}
                           >
@@ -226,7 +226,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                             style={{
                               display: "flex", alignItems: "center", gap: 4,
                               background: "none", border: "none", padding: "2px 0", marginTop: 2,
-                              color: "#e07b39", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
+                              color: "var(--ion-color-primary)", fontWeight: 700, fontSize: "0.74rem", cursor: "pointer",
                               fontFamily: "inherit",
                             }}
                           >
@@ -264,7 +264,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                               onClick={() => setExpandedKey(key)}
                               style={{
                                 minWidth: 36, padding: "4px 8px", border: "none", cursor: "pointer",
-                                background: "var(--ion-color-step-100, #f5f0eb)",
+                                background: "var(--ion-color-step-100, var(--app-surface-alt))",
                                 borderRadius: 8, fontWeight: 700, fontSize: "0.85rem",
                                 color: "var(--ion-text-color)",
                                 display: "flex", alignItems: "center", gap: 3,
@@ -306,23 +306,23 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                         const gKey = itemKey(g);
                         const gVariantLabel = fmtVariant(g.variant.size, g.variant.color);
                         return (
-                          <IonItem key={gKey} lines="none" style={{ "--background": "#fff7ed" }}>
+                          <IonItem key={gKey} lines="none" style={{ "--background": "var(--app-accent-surface)" }}>
                             <div style={{ width: 20, flexShrink: 0 }} />
                             <IonLabel>
                               <p style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                                 <span style={{
                                   fontSize: "0.62rem", fontWeight: 700, padding: "1px 6px",
-                                  borderRadius: 20, background: "#fff", color: "#e07b39",
-                                  border: "1px solid #fed7aa", flexShrink: 0,
+                                  borderRadius: 20, background: "var(--app-surface)", color: "var(--ion-color-primary)",
+                                  border: "1px solid var(--app-accent-border)", flexShrink: 0,
                                 }}>🎁</span>
-                                <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#1c1917" }}>
+                                <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--ion-text-color)" }}>
                                   {g.productName}
                                 </span>
                                 {gVariantLabel && (
-                                  <span style={{ fontSize: "0.74rem", color: "#78716c" }}>{gVariantLabel}</span>
+                                  <span style={{ fontSize: "0.74rem", color: "var(--app-text-secondary)" }}>{gVariantLabel}</span>
                                 )}
                                 {g.quantity > 1 && (
-                                  <span style={{ fontSize: "0.74rem", color: "#78716c" }}>×{g.quantity}</span>
+                                  <span style={{ fontSize: "0.74rem", color: "var(--app-text-secondary)" }}>×{g.quantity}</span>
                                 )}
                               </p>
                             </IonLabel>
@@ -336,14 +336,14 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                           </IonItem>
                         );
                       })}
-                      <IonItem lines="inset" style={{ "--background": "#fff7ed" }}>
+                      <IonItem lines="inset" style={{ "--background": "var(--app-accent-surface)" }}>
                         <div style={{ width: 20, flexShrink: 0 }} />
                         <button
                           onClick={() => openGiftPickerFor(key)}
                           style={{
                             display: "flex", alignItems: "center", gap: 4,
                             background: "none", border: "none", padding: "10px 0",
-                            color: "#e07b39", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer",
+                            color: "var(--ion-color-primary)", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer",
                             fontFamily: "inherit",
                           }}
                         >
@@ -359,12 +359,12 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                     <IonItem
                       key={`${key}__sub${i}`}
                       lines={i === item.quantity - 1 ? "inset" : "none"}
-                      style={{ "--background": "var(--ion-color-step-50, #fafaf9)" }}
+                      style={{ "--background": "var(--ion-color-step-50, var(--app-surface-alt))" }}
                     >
                       <div style={{ width: 20, flexShrink: 0 }} />
                       <IonLabel>
                         <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: "0.78rem", color: "#78716c" }}>ລາຍ {i + 1}</span>
+                          <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)" }}>ລາຍ {i + 1}</span>
                           <span style={{ fontWeight: 700, color: "var(--ion-color-primary)", fontSize: "0.92rem" }}>
                             {fmtK(item.unitPrice)} ກີບ
                           </span>
@@ -401,7 +401,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
             <div style={{
               padding: "12px 16px max(env(safe-area-inset-bottom), 16px)",
               background: "var(--ion-item-background, #fff)",
-              borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)",
+              borderTop: "1px solid var(--ion-color-step-150, var(--app-border))",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: "1.1rem" }}>
                 <span>ຍອດລວມ</span>
@@ -437,14 +437,14 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
             <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>
               {priceEditItem?.productName}
             </p>
-            <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "#78716c" }}>
+            <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
               {priceEditItem?.isBundle
                 ? "ຊຸດ"
                 : fmtVariant(priceEditItem?.variant.size, priceEditItem?.variant.color)}
               {" · "}ລາຄາເດີມ {fmtK(priceEditItem?.unitPrice ?? 0)} ກີບ
               {fromSubRow && ` · ແຍກ 1 ລາຍ`}
             </p>
-            <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "#57534e" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
               ລາຄາໃໝ່ (ກີບ)
             </p>
             <NumInput
@@ -453,20 +453,20 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
               placeholder="ລາຄາໃໝ່"
               style={{
                 width: "100%", padding: "14px 16px", fontSize: "1.2rem", fontWeight: 700,
-                border: "1.5px solid #c8c8c8", borderRadius: 12, outline: "none",
+                border: "1.5px solid var(--app-border)", borderRadius: 12, outline: "none",
                 background: "var(--ion-item-background, #fff)",
-                color: "var(--ion-text-color, #1c1917)",
+                color: "var(--ion-text-color, var(--ion-text-color))",
               }}
             />
             {fromSubRow && (priceEditItem?.quantity ?? 1) > 1 && (
-              <p style={{ margin: "10px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+              <p style={{ margin: "10px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                 ລາຍ 1 ຈະໄດ້ລາຄາໃໝ່ / ທີ່ເຫຼືອ {(priceEditItem?.quantity ?? 1) - 1} ລາຍ ລາຄາເກົ່າ {fmtK(priceEditItem?.unitPrice ?? 0)} ກີບ
               </p>
             )}
           </div>
         </IonContent>
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
             <IonButton
               expand="block"
               disabled={editPrice <= 0}
@@ -530,9 +530,9 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                     onClick={() => setGiftCategory(cat)}
                     style={{
                       flexShrink: 0, padding: "6px 16px", borderRadius: 24,
-                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                       background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
-                      color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                      color: isActive ? "#fff" : "var(--ion-text-color, var(--app-text-secondary))",
                       fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
                     }}
                   >
@@ -546,7 +546,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
         <IonContent>
           <div style={{ padding: "8px 16px 32px" }}>
             {giftProducts.length === 0 && (
-              <p style={{ textAlign: "center", color: "#a8a29e", padding: "32px 0" }}>
+              <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "32px 0" }}>
                 {giftEligibleProducts.length === 0
                   ? "ຍັງບໍ່ມີສິນຄ້າທີ່ຕັ້ງເປັນຂອງແຖມໄດ້ — ໄປເປີດທີ່ໜ້າສິນຄ້າ"
                   : "ບໍ່ມີສິນຄ້າໃນໝວດນີ້"}
@@ -562,23 +562,23 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                   onClick={() => { setGiftPickerOpen(false); setGiftVariantProduct(p); }}
                   style={{
                     width: "100%", textAlign: "left", cursor: outOfStock ? "not-allowed" : "pointer",
-                    background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
-                    border: "1.5px solid #e5e7eb", opacity: outOfStock ? 0.5 : 1,
+                    background: "var(--app-surface)", borderRadius: 14, padding: "12px 16px", marginBottom: 10,
+                    border: "1.5px solid var(--app-border)", opacity: outOfStock ? 0.5 : 1,
                     display: "flex", alignItems: "center", gap: 14,
                     boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                   }}
                 >
                   {p.photoUrl
                     ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
-                    : <div style={{ width: 44, height: 44, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
+                    : <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>{p.name}</p>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>{p.name}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                       {outOfStock ? "ໝົດ" : `stock ${totalStock} ຊິ້ນ`}
                     </p>
                   </div>
-                  <span style={{ color: "#a8a29e", fontSize: 20, flexShrink: 0 }}>›</span>
+                  <span style={{ color: "var(--app-text-muted)", fontSize: 20, flexShrink: 0 }}>›</span>
                 </button>
               );
             })}

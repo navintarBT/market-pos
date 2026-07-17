@@ -25,7 +25,7 @@ import type { ShopUser, StaffPermissions } from "../data/types";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 
 const cardStyle: React.CSSProperties = {
-  background: "#ffffff",
+  background: "var(--app-surface)",
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
@@ -54,8 +54,8 @@ function PermCheckbox({
   onChange: (perms: StaffPermissions) => void;
 }) {
   return (
-    <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
-      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "#57534e" }}>
+    <div style={{ marginTop: 12, borderTop: "1px solid var(--app-border)", paddingTop: 12 }}>
+      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
         ສິດທິການເຂົ້າເຖິງ
       </p>
       {PERM_LABELS.map(({ key, label, icon }) => (
@@ -69,7 +69,7 @@ function PermCheckbox({
             onChange={(e) => onChange({ ...perms, [key]: e.target.checked })}
             style={{ width: 17, height: 17, accentColor: "#0f766e", cursor: "pointer", flexShrink: 0 }}
           />
-          <span style={{ fontSize: "0.82rem", color: "#374151" }}>
+          <span style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
             {icon} {label}
           </span>
         </label>
@@ -287,7 +287,7 @@ const StaffSettings: React.FC = () => {
                     <h2 style={{ margin: 0, fontSize: "1rem" }}>ຜູ້ໃຊ້ໃນຮ້ານ</h2>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: "#78716c", fontSize: "0.78rem", fontWeight: 700 }}>{staff.length} ຄົນ</span>
+                    <span style={{ color: "var(--app-text-secondary)", fontSize: "0.78rem", fontWeight: 700 }}>{staff.length} ຄົນ</span>
                     {!showForm && (
                       <IonButton fill="solid" size="small" onClick={handleOpenForm}
                         style={{ "--border-radius": "10px" }}>
@@ -307,7 +307,7 @@ const StaffSettings: React.FC = () => {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#166534" }}>ເພີ່ມພະນັກງານໃໝ່</span>
                       <button onClick={handleCloseForm} disabled={creating}
-                        style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+                        style={{ background: "none", border: "none", color: "var(--app-text-muted)", cursor: "pointer", padding: 4, lineHeight: 0 }}>
                         <IonIcon icon={closeOutline} style={{ fontSize: 20 }} />
                       </button>
                     </div>
@@ -340,10 +340,10 @@ const StaffSettings: React.FC = () => {
                 )}
 
                 {/* Staff list */}
-                <IonList style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #fed7aa" }}>
+                <IonList style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--app-accent-border)" }}>
                   {staff.length === 0 ? (
                     <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)" }}>
-                      <IonLabel style={{ textAlign: "center", color: "#78716c", fontSize: "0.85rem", padding: "16px 0" }}>
+                      <IonLabel style={{ textAlign: "center", color: "var(--app-text-secondary)", fontSize: "0.85rem", padding: "16px 0" }}>
                         ຍັງບໍ່ມີພະນັກງານ
                       </IonLabel>
                     </IonItem>
@@ -352,7 +352,7 @@ const StaffSettings: React.FC = () => {
                       <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)", "--padding-bottom": "6px", "--padding-top": "6px" }}>
                         <div slot="start" style={{
                           width: 38, height: 38, borderRadius: 12,
-                          background: user.role === "customer" ? "#ffedd5" : "#ccfbf1",
+                          background: user.role === "customer" ? "var(--app-accent-surface)" : "#ccfbf1",
                           color: user.role === "customer" ? "#c2410c" : "#0f766e",
                           display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
                         }}>
@@ -374,7 +374,7 @@ const StaffSettings: React.FC = () => {
                                 </span>
                               ))}
                               {PERM_LABELS.every(p => !user.permissions![p.key]) && (
-                                <span style={{ fontSize: "0.65rem", color: "#a8a29e" }}>ບໍ່ມີສິດທິພິເສດ</span>
+                                <span style={{ fontSize: "0.65rem", color: "var(--app-text-muted)" }}>ບໍ່ມີສິດທິພິເສດ</span>
                               )}
                             </div>
                           )}

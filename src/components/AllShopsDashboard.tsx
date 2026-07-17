@@ -126,7 +126,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
             <>
               {/* Combined total card */}
               <div style={{
-                background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                 borderRadius: 20, padding: "18px 20px", marginBottom: 16,
                 boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
               }}>
@@ -155,27 +155,27 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f5f5f4", borderRadius: 12, padding: "11px 16px" }}>
-                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#78716c" }}>📋 ລາຍຈ່າຍລວມ</span>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#78716c" }}>−{fmtK(totalExpense)} ກີບ</span>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>📋 ລາຍຈ່າຍລວມ</span>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--app-text-secondary)" }}>−{fmtK(totalExpense)} ກີບ</span>
                 </div>
               </div>
 
               {/* Detailed breakdown */}
-              <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>
+              <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "var(--app-text-secondary)" }}>
                 ວິເຄາະລາຍລະອຽດ
               </p>
-              <div style={{ background: "#fff", borderRadius: 16, padding: "14px 16px", marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+              <div style={{ background: "var(--app-surface)", borderRadius: 16, padding: "14px 16px", marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.78rem", color: "#78716c", fontWeight: 600 }}>💰 ຍອດຂາຍ</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1c1917" }}>{fmtK(totalRevenue)} ກີບ</span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💰 ຍອດຂາຍ</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ion-text-color)" }}>{fmtK(totalRevenue)} ກີບ</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.78rem", color: "#78716c", fontWeight: 600 }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
                     <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#92400e" }}>−{fmtK(totalCost)} ກີບ</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.78rem", color: "#78716c", fontWeight: 600 }}>📊 ກຳໄລຂັ້ນຕົ້ນ</span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📊 ກຳໄລຂັ້ນຕົ້ນ</span>
                     <span style={{ fontSize: "0.82rem", fontWeight: 700, color: totalGrossProfit >= 0 ? "#16a34a" : "#dc2626" }}>
                       {fmtK(totalGrossProfit)} ກີບ
                     </span>
@@ -184,7 +184,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
 
                 {totalIncome > 0 && (
                   <>
-                    <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0 10px" }} />
+                    <div style={{ height: 1, background: "var(--app-surface-alt)", margin: "4px 0 10px" }} />
                     <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "#2563eb" }}>💰 ລາຍຮັບອື່ນ ຕາມຊ່ອງທາງ</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
                       {[
@@ -193,7 +193,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                         { label: "📦 COD", v: incCod },
                       ].filter((r) => r.v > 0).map((r) => (
                         <div key={r.label} style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: "0.76rem", color: "#78716c" }}>{r.label}</span>
+                          <span style={{ fontSize: "0.76rem", color: "var(--app-text-secondary)" }}>{r.label}</span>
                           <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#2563eb" }}>{fmtK(r.v)} ກີບ</span>
                         </div>
                       ))}
@@ -201,48 +201,48 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                   </>
                 )}
 
-                <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0 10px" }} />
-                <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "#78716c" }}>📋 ລາຍຈ່າຍ ຕາມໝວດ</p>
+                <div style={{ height: 1, background: "var(--app-surface-alt)", margin: "4px 0 10px" }} />
+                <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>📋 ລາຍຈ່າຍ ຕາມໝວດ</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
                   {expByCategory.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: "0.76rem", color: "#a8a29e" }}>ບໍ່ມີລາຍຈ່າຍ</p>
+                    <p style={{ margin: 0, fontSize: "0.76rem", color: "var(--app-text-muted)" }}>ບໍ່ມີລາຍຈ່າຍ</p>
                   ) : (
                     expByCategory.map((c) => (
                       <div key={c.cat} style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "0.76rem", color: "#78716c" }}>{EXPENSE_CATEGORY_LABEL[c.cat]}</span>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>−{fmtK(c.total)} ກີບ</span>
+                        <span style={{ fontSize: "0.76rem", color: "var(--app-text-secondary)" }}>{EXPENSE_CATEGORY_LABEL[c.cat]}</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>−{fmtK(c.total)} ກີບ</span>
                       </div>
                     ))
                   )}
                 </div>
 
-                <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "#78716c" }}>📋 ລາຍຈ່າຍ ຕາມຊ່ອງທາງ</p>
+                <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>📋 ລາຍຈ່າຍ ຕາມຊ່ອງທາງ</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
                     { label: "💵 ເງິນສົດ", v: expCash },
                     { label: "📱 ໂອນ", v: expTransfer },
                   ].filter((r) => r.v > 0).map((r) => (
                     <div key={r.label} style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "0.76rem", color: "#78716c" }}>{r.label}</span>
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>−{fmtK(r.v)} ກີບ</span>
+                      <span style={{ fontSize: "0.76rem", color: "var(--app-text-secondary)" }}>{r.label}</span>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>−{fmtK(r.v)} ກີບ</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Per-shop breakdown */}
-              <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>
+              <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "var(--app-text-secondary)" }}>
                 ແຍກຕາມຮ້ານ
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {rows.map((r) => (
                   <div key={r.id} style={{
-                    background: "#fff", borderRadius: 14, padding: "12px 14px",
+                    background: "var(--app-surface)", borderRadius: 14, padding: "12px 14px",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                     display: "flex", alignItems: "center", gap: 12,
                   }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10, background: "#ffedd5", color: "#c2410c",
+                      width: 40, height: 40, borderRadius: 10, background: "var(--app-accent-surface)", color: "#c2410c",
                       overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: "1rem", fontWeight: 800,
                     }}>
@@ -251,10 +251,10 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                         : r.name.slice(0, 1).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {r.name}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "#a8a29e" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "var(--app-text-muted)" }}>
                         ຍອດຂາຍ {fmtK(r.revenue)} ກີບ
                       </p>
                     </div>
@@ -262,7 +262,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                       <p style={{ margin: 0, fontWeight: 800, fontSize: "0.9rem", color: r.netProfit >= 0 ? "#16a34a" : "#dc2626" }}>
                         {fmtK(r.netProfit)} ກີບ
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.68rem", color: "#a8a29e" }}>ກຳໄລສຸດທິ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.68rem", color: "var(--app-text-muted)" }}>ກຳໄລສຸດທິ</p>
                     </div>
                   </div>
                 ))}

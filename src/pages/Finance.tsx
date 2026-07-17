@@ -52,8 +52,8 @@ function PaymentToggle<T extends PaymentKind>({
             padding: "10px 0",
             borderRadius: 10,
             border: "none",
-            background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "#f5f0eb",
-            color: value === v ? "#fff" : "#57534e",
+            background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "var(--app-surface-alt)",
+            color: value === v ? "#fff" : "var(--app-text-secondary)",
             fontWeight: 700,
             fontSize: "0.88rem",
             cursor: "pointer",
@@ -398,7 +398,7 @@ const Finance: React.FC = () => {
                   padding: "20px 18px",
                   borderRadius: 18,
                   border: "none",
-                  background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                  background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                   boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
                   cursor: "pointer",
                   textAlign: "left",
@@ -439,7 +439,7 @@ const Finance: React.FC = () => {
             gap: 0,
             margin: "12px 16px 0",
             borderRadius: 12,
-            background: "var(--ion-color-step-50, #f5f0eb)",
+            background: "var(--ion-color-step-50, var(--app-surface-alt))",
             padding: 4,
           }}
         >
@@ -453,7 +453,7 @@ const Finance: React.FC = () => {
                 borderRadius: 9,
                 border: "none",
                 background: activeTab === tab ? "var(--ion-item-background, #ffffff)" : "transparent",
-                color: activeTab === tab ? "var(--ion-text-color, #1c1917)" : "var(--ion-color-medium, #78716c)",
+                color: activeTab === tab ? "var(--ion-text-color, var(--ion-text-color))" : "var(--ion-color-medium, var(--app-text-secondary))",
                 fontWeight: activeTab === tab ? 700 : 600,
                 fontSize: "0.9rem",
                 cursor: "pointer",
@@ -534,8 +534,8 @@ const Finance: React.FC = () => {
                   onClick={() => setExpCatFilter(v)}
                   style={{
                     flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-                    background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-                    color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, #78716c)",
+                    background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+                    color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
                     fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
                   }}
                 >
@@ -554,7 +554,7 @@ const Finance: React.FC = () => {
             visibleExpenses.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
-                <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
+                <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
               </div>
             ) : (
               visibleExpenses.map((item) => {
@@ -564,7 +564,7 @@ const Finance: React.FC = () => {
                   <div
                     key={item.id}
                     style={{
-                      background: "#fff",
+                      background: "var(--app-surface)",
                       borderRadius: 14,
                       padding: "14px 16px",
                       marginBottom: 8,
@@ -579,7 +579,7 @@ const Finance: React.FC = () => {
                         style={{
                           margin: 0,
                           fontWeight: 700,
-                          color: "#1c1917",
+                          color: "var(--ion-text-color)",
                           fontSize: "0.95rem",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -588,7 +588,7 @@ const Finance: React.FC = () => {
                       >
                         {item.description}
                       </p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {dateStr} · {timeStr}
                       </p>
                     </div>
@@ -616,7 +616,7 @@ const Finance: React.FC = () => {
                         </span>
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
-                          background: "#f5f0eb", borderRadius: 20, color: "#78716c",
+                          background: "var(--app-surface-alt)", borderRadius: 20, color: "var(--app-text-secondary)",
                         }}>
                           {(item.paymentType ?? "cash") === "cash" ? "💵 ສົດ" : "📱 ໂອນ"}
                         </span>
@@ -633,7 +633,7 @@ const Finance: React.FC = () => {
                             border: "none",
                             padding: "6px",
                             cursor: "pointer",
-                            color: "#78716c",
+                            color: "var(--app-text-secondary)",
                             display: "flex",
                             alignItems: "center",
                           }}
@@ -664,7 +664,7 @@ const Finance: React.FC = () => {
           ) : incomes.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 0" }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>💰</div>
-              <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
+              <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
             </div>
           ) : (
             incomes.map((item) => {
@@ -674,7 +674,7 @@ const Finance: React.FC = () => {
                 <div
                   key={item.id}
                   style={{
-                    background: "#fff",
+                    background: "var(--app-surface)",
                     borderRadius: 14,
                     padding: "14px 16px",
                     marginBottom: 8,
@@ -689,7 +689,7 @@ const Finance: React.FC = () => {
                       style={{
                         margin: 0,
                         fontWeight: 700,
-                        color: "#1c1917",
+                        color: "var(--ion-text-color)",
                         fontSize: "0.95rem",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -698,7 +698,7 @@ const Finance: React.FC = () => {
                     >
                       {item.description}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                       {dateStr} · {timeStr}
                     </p>
                   </div>
@@ -721,9 +721,9 @@ const Finance: React.FC = () => {
                         fontSize: "0.68rem",
                         fontWeight: 700,
                         padding: "2px 8px",
-                        background: "#f5f0eb",
+                        background: "var(--app-surface-alt)",
                         borderRadius: 20,
-                        color: "#78716c",
+                        color: "var(--app-text-secondary)",
                       }}
                     >
                       {PAYMENT_TOGGLE_STYLE[item.paymentType].label}
@@ -740,7 +740,7 @@ const Finance: React.FC = () => {
                           border: "none",
                           padding: "6px",
                           cursor: "pointer",
-                          color: "#78716c",
+                          color: "var(--app-text-secondary)",
                           display: "flex",
                           alignItems: "center",
                         }}
@@ -823,7 +823,7 @@ const Finance: React.FC = () => {
           >
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ຄຳອະທິບາຍ
               </p>
@@ -836,17 +836,17 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "0.95rem",
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                 ຈຳນວນ (ກີບ)
               </p>
               <NumInput
@@ -857,19 +857,19 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "1.1rem",
                   fontWeight: 700,
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             {section !== "shopExpense" && (
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                   ປະເພດລາຍຈ່າຍ
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -879,8 +879,8 @@ const Finance: React.FC = () => {
                       onClick={() => setExpCategory(v)}
                       style={{
                         flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                        background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "#f5f0eb",
-                        color: expCategory === v ? "#fff" : "#57534e",
+                        background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "var(--app-surface-alt)",
+                        color: expCategory === v ? "#fff" : "var(--app-text-secondary)",
                         fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
                         transition: "all 0.15s",
                       }}
@@ -892,7 +892,7 @@ const Finance: React.FC = () => {
               </div>
             )}
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                 ປະເພດການຈ່າຍ
               </p>
               <PaymentToggle value={expPayment} onChange={setExpPayment} options={EXPENSE_PAYMENT_OPTIONS} />
@@ -907,10 +907,10 @@ const Finance: React.FC = () => {
                 border: "none",
                 background:
                   expBusy || !expDesc.trim() || expAmount <= 0
-                    ? "#e5e7eb"
+                    ? "var(--app-border)"
                     : "var(--ion-color-primary)",
                 color:
-                  expBusy || !expDesc.trim() || expAmount <= 0 ? "#a8a29e" : "#fff",
+                  expBusy || !expDesc.trim() || expAmount <= 0 ? "var(--app-text-muted)" : "#fff",
                 fontSize: "1rem",
                 fontWeight: 800,
                 cursor: "pointer",
@@ -954,7 +954,7 @@ const Finance: React.FC = () => {
           >
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ຄຳອະທິບາຍ
               </p>
@@ -967,18 +967,18 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "0.95rem",
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ຈຳນວນ (ກີບ)
               </p>
@@ -990,19 +990,19 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "1.1rem",
                   fontWeight: 700,
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ປະເພດການຮັບ
               </p>
@@ -1018,10 +1018,10 @@ const Finance: React.FC = () => {
                 border: "none",
                 background:
                   incBusy || !incDesc.trim() || incAmount <= 0
-                    ? "#e5e7eb"
+                    ? "var(--app-border)"
                     : "var(--ion-color-primary)",
                 color:
-                  incBusy || !incDesc.trim() || incAmount <= 0 ? "#a8a29e" : "#fff",
+                  incBusy || !incDesc.trim() || incAmount <= 0 ? "var(--app-text-muted)" : "#fff",
                 fontSize: "1rem",
                 fontWeight: 800,
                 cursor: "pointer",

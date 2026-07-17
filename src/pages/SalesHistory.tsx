@@ -49,7 +49,7 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, bg, color }) =>
     boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
   }}>
     <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-    <p style={{ margin: 0, fontSize: "0.7rem", color: "#78716c", fontWeight: 600 }}>{label}</p>
+    <p style={{ margin: 0, fontSize: "0.7rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>{label}</p>
     <p style={{ margin: "3px 0 0", fontSize: "1.1rem", fontWeight: 800, color }}>{value}</p>
   </div>
 );
@@ -255,12 +255,12 @@ const SalesHistory: React.FC = () => {
                       display: "flex", alignItems: "center", gap: 8, marginBottom: 14, cursor: "pointer",
                     }}
                   >
-                    <IonIcon icon={chevronBackOutline} style={{ color: "#78716c" }} />
-                    <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>{selectedStaff.name}</span>
+                    <IonIcon icon={chevronBackOutline} style={{ color: "var(--app-text-secondary)" }} />
+                    <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color)" }}>{selectedStaff.name}</span>
                   </div>
 
                   <div style={{
-                    background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                    background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                     borderRadius: 20, padding: "18px 20px", marginBottom: 16,
                     boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
                   }}>
@@ -289,20 +289,20 @@ const SalesHistory: React.FC = () => {
                             key={sale.id}
                             onClick={() => setSelectedSale(sale)}
                             style={{
-                              background: "#fff", borderRadius: 12, padding: "10px 12px",
+                              background: "var(--app-surface)", borderRadius: 12, padding: "10px 12px",
                               boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
                               display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
                             }}
                           >
                             <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--ion-text-color)", lineHeight: 1.1 }}>
                                 {fmtTime(sale.createdAt)}
                               </div>
-                              <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
+                              <div style={{ fontSize: "0.6rem", color: "var(--app-text-muted)", fontWeight: 600, marginTop: 1 }}>
                                 {fmtDate(sale.createdAt)}
                               </div>
                             </div>
-                            <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
+                            <div style={{ width: 1, height: 34, background: "var(--app-surface-alt)", flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: "0.8rem", color: "#44403c", fontWeight: 600,
@@ -310,10 +310,10 @@ const SalesHistory: React.FC = () => {
                               }}>
                                 {names}
                               </div>
-                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊິ້ນ</span>
+                              <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>{qty} ຊິ້ນ</span>
                             </div>
                             <div style={{ textAlign: "right" }}>
-                              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
+                              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-text-color)" }}>
                                 {fmtK(sale.total)} ກີບ
                               </div>
                               <div style={{
@@ -343,27 +343,27 @@ const SalesHistory: React.FC = () => {
                       key={row.uid}
                       onClick={() => setSelectedUid(row.uid)}
                       style={{
-                        background: "#fff", borderRadius: 14, padding: "12px 14px",
+                        background: "var(--app-surface)", borderRadius: 14, padding: "12px 14px",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
                       }}
                     >
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                        background: row.isOwner ? "#ffedd5" : "#ccfbf1",
+                        background: row.isOwner ? "var(--app-accent-surface)" : "#ccfbf1",
                         color: row.isOwner ? "#c2410c" : "#0f766e",
                         display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
                       }}>
                         {row.name.slice(0, 1).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c1917" }}>{row.name}</div>
-                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ion-text-color)" }}>{row.name}</div>
+                        <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>
                           {row.isOwner ? "owner" : "staff"} · {row.count} ລາຍການ
                         </div>
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#e07b39" }}>
+                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-color-primary)" }}>
                           {fmtK(row.total)} ກີບ
                         </div>
                       </div>
@@ -373,23 +373,23 @@ const SalesHistory: React.FC = () => {
 
                   {unattributed.length > 0 && (
                     <div style={{
-                      background: "#fafaf9", borderRadius: 14, padding: "12px 14px",
+                      background: "var(--app-surface-alt)", borderRadius: 14, padding: "12px 14px",
                       display: "flex", alignItems: "center", gap: 12,
                     }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                        background: "#e7e5e4", color: "#78716c",
+                        background: "#e7e5e4", color: "var(--app-text-secondary)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
                         <IonIcon icon={personOutline} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#57534e" }}>ບໍ່ລະບຸ</div>
-                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ບໍ່ລະບຸ</div>
+                        <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>
                           ຂາຍກ່ອນມີການບັນທຶກຄົນຂາຍ · {unattributed.length} ລາຍການ
                         </div>
                       </div>
-                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#78716c" }}>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--app-text-secondary)" }}>
                         {fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))} ກີບ
                       </div>
                     </div>
@@ -401,7 +401,7 @@ const SalesHistory: React.FC = () => {
             <>
               {/* Summary cards */}
               <div style={{
-                background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                 borderRadius: 20, padding: "18px 20px", marginBottom: 12,
                 boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
               }}>
@@ -438,7 +438,7 @@ const SalesHistory: React.FC = () => {
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                 }}>
                   <div>
-                    <p style={{ margin: 0, fontSize: "0.72rem", color: "#78716c", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
+                    <p style={{ margin: 0, fontSize: "0.72rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
                     <p style={{ margin: "4px 0 0", fontSize: "1.1rem", fontWeight: 800, color: "#9333ea" }}>
                       −{fmtK(totalDiscount)} ກີບ
                     </p>
@@ -514,10 +514,10 @@ const SalesHistory: React.FC = () => {
 
               {/* Sales list */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#57534e" }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "var(--app-text-secondary)" }}>
                   ລາຍການທັງໝົດ
                 </p>
-                <span style={{ fontSize: "0.75rem", color: "#a8a29e" }}>{sales.length} ລາຍການ</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--app-text-muted)" }}>{sales.length} ລາຍການ</span>
               </div>
 
               {sales.length === 0 ? (
@@ -539,7 +539,7 @@ const SalesHistory: React.FC = () => {
                         key={sale.id}
                         onClick={() => setSelectedSale(sale)}
                         style={{
-                          background: "#fff",
+                          background: "var(--app-surface)",
                           borderRadius: 12,
                           padding: "10px 12px",
                           boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
@@ -552,16 +552,16 @@ const SalesHistory: React.FC = () => {
                       >
                         {/* Time column */}
                         <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
-                          <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
+                          <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--ion-text-color)", lineHeight: 1.1 }}>
                             {fmtTime(sale.createdAt)}
                           </div>
-                          <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
+                          <div style={{ fontSize: "0.6rem", color: "var(--app-text-muted)", fontWeight: 600, marginTop: 1 }}>
                             {fmtDate(sale.createdAt)}
                           </div>
                         </div>
 
                         {/* Divider */}
-                        <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
+                        <div style={{ width: 1, height: 34, background: "var(--app-surface-alt)", flexShrink: 0 }} />
 
                         {/* Product info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -572,10 +572,10 @@ const SalesHistory: React.FC = () => {
                             {names}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                            <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊ
+                            <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>{qty} ຊ
                             </span>
                             {sale.sellerName && (
-                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>· 👤 {sale.sellerName}</span>
+                              <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>· 👤 {sale.sellerName}</span>
                             )}
                             {hasLoss && (
                               <span style={{
@@ -592,7 +592,7 @@ const SalesHistory: React.FC = () => {
                         {/* Amount + payment + delete */}
                         <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
                           <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
+                            <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-text-color)" }}>
                               {fmtK(sale.total)} ກີບ
                             </div>
                             <div style={{
@@ -662,7 +662,7 @@ const SalesHistory: React.FC = () => {
           <IonContent className="ion-padding">
             {/* Meta */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: "0.82rem", color: "#78716c" }}>
+              <span style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                 📅 {fmtDateTime(selectedSale.createdAt)}
               </span>
               <span style={{
@@ -677,16 +677,16 @@ const SalesHistory: React.FC = () => {
             </div>
 
             {selectedSale.sellerName && (
-              <div style={{ marginBottom: 16, fontSize: "0.82rem", color: "#78716c" }}>
-                👤 ຜູ້ຂາຍ: <span style={{ fontWeight: 700, color: "#1c1917" }}>{selectedSale.sellerName}</span>
+              <div style={{ marginBottom: 16, fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
+                👤 ຜູ້ຂາຍ: <span style={{ fontWeight: 700, color: "var(--ion-text-color)" }}>{selectedSale.sellerName}</span>
               </div>
             )}
 
             {/* Items */}
-            <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "var(--app-text-secondary)" }}>
               ລາຍການສິນຄ້າ
             </p>
-            <div style={{ borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", background: "var(--app-surface)", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
               {(() => {
                 const giftsByParentKey = new Map<string, Sale["items"][number][]>();
                 for (const it of selectedSale.items) {
@@ -710,16 +710,16 @@ const SalesHistory: React.FC = () => {
                   <div key={`item-${idx}`} style={{
                     padding: "12px 16px",
                     borderBottom: !isExpanded && !isLast ? "1px solid #f5f5f4" : "none",
-                    background: isLoss ? "#fff9f9" : "#ffffff",
+                    background: isLoss ? "#fff9f9" : "var(--app-surface)",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem" }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem" }}>
                           {item.productName}
                           {item.isGift && (
                             <span style={{
                               marginLeft: 7,
-                              background: "#fff7ed", color: "#e07b39",
+                              background: "var(--app-accent-surface)", color: "var(--ion-color-primary)",
                               fontSize: "0.6rem", fontWeight: 700,
                               padding: "1px 6px", borderRadius: 5,
                               verticalAlign: "middle",
@@ -740,24 +740,24 @@ const SalesHistory: React.FC = () => {
                           )}
                         </p>
                         {item.isBundle ? (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--app-text-muted)" }}>
                             {(item.bundleItems ?? []).map((bi) => {
                               const v = fmtVariant(bi.variantSize, bi.variantColor);
                               return `${bi.productName}${v ? ` (${v})` : ""} ×${bi.quantity}`;
                             }).join(" + ")}
                           </p>
                         ) : fmtVariant(item.variant.size, item.variant.color) && (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--app-text-muted)" }}>
                             {fmtVariant(item.variant.size, item.variant.color)}
                           </p>
                         )}
-                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#78716c", display: "flex", alignItems: "center", gap: 4 }}>
+                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--app-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
                           {canExpand ? (
                             <button
                               onClick={() => setExpandedItemIdx(isExpanded ? null : idx)}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 3,
-                                background: "var(--ion-color-step-100, #f5f0eb)",
+                                background: "var(--ion-color-step-100, var(--app-surface-alt))",
                                 border: "none", borderRadius: 6, padding: "2px 7px",
                                 fontWeight: 700, fontSize: "0.82rem",
                                 color: "var(--ion-text-color, #44403c)", cursor: "pointer",
@@ -777,13 +777,13 @@ const SalesHistory: React.FC = () => {
                           </p>
                         )}
                         {myGifts.length > 0 && item.costPrice != null && (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#e07b39", fontWeight: 600 }}>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--ion-color-primary)", fontWeight: 600 }}>
                             🎁 ຫັກຕົ້ນທຶນຂອງແຖມ −{fmtK(giftCostTotal)} ກີບ → ກຳໄລ {fmtK(itemProfit)} ກີບ
                           </p>
                         )}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "var(--ion-color-primary)", fontSize: "1rem", whiteSpace: "nowrap" }}>
                           {fmtK(subtotal)} ກີບ
                         </p>
                         {!isExpanded && (permissions.canEditCartPrice || permissions.canDeleteSales) && (
@@ -796,7 +796,7 @@ const SalesHistory: React.FC = () => {
                                 style={{
                                   background: "none", border: "none", padding: "2px 4px",
                                   cursor: editingPrice ? "default" : "pointer",
-                                  color: "#78716c", lineHeight: 0,
+                                  color: "var(--app-text-secondary)", lineHeight: 0,
                                 }}
                               >
                                 <IonIcon icon={createOutline} style={{ fontSize: 15, display: "block" }} />
@@ -844,13 +844,13 @@ const SalesHistory: React.FC = () => {
                     key={`item-${idx}-sub-${i}`}
                     style={{
                       padding: "8px 16px 8px 28px",
-                      background: "var(--ion-color-step-50, #fafaf9)",
+                      background: "var(--ion-color-step-50, var(--app-surface-alt))",
                       borderBottom: i < item.quantity - 1 ? "1px solid #f0f0ef"
                         : !isLast ? "1px solid #f5f5f4" : "none",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}
                   >
-                    <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
                       ລາຍ {i + 1} · {fmtK(item.unitPrice)} ກີບ
                     </span>
                     {(permissions.canEditCartPrice || permissions.canDeleteSales) && (
@@ -863,7 +863,7 @@ const SalesHistory: React.FC = () => {
                             style={{
                               background: "none", border: "none", padding: "6px 4px",
                               cursor: editingPrice ? "default" : "pointer",
-                              color: "#78716c", lineHeight: 0,
+                              color: "var(--app-text-secondary)", lineHeight: 0,
                             }}
                           >
                             <IonIcon icon={createOutline} style={{ fontSize: 14, display: "block" }} />
@@ -947,7 +947,7 @@ const SalesHistory: React.FC = () => {
 
             {/* Total */}
             <div style={{
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               borderRadius: 16, padding: "16px 20px", color: "#fff",
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
@@ -1034,7 +1034,7 @@ const SalesHistory: React.FC = () => {
           <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
             {editPriceIdx !== null && selectedSale && (
               <div>
-                <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem" }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem" }}>
                   {selectedSale.items[editPriceIdx].productName}
                 </p>
                 {editPriceMode === "split" && selectedSale.items[editPriceIdx].quantity > 1 && (
@@ -1045,15 +1045,15 @@ const SalesHistory: React.FC = () => {
               </div>
             )}
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ລາຄາ (ກີບ)</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ລາຄາ (ກີບ)</p>
               <NumInput
                 value={editPriceValue}
                 onChange={setEditPriceValue}
                 placeholder="0"
                 style={{
-                  width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb",
-                  fontSize: "1.1rem", fontWeight: 700, outline: "none", background: "#fafaf9",
-                  color: "#1c1917", boxSizing: "border-box",
+                  width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)",
+                  fontSize: "1.1rem", fontWeight: 700, outline: "none", background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)", boxSizing: "border-box",
                 }}
               />
             </div>
@@ -1062,8 +1062,8 @@ const SalesHistory: React.FC = () => {
               disabled={editingPrice}
               style={{
                 width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                background: editingPrice ? "#e5e7eb" : "var(--ion-color-primary)",
-                color: editingPrice ? "#a8a29e" : "#fff",
+                background: editingPrice ? "var(--app-border)" : "var(--ion-color-primary)",
+                color: editingPrice ? "var(--app-text-muted)" : "#fff",
                 fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginTop: 4,
               }}
             >

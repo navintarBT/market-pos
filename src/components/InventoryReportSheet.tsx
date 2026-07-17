@@ -85,9 +85,9 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                   onClick={() => setActiveCategory(cat)}
                   style={{
                     flexShrink: 0, padding: "6px 16px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                     background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                     fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
                     transition: "all 0.15s",
                   }}
@@ -101,7 +101,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
 
         <div style={{ padding: "8px 14px 24px" }}>
           {rows.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#a8a29e", padding: 40 }}>ບໍ່ມີສິນຄ້າ</p>
+            <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: 40 }}>ບໍ່ມີສິນຄ້າ</p>
           ) : (
             groups.map((group) => (
               <div key={group.label}>
@@ -109,7 +109,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                 {activeCategory === "all" && (
                   <p style={{
                     margin: "14px 0 8px", fontSize: "0.78rem", fontWeight: 700,
-                    color: "#78716c", letterSpacing: "0.04em",
+                    color: "var(--app-text-secondary)", letterSpacing: "0.04em",
                   }}>
                     📂 {group.label}
                   </p>
@@ -119,7 +119,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                   <div
                     key={product.id}
                     style={{
-                      background: "#ffffff", borderRadius: 14, padding: "12px 14px",
+                      background: "var(--app-surface)", borderRadius: 14, padding: "12px 14px",
                       marginBottom: 8, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                     }}
                   >
@@ -128,7 +128,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                       display: "flex", justifyContent: "space-between",
                       alignItems: "center", marginBottom: 8,
                     }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                         {product.name}
                       </p>
                       <span style={{

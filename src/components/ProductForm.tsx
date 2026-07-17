@@ -232,7 +232,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
   const inputBase: React.CSSProperties = {
     width: "100%", border: "none", outline: "none", background: "transparent",
-    fontSize: "1rem", padding: "8px 0", color: "#1c1917",
+    fontSize: "1rem", padding: "8px 0", color: "var(--ion-text-color)",
   };
   const errText: React.CSSProperties = {
     margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "#dc2626",
@@ -267,7 +267,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
         {/* Image */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: "0 0 8px", fontSize: "0.85rem", fontWeight: 600, color: "#78716c" }}>ຮູບສິນຄ້າ</p>
+          <p style={{ margin: "0 0 8px", fontSize: "0.85rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>ຮູບສິນຄ້າ</p>
           <ImagePicker
             currentUrl={photoUrl}
             uploading={uploading}
@@ -290,10 +290,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
           <IonItem button detail={false} onClick={() => setCatPickerOpen(true)}>
             <IonLabel position="stacked">ໝວດໝູ່</IonLabel>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 0 8px" }}>
-              <span style={{ color: category ? "#1c1917" : "#a8a29e", fontSize: "1rem" }}>
+              <span style={{ color: category ? "var(--ion-text-color)" : "var(--app-text-muted)", fontSize: "1rem" }}>
                 {category || "ເລືອກໝວດໝູ່"}
               </span>
-              <IonIcon icon={chevronDownOutline} style={{ color: "#a8a29e", fontSize: 18 }} />
+              <IonIcon icon={chevronDownOutline} style={{ color: "var(--app-text-muted)", fontSize: 18 }} />
             </div>
           </IonItem>
         </IonList>
@@ -343,27 +343,27 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
           style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             margin: "8px 0", padding: "12px 14px", borderRadius: 10,
-            background: canBeGift ? "#fff7ed" : "var(--ion-color-step-50, #f5f5f4)",
-            border: `1.5px solid ${canBeGift ? "#e07b39" : "var(--ion-color-step-150, #e5e7eb)"}`,
+            background: canBeGift ? "var(--app-accent-surface)" : "var(--ion-color-step-50, #f5f5f4)",
+            border: `1.5px solid ${canBeGift ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
             cursor: "pointer",
           }}
         >
           <div>
-            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#1c1917" }}>
+            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--ion-text-color)" }}>
               🎁 ໃຫ້ເປັນຂອງແຖມໄດ້
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "#78716c" }}>
+            <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "var(--app-text-secondary)" }}>
               ຖ້າເປີດ ຈະເລືອກສິນຄ້ານີ້ເປັນຂອງແຖມໄດ້ຈາກໜ້າກະຕ່າ
             </p>
           </div>
           <div style={{
             width: 46, height: 26, borderRadius: 13, flexShrink: 0, marginLeft: 12,
-            background: canBeGift ? "#e07b39" : "var(--ion-color-step-200, #d4d4d0)",
+            background: canBeGift ? "var(--ion-color-primary)" : "var(--ion-color-step-200, #d4d4d0)",
             position: "relative", transition: "background 0.15s",
           }}>
             <div style={{
               position: "absolute", top: 2, left: canBeGift ? 22 : 2,
-              width: 22, height: 22, borderRadius: "50%", background: "#fff",
+              width: 22, height: 22, borderRadius: "50%", background: "var(--app-surface)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.3)", transition: "left 0.15s",
             }} />
           </div>
@@ -376,7 +376,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 44px", gap: 8, padding: "2px 0 4px" }}>
           {["ໄຊສ໌ *", "ສີ *", "ຈຳນວນ", "ເຕືອນ≤", ""].map((h, idx) => (
-            <span key={idx} style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 600, textAlign: "center" }}>{h}</span>
+            <span key={idx} style={{ fontSize: "0.7rem", color: "var(--app-text-muted)", fontWeight: 600, textAlign: "center" }}>{h}</span>
           ))}
         </div>
 
@@ -385,7 +385,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
           const missSize  = isInvalid && !v.size.trim();
           const missColor = isInvalid && !v.color.trim();
           const borderInvalid = "1.5px solid #dc2626";
-          const borderNormal  = "1.5px solid #c8c8c8";
+          const borderNormal  = "1.5px solid var(--app-border)";
           return (
             <div key={i}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 44px", gap: 8, padding: "4px 0" }}>
@@ -431,13 +431,13 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   value={v.stock}
                   onChange={(n) => updateVariant(i, "stock", n)}
                   placeholder="0"
-                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
+                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "var(--app-surface)", color: "var(--ion-text-color)", fontSize: "1rem" }}
                 />
                 <NumInput
                   value={v.minStock ?? 5}
                   onChange={(n) => updateVariant(i, "minStock", Math.max(1, n || 1))}
                   placeholder="5"
-                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
+                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "var(--app-surface)", color: "var(--ion-text-color)", fontSize: "1rem" }}
                 />
                 <IonButton fill="clear" color="danger" onClick={() => removeVariant(i)}
                   disabled={variants.length === 1} style={{ minHeight: 44, minWidth: 44, margin: 0 }}>
@@ -550,7 +550,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         )}
         {!manageCatMode && (
           <IonItem button detail={false} onClick={() => { setCategory(""); setCatPickerOpen(false); }}>
-            <IonLabel style={{ color: "#78716c" }}>— ບໍ່ລະບຸ —</IonLabel>
+            <IonLabel style={{ color: "var(--app-text-secondary)" }}>— ບໍ່ລະບຸ —</IonLabel>
             {category === "" && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}
           </IonItem>
         )}
@@ -560,7 +560,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
             button={!manageCatMode}
             detail={false}
             onClick={() => { if (!manageCatMode) { setCategory(cat.name); setCatPickerOpen(false); } }}
-            style={{ "--background": "#ffffff" }}
+            style={{ "--background": "var(--app-surface)" }}
           >
             <IonLabel style={{ fontWeight: category === cat.name ? 700 : 400 }}>{cat.name}</IonLabel>
             {!manageCatMode && category === cat.name && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}

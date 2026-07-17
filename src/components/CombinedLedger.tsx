@@ -40,8 +40,8 @@ function PaymentToggle<T extends PaymentKind>({ value, onChange, options }: {
       {options.map((v) => (
         <button key={v} onClick={() => onChange(v)} style={{
           flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-          background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "#f5f0eb",
-          color: value === v ? "#fff" : "#57534e",
+          background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "var(--app-surface-alt)",
+          color: value === v ? "#fff" : "var(--app-text-secondary)",
           fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", transition: "all 0.15s",
         }}>
           {PAYMENT_TOGGLE_STYLE[v].label}
@@ -311,12 +311,12 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           <WalletCard loading={walletLoading} cashBalance={cashBalance} transferBalance={transferBalance} codOutstanding={codOutstanding} />
         </div>
 
-        <div style={{ display: "flex", gap: 0, margin: "12px 16px 0", borderRadius: 12, background: "var(--ion-color-step-50, #f5f0eb)", padding: 4 }}>
+        <div style={{ display: "flex", gap: 0, margin: "12px 16px 0", borderRadius: 12, background: "var(--ion-color-step-50, var(--app-surface-alt))", padding: 4 }}>
           {(["expense", "income"] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               flex: 1, padding: "9px 0", borderRadius: 9, border: "none",
               background: activeTab === tab ? "var(--ion-item-background, #ffffff)" : "transparent",
-              color: activeTab === tab ? "var(--ion-text-color, #1c1917)" : "var(--ion-color-medium, #78716c)",
+              color: activeTab === tab ? "var(--ion-text-color, var(--ion-text-color))" : "var(--ion-color-medium, var(--app-text-secondary))",
               fontWeight: activeTab === tab ? 700 : 600, fontSize: "0.9rem", cursor: "pointer",
               boxShadow: activeTab === tab ? "0 1px 4px rgba(0,0,0,0.10)" : "none", transition: "all 0.15s",
             }}>
@@ -333,8 +333,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
         <div style={{ display: "flex", gap: 8, padding: "10px 16px 0", flexWrap: "nowrap", overflowX: "auto" }}>
           <button onClick={() => setShopFilter("all")} style={{
             flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-            background: shopFilter === "all" ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-            color: shopFilter === "all" ? "#fff" : "var(--ion-color-medium, #78716c)",
+            background: shopFilter === "all" ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+            color: shopFilter === "all" ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
             fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
           }}>
             ທັງໝົດ
@@ -342,8 +342,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           {shops.map((s) => (
             <button key={s.id} onClick={() => setShopFilter(s.id)} style={{
               flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-              background: shopFilter === s.id ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-              color: shopFilter === s.id ? "#fff" : "var(--ion-color-medium, #78716c)",
+              background: shopFilter === s.id ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+              color: shopFilter === s.id ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
               fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
             }}>
               🏪 {s.name}
@@ -382,8 +382,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               ] as const).map(({ v, label }) => (
                 <button key={v} onClick={() => setExpCatFilter(v)} style={{
                   flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-                  background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-                  color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, #78716c)",
+                  background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+                  color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
                   fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
                 }}>
                   {label}
@@ -400,7 +400,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
             visibleExpenses.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
-                <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
+                <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
               </div>
             ) : (
               visibleExpenses.map((item) => {
@@ -408,14 +408,14 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                 const dateStr = fmtDate(item.createdAt);
                 return (
                   <div key={`${item.shopId}_${item.id}`} style={{
-                    background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
+                    background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
                     boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12,
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {item.description}
                       </p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {dateStr} · {timeStr} · {item.category === "shop" ? `🏪 ${item.shopName}` : "🤝 ສ່ວນກາງ"}
                       </p>
                     </div>
@@ -428,13 +428,13 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                         }}>
                           {EXPENSE_CATEGORY_STYLE[(item.category as ExpenseCategory) ?? "shop"].label}
                         </span>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", background: "#f5f0eb", borderRadius: 20, color: "#78716c" }}>
+                        <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", background: "var(--app-surface-alt)", borderRadius: 20, color: "var(--app-text-secondary)" }}>
                           {(item.paymentType ?? "cash") === "cash" ? "💵 ສົດ" : "📱 ໂອນ"}
                         </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                      <button onClick={() => openExpEdit(item)} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "#78716c", display: "flex", alignItems: "center" }}>
+                      <button onClick={() => openExpEdit(item)} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "var(--app-text-secondary)", display: "flex", alignItems: "center" }}>
                         <IonIcon icon={createOutline} style={{ fontSize: 18 }} />
                       </button>
                       <button onClick={() => setExpDeleteTarget(item)} disabled={expDeleting} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "#ef4444", display: "flex", alignItems: "center" }}>
@@ -448,7 +448,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           ) : scopedIncomes.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 0" }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>💰</div>
-              <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
+              <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
             </div>
           ) : (
             scopedIncomes.map((item) => {
@@ -456,25 +456,25 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               const dateStr = fmtDate(item.createdAt);
               return (
                 <div key={`${item.shopId}_${item.id}`} style={{
-                  background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
+                  background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 8,
                   boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12,
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.description}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                       {dateStr} · {timeStr} · 🏪 {item.shopName}
                     </p>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <span style={{ fontWeight: 800, color: "#22c55e", fontSize: "1rem" }}>{fmtK(item.amount)} ກີບ</span>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 8px", background: "#f5f0eb", borderRadius: 20, color: "#78716c" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 8px", background: "var(--app-surface-alt)", borderRadius: 20, color: "var(--app-text-secondary)" }}>
                       {PAYMENT_TOGGLE_STYLE[item.paymentType].label}
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                    <button onClick={() => openIncEdit(item)} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "#78716c", display: "flex", alignItems: "center" }}>
+                    <button onClick={() => openIncEdit(item)} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "var(--app-text-secondary)", display: "flex", alignItems: "center" }}>
                       <IonIcon icon={createOutline} style={{ fontSize: 18 }} />
                     </button>
                     <button onClick={() => setIncDeleteTarget(item)} disabled={incDeleting} style={{ background: "none", border: "none", padding: "6px", cursor: "pointer", color: "#ef4444", display: "flex", alignItems: "center" }}>
@@ -510,9 +510,9 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
             {expCategory === "shop" && (
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຮ້ານ</p>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຮ້ານ</p>
                 {expEditTarget ? (
-                  <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f0eb", fontWeight: 700, color: "#57534e" }}>
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--app-surface-alt)", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                     🏪 {shopName(expShopId)}
                   </div>
                 ) : (
@@ -520,8 +520,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                     {shops.map((s) => (
                       <button key={s.id} onClick={() => setExpShopId(s.id)} style={{
                         flex: "1 1 auto", padding: "10px 14px", borderRadius: 10, border: "none",
-                        background: expShopId === s.id ? "var(--ion-color-primary)" : "#f5f0eb",
-                        color: expShopId === s.id ? "#fff" : "#57534e", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+                        background: expShopId === s.id ? "var(--ion-color-primary)" : "var(--app-surface-alt)",
+                        color: expShopId === s.id ? "#fff" : "var(--app-text-secondary)", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
                       }}>
                         🏪 {s.name}
                       </button>
@@ -536,27 +536,27 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               </div>
             )}
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຄຳອະທິບາຍ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຄຳອະທິບາຍ</p>
               <input type="text" value={expDesc} onChange={(e) => setExpDesc(e.target.value)} placeholder="ຊື່ລາຍຈ່າຍ" style={{
-                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: "0.95rem",
-                outline: "none", background: "#fafaf9", color: "#1c1917", boxSizing: "border-box",
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "0.95rem",
+                outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຈຳນວນ (ກີບ)</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຈຳນວນ (ກີບ)</p>
               <NumInput value={expAmount} onChange={setExpAmount} placeholder="0" style={{
-                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: "1.1rem",
-                fontWeight: 700, outline: "none", background: "#fafaf9", color: "#1c1917", boxSizing: "border-box",
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "1.1rem",
+                fontWeight: 700, outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ປະເພດລາຍຈ່າຍ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ປະເພດລາຍຈ່າຍ</p>
               <div style={{ display: "flex", gap: 8 }}>
                 {(["shop", "capital", "general"] as const).map((v) => (
                   <button key={v} onClick={() => setExpCategory(v)} style={{
                     flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                    background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "#f5f0eb",
-                    color: expCategory === v ? "#fff" : "#57534e", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", transition: "all 0.15s",
+                    background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "var(--app-surface-alt)",
+                    color: expCategory === v ? "#fff" : "var(--app-text-secondary)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", transition: "all 0.15s",
                   }}>
                     {EXPENSE_CATEGORY_STYLE[v].chipLabel}
                   </button>
@@ -564,13 +564,13 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               </div>
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ປະເພດການຈ່າຍ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ປະເພດການຈ່າຍ</p>
               <PaymentToggle value={expPayment} onChange={setExpPayment} options={EXPENSE_PAYMENT_OPTIONS} />
             </div>
             <button onClick={handleExpSave} disabled={expBusy || !expDesc.trim() || expAmount <= 0} style={{
               width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-              background: expBusy || !expDesc.trim() || expAmount <= 0 ? "#e5e7eb" : "var(--ion-color-primary)",
-              color: expBusy || !expDesc.trim() || expAmount <= 0 ? "#a8a29e" : "#fff",
+              background: expBusy || !expDesc.trim() || expAmount <= 0 ? "var(--app-border)" : "var(--ion-color-primary)",
+              color: expBusy || !expDesc.trim() || expAmount <= 0 ? "var(--app-text-muted)" : "#fff",
               fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginTop: 4,
             }}>
               {expBusy ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກ"}
@@ -594,9 +594,9 @@ export default function CombinedLedger({ shops, onBack }: Props) {
         <IonContent>
           <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຮ້ານ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຮ້ານ</p>
               {incEditTarget ? (
-                <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f0eb", fontWeight: 700, color: "#57534e" }}>
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--app-surface-alt)", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                   🏪 {shopName(incShopId)}
                 </div>
               ) : (
@@ -604,8 +604,8 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                   {shops.map((s) => (
                     <button key={s.id} onClick={() => setIncShopId(s.id)} style={{
                       flex: "1 1 auto", padding: "10px 14px", borderRadius: 10, border: "none",
-                      background: incShopId === s.id ? "var(--ion-color-primary)" : "#f5f0eb",
-                      color: incShopId === s.id ? "#fff" : "#57534e", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+                      background: incShopId === s.id ? "var(--ion-color-primary)" : "var(--app-surface-alt)",
+                      color: incShopId === s.id ? "#fff" : "var(--app-text-secondary)", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
                     }}>
                       🏪 {s.name}
                     </button>
@@ -614,27 +614,27 @@ export default function CombinedLedger({ shops, onBack }: Props) {
               )}
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຄຳອະທິບາຍ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຄຳອະທິບາຍ</p>
               <input type="text" value={incDesc} onChange={(e) => setIncDesc(e.target.value)} placeholder="ຊື່ລາຍຮັບ" style={{
-                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: "0.95rem",
-                outline: "none", background: "#fafaf9", color: "#1c1917", boxSizing: "border-box",
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "0.95rem",
+                outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ຈຳນວນ (ກີບ)</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຈຳນວນ (ກີບ)</p>
               <NumInput value={incAmount} onChange={setIncAmount} placeholder="0" style={{
-                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: "1.1rem",
-                fontWeight: 700, outline: "none", background: "#fafaf9", color: "#1c1917", boxSizing: "border-box",
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "1.1rem",
+                fontWeight: 700, outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>ປະເພດການຮັບ</p>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ປະເພດການຮັບ</p>
               <PaymentToggle value={incPayment} onChange={setIncPayment} options={INCOME_PAYMENT_OPTIONS} />
             </div>
             <button onClick={handleIncSave} disabled={incBusy || !incDesc.trim() || incAmount <= 0} style={{
               width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-              background: incBusy || !incDesc.trim() || incAmount <= 0 ? "#e5e7eb" : "var(--ion-color-primary)",
-              color: incBusy || !incDesc.trim() || incAmount <= 0 ? "#a8a29e" : "#fff",
+              background: incBusy || !incDesc.trim() || incAmount <= 0 ? "var(--app-border)" : "var(--ion-color-primary)",
+              color: incBusy || !incDesc.trim() || incAmount <= 0 ? "var(--app-text-muted)" : "#fff",
               fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginTop: 4,
             }}>
               {incBusy ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກ"}

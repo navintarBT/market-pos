@@ -188,9 +188,9 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                         onClick={() => setActiveCategory(cat)}
                         style={{
                           flexShrink: 0, padding: "7px 18px", borderRadius: 24,
-                          border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                          border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                           background: isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-50, #f9fafb)",
-                          color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                          color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                           fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
                           boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                           transition: "all 0.15s",

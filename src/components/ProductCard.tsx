@@ -32,7 +32,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
         ) : (
           <div style={{
             height: 100,
-            background: "linear-gradient(135deg, #fed7aa, #fdba74)",
+            background: "linear-gradient(135deg, var(--app-accent-border), #fdba74)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -44,10 +44,10 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
       </div>
 
       <IonCardContent style={{ padding: "10px 12px 12px" }}>
-        <p style={{ margin: "0 0 2px", fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, #1c1917)", lineHeight: 1.3 }}>
+        <p style={{ margin: "0 0 2px", fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, var(--ion-text-color))", lineHeight: 1.3 }}>
           {product.name}
         </p>
-        <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "#e07b39" }}>
+        <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "var(--ion-color-primary)" }}>
           {fmtK(product.price)} ກີບ
         </p>
         {product.costPrice != null && product.costPrice > 0 && (
@@ -72,7 +72,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
                   fontWeight: 600,
                   lineHeight: "14px",
                   whiteSpace: "nowrap",
-                  background: empty ? "var(--ion-color-step-150, #e5e7eb)" : low ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
+                  background: empty ? "var(--ion-color-step-150, var(--app-border))" : low ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
                   color: empty ? "var(--ion-color-medium, #9ca3af)" : low ? "#92400e" : "#166534",
                 }}
               >
@@ -84,7 +84,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
             <span style={{
               display: "inline-block", padding: "2px 6px", borderRadius: 5,
               fontSize: "0.62rem", fontWeight: 700, lineHeight: "14px",
-              background: "var(--ion-color-step-100, #f3f4f6)", color: "var(--ion-color-medium, #6b7280)",
+              background: "var(--ion-color-step-100, var(--app-surface-alt))", color: "var(--ion-color-medium, var(--app-text-muted))",
             }}>
               +{product.variants.length - 4}
             </span>
@@ -94,7 +94,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{
             fontSize: "0.75rem",
-            color: outOfStock ? "#dc2626" : "#78716c",
+            color: outOfStock ? "#dc2626" : "var(--app-text-secondary)",
             fontWeight: outOfStock ? 700 : 400,
           }}>
             {outOfStock ? "⚠ ໝົດສະຕ໋ອກ" : `ສະຕ໋ອກລວມ: ${totalStock}`}
@@ -107,7 +107,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
                 <IonIcon slot="icon-only" icon={addCircleOutline} />
               </IonButton>
               <IonButton fill="clear" size="small" onClick={() => onEdit(product)}
-                style={{ minHeight: 36, minWidth: 36, "--color": "#e07b39" }}>
+                style={{ minHeight: 36, minWidth: 36, "--color": "var(--ion-color-primary)" }}>
                 <IonIcon slot="icon-only" icon={createOutline} />
               </IonButton>
               {canDelete && (

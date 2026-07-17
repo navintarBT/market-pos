@@ -93,12 +93,12 @@ const MainTabs: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
-          <div style={{ padding: "18px 16px 12px", background: "linear-gradient(135deg, #fff7ed, #ffffff)" }}>
+          <div style={{ padding: "18px 16px 12px", background: "linear-gradient(135deg, var(--app-accent-surface), var(--app-surface))" }}>
             <div style={{
               width: 64,
               height: 64,
               borderRadius: 16,
-              background: "#ffedd5",
+              background: "var(--app-accent-surface)",
               overflow: "hidden",
               display: "flex",
               alignItems: "center",
@@ -108,13 +108,13 @@ const MainTabs: React.FC = () => {
               {shopProfile?.profileUrl ? (
                 <img src={shopProfile.profileUrl} alt={shopProfile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "#e07b39" }} />
+                <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "var(--ion-color-primary)" }} />
               )}
             </div>
-            <h2 style={{ margin: 0, color: "#1c1917", fontSize: "1.05rem", fontWeight: 800 }}>
+            <h2 style={{ margin: 0, color: "var(--ion-text-color)", fontSize: "1.05rem", fontWeight: 800 }}>
               {shopProfile?.name ?? "Minny ONE"}
             </h2>
-            <p style={{ margin: "3px 0 0", color: "#78716c", fontSize: "0.78rem", fontWeight: 600 }}>
+            <p style={{ margin: "3px 0 0", color: "var(--app-text-secondary)", fontSize: "0.78rem", fontWeight: 600 }}>
               {role === "customer" ? "Owner" : "Staff"}
             </p>
           </div>
@@ -123,7 +123,7 @@ const MainTabs: React.FC = () => {
             {role === "customer" && (
               <>
                 <IonMenuToggle autoHide={false}>
-                  <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "#fff7ed" }}>
+                  <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
                     <IonIcon slot="start" icon={businessOutline} color="primary" />
                     <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
                   </IonItem>
@@ -138,8 +138,8 @@ const MainTabs: React.FC = () => {
             )}
             {availableShops.length > 1 && (
               <IonMenuToggle autoHide={false}>
-                <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "#fff7ed", marginTop: 8 }}>
-                  <IonIcon slot="start" icon={swapHorizontalOutline} style={{ color: "#e07b39" }} />
+                <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "var(--app-accent-surface)", marginTop: 8 }}>
+                  <IonIcon slot="start" icon={swapHorizontalOutline} style={{ color: "var(--ion-color-primary)" }} />
                   <IonLabel style={{ fontWeight: 600, color: "#c2410c" }}>ສຳຮ້ານ</IonLabel>
                 </IonItem>
               </IonMenuToggle>
@@ -192,7 +192,7 @@ const MainTabs: React.FC = () => {
           </div>
 
           {/* Message */}
-          <p style={{ margin: "0 0 28px", fontSize: "0.88rem", color: "#78716c", lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 28px", fontSize: "0.88rem", color: "var(--app-text-secondary)", lineHeight: 1.6 }}>
             ກະລຸນາຕິດຕໍ່ຜູ້ໃຫ້ບໍລິການ<br />ເພື່ອຕໍ່ subscription ຂອງທ່ານ
           </p>
 
@@ -201,7 +201,7 @@ const MainTabs: React.FC = () => {
             onClick={() => setShowExpiryAlert(false)}
             style={{
               width: "100%", padding: "13px",
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               border: "none", borderRadius: 12,
               color: "#fff", fontSize: "0.95rem", fontWeight: 700,
               cursor: "pointer",

@@ -202,7 +202,7 @@ const Sell: React.FC = () => {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "10px 14px 10px 10px",
               borderRadius: 18, border: "none",
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               boxShadow: "0 8px 24px rgba(194, 94, 30, 0.42)",
               cursor: "pointer", fontFamily: "inherit",
             }}
@@ -218,7 +218,7 @@ const Sell: React.FC = () => {
                 <IonIcon icon={cartOutline} style={{ fontSize: 19, color: "#fff" }} />
                 <span style={{
                   position: "absolute", top: -6, right: -6,
-                  background: "#fff", color: "#c2410c",
+                  background: "var(--app-surface)", color: "#c2410c",
                   fontSize: "0.68rem", fontWeight: 800,
                   minWidth: 18, height: 18, borderRadius: 9, padding: "0 4px",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -248,9 +248,9 @@ const Sell: React.FC = () => {
                 style={{
                   padding: "7px 22px", borderRadius: 24, fontWeight: 700, fontSize: "0.85rem",
                   cursor: "pointer", transition: "all 0.15s",
-                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                   background: active ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                  color: active ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                  color: active ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                   boxShadow: active ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                 }}
               >
@@ -275,9 +275,9 @@ const Sell: React.FC = () => {
                   style={{
                     flexShrink: 0,
                     padding: "7px 18px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                     background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                     fontSize: "0.85rem", fontWeight: 700,
                     cursor: "pointer",
                     boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
@@ -339,10 +339,10 @@ const Sell: React.FC = () => {
                               : "👕"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, var(--ion-text-color))", marginBottom: 3, lineHeight: 1.3 }}>
                             {p.name}
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ion-color-primary)", marginBottom: 4 }}>
                             {fmtK(p.price)} ກີບ
                           </div>
                           <div style={{
@@ -398,13 +398,13 @@ const Sell: React.FC = () => {
                               : "🎁"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, var(--ion-text-color))", marginBottom: 3, lineHeight: 1.3 }}>
                             {b.name}
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ion-color-primary)", marginBottom: 4 }}>
                             {fmtK(b.price)} ກີບ
                           </div>
-                          <div style={{ fontSize: "0.68rem", color: "#78716c", lineHeight: 1.4 }}>
+                          <div style={{ fontSize: "0.68rem", color: "var(--app-text-secondary)", lineHeight: 1.4 }}>
                             {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" + ")}
                           </div>
                           {!available && (
@@ -477,7 +477,7 @@ const Sell: React.FC = () => {
 
         <IonContent>
           <div style={{ padding: "8px 16px 24px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: "0.78rem", color: "#78716c" }}>
+            <p style={{ margin: "0 0 16px", fontSize: "0.78rem", color: "var(--app-text-secondary)" }}>
               ເລືອກ variant ໃຫ້ແຕ່ລະສິນຄ້າໃນຊຸດ
             </p>
             {bundlePickerTarget?.items.map((item, idx) => {
@@ -487,7 +487,7 @@ const Sell: React.FC = () => {
               return (
                 <div key={idx} style={{ marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                       {item.productName} ×{item.quantity}
                     </span>
                     {chosen && (
@@ -498,7 +498,7 @@ const Sell: React.FC = () => {
                   </div>
                   {autoVariant ? (
                     <div style={{
-                      fontSize: "0.78rem", color: "#78716c", padding: "8px 12px",
+                      fontSize: "0.78rem", color: "var(--app-text-secondary)", padding: "8px 12px",
                       background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0",
                     }}>
                       ✓ {autoVariant.size}{autoVariant.color ? ` / ${autoVariant.color}` : ""} (ອັດຕະໂນມັດ)
@@ -516,9 +516,9 @@ const Sell: React.FC = () => {
                             style={{
                               padding: "7px 14px", borderRadius: 20,
                               cursor: outOfStock ? "not-allowed" : "pointer",
-                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                               background: isChosen ? "var(--ion-color-primary)" : outOfStock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
-                              color: isChosen ? "#fff" : outOfStock ? "var(--ion-color-medium, #a8a29e)" : "var(--ion-text-color, #1c1917)",
+                              color: isChosen ? "#fff" : outOfStock ? "var(--ion-color-medium, var(--app-text-muted))" : "var(--ion-text-color, var(--ion-text-color))",
                               fontWeight: 600, fontSize: "0.85rem",
                               display: "flex", alignItems: "center", gap: 4,
                             }}
@@ -540,7 +540,7 @@ const Sell: React.FC = () => {
         </IonContent>
 
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
             <IonButton
               expand="block"
               disabled={!allVariantsChosen}

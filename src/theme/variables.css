@@ -5,26 +5,6 @@
 }
 * { font-family: var(--ion-font-family); }
 
-/* Force all Ionic Shadow DOM hosts and overlays to light color-scheme
-   so the browser never applies auto-dark or Force Dark to them */
-body,
-ion-app,
-ion-page,
-ion-content,
-ion-header,
-ion-footer,
-ion-toolbar,
-ion-modal,
-ion-popover,
-ion-action-sheet,
-ion-alert,
-ion-toast,
-ion-loading,
-ion-picker,
-ion-sheet {
-  color-scheme: light;
-}
-
 /* ===== Warm Orange Theme ===== */
 :root {
   /* Primary — warm orange */
@@ -110,6 +90,38 @@ ion-sheet {
   --ion-tab-bar-border-color: #fed7aa;
   --ion-tab-bar-color: #a8a29e;
   --ion-tab-bar-color-selected: #e07b39;
+
+  /* Neutral background/text step scale (mix of background <-> text) */
+  --ion-color-step-50: #f5ede4;
+  --ion-color-step-100: #ece0d4;
+  --ion-color-step-150: #e2d3c4;
+  --ion-color-step-200: #d9c6b4;
+  --ion-color-step-250: #cfb9a4;
+  --ion-color-step-300: #c6ac94;
+  --ion-color-step-350: #bc9f84;
+  --ion-color-step-400: #b39274;
+  --ion-color-step-450: #a98564;
+  --ion-color-step-500: #a07854;
+  --ion-color-step-550: #966b44;
+  --ion-color-step-600: #8d5e34;
+  --ion-color-step-650: #835124;
+  --ion-color-step-700: #7a4414;
+  --ion-color-step-750: #703704;
+  --ion-color-step-800: #5a2d03;
+  --ion-color-step-850: #432202;
+  --ion-color-step-900: #2d1601;
+  --ion-color-step-950: #160b00;
+  --ion-color-step-1000: #1c1917;
+
+  /* App-level semantic tokens — not part of Ionic's variable set, used
+     wherever a component needs a text/surface tone Ionic doesn't provide */
+  --app-text-secondary: #78716c;
+  --app-text-muted: #a8a29e;
+  --app-surface: #ffffff;
+  --app-surface-alt: #fafaf9;
+  --app-accent-surface: #fff7ed;
+  --app-accent-border: #fed7aa;
+  --app-border: #e5e7eb;
 }
 
 /* Toolbar title & buttons */
@@ -127,45 +139,80 @@ ion-card {
   box-shadow: 0 2px 12px rgba(224, 123, 57, 0.12);
 }
 
-/* ===== Force light theme — override Ionic dark mode defaults ===== */
+/* ===== Warm Dark Theme =====
+   Declared on `:root.ios, :root.md` (not plain `:root`) so this reliably
+   out-specifies @ionic/react/css/palettes/dark.system.css, which sets
+   --ion-background-color / --ion-text-color / --ion-card-background /
+   --ion-item-background / --ion-toolbar-background / --ion-tab-bar-* under
+   that same higher-specificity selector (Ionic always stamps `ios` or `md`
+   onto <html>). A plain `:root` override loses to that regardless of CSS
+   import order, which is why an earlier "force light" attempt here silently
+   failed for exactly those properties. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --ion-background-color: #fef6ee;
-    --ion-background-color-rgb: 254, 246, 238;
-    --ion-text-color: #1c1917;
-    --ion-text-color-rgb: 28, 25, 23;
+  :root.ios,
+  :root.md {
+    color-scheme: dark;
 
-    --ion-card-background: #ffffff;
-    --ion-item-background: #ffffff;
-    --ion-border-color: #fed7aa;
+    /* Brand/status colors (primary/secondary/success/warning/danger/dark/
+       medium/light) are intentionally NOT redeclared here. They're plain
+       `:root`-scoped in both this file and Ionic's dark.system.css, so at
+       equal specificity the later-imported rule already wins (this file
+       loads after dark.system.css) — they stay pinned to the light values
+       above automatically. Redeclaring a brighter primary here was tried
+       and reverted: dozens of "selected" pills/tabs across the app hardcode
+       `color: "#fff"` for their active state text against
+       `var(--ion-color-primary)`, and a lighter dark-mode orange dropped
+       that white-text contrast below the light-mode baseline. */
 
-    --ion-toolbar-background: #c25e1e;
-    --ion-toolbar-color: #ffffff;
+    /* Page & card backgrounds */
+    --ion-background-color: #1c1512;
+    --ion-background-color-rgb: 28, 21, 18;
+    --ion-text-color: #f5ede4;
+    --ion-text-color-rgb: 245, 237, 228;
 
-    --ion-tab-bar-background: #ffffff;
-    --ion-tab-bar-border-color: #fed7aa;
-    --ion-tab-bar-color: #a8a29e;
-    --ion-tab-bar-color-selected: #e07b39;
+    --ion-card-background: #262019;
+    --ion-item-background: #262019;
+    --ion-border-color: #3a332c;
 
-    --ion-color-step-50: #f5ede4;
-    --ion-color-step-100: #ece0d4;
-    --ion-color-step-150: #e2d3c4;
-    --ion-color-step-200: #d9c6b4;
-    --ion-color-step-250: #cfb9a4;
-    --ion-color-step-300: #c6ac94;
-    --ion-color-step-350: #bc9f84;
-    --ion-color-step-400: #b39274;
-    --ion-color-step-450: #a98564;
-    --ion-color-step-500: #a07854;
-    --ion-color-step-550: #966b44;
-    --ion-color-step-600: #8d5e34;
-    --ion-color-step-650: #835124;
-    --ion-color-step-700: #7a4414;
-    --ion-color-step-750: #703704;
-    --ion-color-step-800: #5a2d03;
-    --ion-color-step-850: #432202;
-    --ion-color-step-900: #2d1601;
-    --ion-color-step-950: #160b00;
-    --ion-color-step-1000: #1c1917;
+    /* Toolbar */
+    --ion-toolbar-background: #3a2414;
+    --ion-toolbar-color: #f5ede4;
+
+    /* Tab bar */
+    --ion-tab-bar-background: #211b16;
+    --ion-tab-bar-border-color: #3a332c;
+    --ion-tab-bar-color: #8f8578;
+    --ion-tab-bar-color-selected: var(--ion-color-primary);
+
+    /* Neutral background/text step scale, inverted (dark bg -> cream text) */
+    --ion-color-step-50: #27201d;
+    --ion-color-step-100: #322b27;
+    --ion-color-step-150: #3d3532;
+    --ion-color-step-200: #47403c;
+    --ion-color-step-250: #524b47;
+    --ion-color-step-300: #5d5651;
+    --ion-color-step-350: #68615c;
+    --ion-color-step-400: #736b66;
+    --ion-color-step-450: #7e7671;
+    --ion-color-step-500: #89817b;
+    --ion-color-step-550: #938c86;
+    --ion-color-step-600: #9e9790;
+    --ion-color-step-650: #a9a19b;
+    --ion-color-step-700: #b4aca5;
+    --ion-color-step-750: #bfb7b0;
+    --ion-color-step-800: #cac2ba;
+    --ion-color-step-850: #d4cdc5;
+    --ion-color-step-900: #dfd7cf;
+    --ion-color-step-950: #eae2da;
+    --ion-color-step-1000: #f5ede4;
+
+    /* App-level semantic tokens (dark values) */
+    --app-text-secondary: #b3a89c;
+    --app-text-muted: #8f8578;
+    --app-surface: #262019;
+    --app-surface-alt: #211b16;
+    --app-accent-surface: #3a2a1a;
+    --app-accent-border: #5c4530;
+    --app-border: #3a332c;
   }
 }

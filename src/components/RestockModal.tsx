@@ -71,7 +71,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
           <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>
             {product?.name}
           </p>
-          <p style={{ margin: "0 0 16px", fontSize: "0.8rem", color: "#78716c" }}>
+          <p style={{ margin: "0 0 16px", fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
             ໃສ່ຈຳນວນທີ່ຕ້ອງການ ເພີ່ມໃສ່ແຕ່ລະ variant
           </p>
 
@@ -84,7 +84,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
                   display: "flex", alignItems: "center", gap: 12,
                   padding: "12px 14px", borderRadius: 12, marginBottom: 8,
                   background: adding > 0 ? "#f0fdf4" : "var(--ion-color-step-50, #f9fafb)",
-                  border: `1.5px solid ${adding > 0 ? "#86efac" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                  border: `1.5px solid ${adding > 0 ? "#86efac" : "var(--ion-color-step-150, var(--app-border))"}`,
                   transition: "all 0.15s",
                 }}
               >
@@ -92,7 +92,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
                   <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                     {v.size}{v.color ? ` / ${v.color}` : ""}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                     ປັດຈຸບັນ {v.stock} ຊິ້ນ
                     {adding > 0 && (
                       <span style={{ color: "#16a34a", fontWeight: 700 }}>
@@ -109,10 +109,10 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
                     placeholder="0"
                     style={{
                       width: 72, padding: "8px 10px", fontSize: "1rem", fontWeight: 700,
-                      border: `1.5px solid ${adding > 0 ? "#86efac" : "#c8c8c8"}`,
+                      border: `1.5px solid ${adding > 0 ? "#86efac" : "var(--app-border)"}`,
                       borderRadius: 10, outline: "none", textAlign: "center",
                       background: "var(--ion-item-background, #fff)",
-                      color: "var(--ion-text-color, #1c1917)",
+                      color: "var(--ion-text-color, var(--ion-text-color))",
                     }}
                   />
                 </div>
@@ -132,7 +132,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
         <div style={{
           padding: "12px 16px 28px",
           background: "var(--ion-item-background, #fff)",
-          borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)",
+          borderTop: "1px solid var(--ion-color-step-150, var(--app-border))",
         }}>
           <IonButton
             expand="block"

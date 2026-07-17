@@ -38,17 +38,17 @@ export default function ShopPicker() {
               <div style={{
                 width: 78, height: 78, borderRadius: 22,
                 margin: "0 auto 16px",
-                background: "#ffffff",
+                background: "var(--app-surface)",
                 overflow: "hidden",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 boxShadow: "0 10px 26px rgba(194, 94, 30, 0.35)",
               }}>
                 <img src="/MinnyOne.png" alt="Minny ONE" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
-              <h1 style={{ fontSize: "1.4rem", fontWeight: 800, margin: 0, color: "#1c1917" }}>
+              <h1 style={{ fontSize: "1.4rem", fontWeight: 800, margin: 0, color: "var(--ion-text-color)" }}>
                 ເລືອກຮ້ານ
               </h1>
-              <p style={{ margin: "8px 0 0", color: "#78716c", fontSize: "0.88rem" }}>
+              <p style={{ margin: "8px 0 0", color: "var(--app-text-secondary)", fontSize: "0.88rem" }}>
                 ທ່ານມີ {availableShops.length} ຮ້ານ — ກະລຸນາເລືອກ
               </p>
             </div>
@@ -59,8 +59,8 @@ export default function ShopPicker() {
                   onClick={() => setView("dashboard")}
                   style={{
                     width: "100%", padding: "13px 16px",
-                    borderRadius: 16, border: "1.5px solid #fed7aa",
-                    background: "#fff7ed", display: "flex", alignItems: "center", gap: 10,
+                    borderRadius: 16, border: "1.5px solid var(--app-accent-border)",
+                    background: "var(--app-accent-surface)", display: "flex", alignItems: "center", gap: 10,
                     cursor: "pointer", fontFamily: "inherit",
                   }}
                 >
@@ -68,7 +68,7 @@ export default function ShopPicker() {
                   <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#c2410c", flex: 1, textAlign: "left" }}>
                     ພາບລວມທຸກຮ້ານ
                   </span>
-                  <span style={{ color: "#e07b39", fontSize: "1.1rem" }}>›</span>
+                  <span style={{ color: "var(--ion-color-primary)", fontSize: "1.1rem" }}>›</span>
                 </button>
                 <button
                   onClick={() => setView("ledger")}
@@ -101,8 +101,8 @@ export default function ShopPicker() {
                     style={{
                       padding: 14,
                       borderRadius: 18,
-                      border: isPicking ? "2px solid #e07b39" : "1.5px solid #fed7aa",
-                      background: isPicking ? "#fff7ed" : "#ffffff",
+                      border: isPicking ? "2px solid var(--ion-color-primary)" : "1.5px solid var(--app-accent-border)",
+                      background: isPicking ? "var(--app-accent-surface)" : "var(--app-surface)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -117,7 +117,7 @@ export default function ShopPicker() {
                     <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
                       <div style={{
                         width: 52, height: 52, borderRadius: 14,
-                        background: "#ffedd5", color: "#c2410c",
+                        background: "var(--app-accent-surface)", color: "#c2410c",
                         overflow: "hidden", flexShrink: 0,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "1.2rem", fontWeight: 800,
@@ -133,15 +133,15 @@ export default function ShopPicker() {
                         )}
                       </div>
                       <span style={{
-                        fontSize: "1rem", fontWeight: 700, color: "#1c1917",
+                        fontSize: "1rem", fontWeight: 700, color: "var(--ion-text-color)",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>
                         {shop.name}
                       </span>
                     </div>
                     {isPicking
-                      ? <IonSpinner name="dots" style={{ width: 22, height: 22, color: "#e07b39", flexShrink: 0 }} />
-                      : <span style={{ color: "#e07b39", fontSize: "1.2rem", flexShrink: 0, marginLeft: 8 }}>›</span>}
+                      ? <IonSpinner name="dots" style={{ width: 22, height: 22, color: "var(--ion-color-primary)", flexShrink: 0 }} />
+                      : <span style={{ color: "var(--ion-color-primary)", fontSize: "1.2rem", flexShrink: 0, marginLeft: 8 }}>›</span>}
                   </button>
                 );
               })}
@@ -157,7 +157,7 @@ export default function ShopPicker() {
               padding: "12px",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               border: "none", background: "none",
-              color: "#a8a29e", fontSize: "0.9rem", cursor: "pointer",
+              color: "var(--app-text-muted)", fontSize: "0.9rem", cursor: "pointer",
               fontFamily: "inherit", fontWeight: 600,
             }}
           >

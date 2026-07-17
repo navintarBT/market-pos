@@ -169,25 +169,25 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
               const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
               return (
                 <div key={b.id} style={{
-                  background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
+                  background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
                   boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
                   display: "flex", alignItems: "center", gap: 12,
                 }}>
                   {/* Photo */}
                   <div style={{
                     width: 54, height: 54, borderRadius: 10, flexShrink: 0,
-                    background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center",
                     overflow: "hidden",
                   }}>
                     {b.photoUrl
                       ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "#e07b39" }} />
+                      : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "var(--ion-color-primary)" }} />
                     }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#1c1917" }}>{b.name}</p>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{b.name}</p>
                     <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
-                      <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
+                      <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ion-color-primary)" }}>
                         {fmtK(b.price)} ກີບ
                       </span>
                       {cost > 0 && (
@@ -197,7 +197,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                       )}
                     </div>
                     <p style={{
-                      margin: "4px 0 0", fontSize: "0.72rem", color: "#78716c",
+                      margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)",
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}>
                       {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" · ")}
@@ -239,7 +239,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Photo */}
             <div style={{ marginBottom: 18 }}>
-              <IonLabel style={{ display: "block", marginBottom: 8, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ display: "block", marginBottom: 8, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ຮູບຊຸດ
               </IonLabel>
               <ImagePicker
@@ -252,7 +252,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Name */}
             <div style={{ marginBottom: 14 }}>
-              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ຊື່ຊຸດ *
               </IonLabel>
               <IonInput
@@ -266,9 +266,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Items */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <IonLabel style={{ fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ສິນຄ້າໃນຊຸດ{formItems.length > 0 ? ` (${formItems.length})` : ""}
-                <span style={{ color: "#a8a29e", fontWeight: 400, fontSize: "0.75rem", marginLeft: 6 }}>
+                <span style={{ color: "var(--app-text-muted)", fontWeight: 400, fontSize: "0.75rem", marginLeft: 6 }}>
                   ຢ່າງໜ້ອຍ 2 ລາຍການ
                 </span>
               </IonLabel>
@@ -280,7 +280,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             </div>
 
             {formItems.length === 0 && (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "#a8a29e", fontSize: "0.82rem" }}>
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--app-text-muted)", fontSize: "0.82rem" }}>
                 ຍັງບໍ່ມີສິນຄ້າ
               </div>
             )}
@@ -288,14 +288,14 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             {formItems.map((item, idx) => (
               <div key={idx} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: "#fff7ed", borderRadius: 12, padding: "10px 14px", marginBottom: 8,
-                border: "1.5px solid #fed7aa",
+                background: "var(--app-accent-surface)", borderRadius: 12, padding: "10px 14px", marginBottom: 8,
+                border: "1.5px solid var(--app-accent-border)",
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#1c1917" }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "var(--ion-text-color)" }}>
                     {item.productName}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                     {item.variantSize}{item.variantColor ? ` / ${item.variantColor}` : ""} · ×{item.quantity}
                     {item.costPrice ? ` · ${fmtK(item.costPrice * item.quantity)} ກີບ` : ""}
                   </p>
@@ -333,7 +333,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Selling price */}
             <div style={{ marginBottom: 4 }}>
-              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ລາຄາຂາຍ (ກີບ) *
               </IonLabel>
               <NumInput
@@ -342,9 +342,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                 placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ${fmtK(bundleCost)}` : "0"}
                 style={{
                   width: "100%", padding: "12px 14px", fontSize: "1rem",
-                  border: `1.5px solid ${priceBelowCost ? "#dc2626" : "#c8c8c8"}`,
-                  borderRadius: 12, outline: "none", background: "#fff",
-                  color: "#1c1917",
+                  border: `1.5px solid ${priceBelowCost ? "#dc2626" : "var(--app-border)"}`,
+                  borderRadius: 12, outline: "none", background: "var(--app-surface)",
+                  color: "var(--ion-text-color)",
                 }}
               />
               {priceBelowCost && (
@@ -356,9 +356,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
           </div>
         </IonContent>
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
             {formItems.length < 2 && formItems.length > 0 && (
-              <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: "0.8rem", color: "#a8a29e" }}>
+              <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: "0.8rem", color: "var(--app-text-muted)" }}>
                 ຕ້ອງມີສິນຄ້າຢ່າງໜ້ອຍ 2 ລາຍການ
               </p>
             )}
@@ -401,9 +401,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                     style={{
                       flexShrink: 0, padding: "6px 16px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
                       cursor: "pointer", transition: "all 0.15s",
-                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                       background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
-                      color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                      color: isActive ? "#fff" : "var(--ion-text-color, var(--app-text-secondary))",
                       boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                     }}
                   >
@@ -415,10 +415,10 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
           )}
           <div style={{ padding: "8px 16px 24px" }}>
             {products.length === 0 && (
-              <p style={{ textAlign: "center", color: "#a8a29e", padding: 32 }}>ບໍ່ມີສິນຄ້າ</p>
+              <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: 32 }}>ບໍ່ມີສິນຄ້າ</p>
             )}
             {pickerCat !== "all" && pickerProducts.length === 0 && (
-              <p style={{ textAlign: "center", color: "#a8a29e", padding: "16px 0", fontSize: "0.85rem" }}>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p>
+              <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "16px 0", fontSize: "0.85rem" }}>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p>
             )}
             {pickerProducts.map((p) => {
               const selected = formItems.some((i) => i.productId === p.id);
@@ -428,24 +428,24 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                   onClick={() => toggleProductInBundle(p)}
                   style={{
                     width: "100%", textAlign: "left", cursor: "pointer",
-                    background: selected ? "#f0fdf4" : "#fff",
+                    background: selected ? "#f0fdf4" : "var(--app-surface)",
                     borderRadius: 12, padding: "12px 16px", marginBottom: 8,
-                    border: `1.5px solid ${selected ? "#86efac" : "#e5e7eb"}`,
+                    border: `1.5px solid ${selected ? "#86efac" : "var(--app-border)"}`,
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     {p.photoUrl
                       ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
-                      : <div style={{ width: 38, height: 38, borderRadius: 8, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      : <div style={{ width: 38, height: 38, borderRadius: 8, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 20 }}>👕</span>
                         </div>
                     }
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "#16a34a" : "#1c1917" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "#16a34a" : "var(--ion-text-color)" }}>
                         {p.name}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {p.costPrice ? `ຕົ້ນທຶນ ${fmtK(p.costPrice)} ກີບ` : "ບໍ່ມີຕົ້ນທຶນ"}
                         {" · "}{p.variants.length} variant
                       </p>
@@ -459,7 +459,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                   }}>
                     <IonIcon
                       icon={selected ? checkmarkOutline : addOutline}
-                      style={{ fontSize: 16, color: selected ? "#fff" : "#a8a29e" }}
+                      style={{ fontSize: 16, color: selected ? "#fff" : "var(--app-text-muted)" }}
                     />
                   </div>
                 </button>

@@ -202,16 +202,16 @@ const MainTabs: React.FC = () => {
           {/* Icon */}
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+            background: "var(--app-warning-surface)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 20px",
             boxShadow: "0 4px 16px rgba(217,119,6,0.25)",
           }}>
-            <IonIcon icon={warningOutline} style={{ fontSize: 36, color: "#d97706" }} />
+            <IonIcon icon={warningOutline} style={{ fontSize: 36, color: "var(--app-warning)" }} />
           </div>
 
           {/* Title */}
-          <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem", fontWeight: 800, color: "#92400e" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem", fontWeight: 800, color: "var(--app-warning)" }}>
             ແພັກເກດໃກ້ໝົດອາຍຸ
           </h2>
 
@@ -219,8 +219,8 @@ const MainTabs: React.FC = () => {
           <div style={{
             display: "inline-block",
             background: (tenant?.daysLeft ?? 0) <= 3
-              ? "linear-gradient(135deg, #dc2626, #b91c1c)"
-              : "linear-gradient(135deg, #d97706, #b45309)",
+              ? "linear-gradient(135deg, var(--app-danger), #b91c1c)"
+              : "linear-gradient(135deg, var(--app-warning), #b45309)",
             color: "#fff", borderRadius: 20,
             padding: "4px 16px", marginBottom: 16,
             fontSize: "0.9rem", fontWeight: 700,

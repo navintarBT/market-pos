@@ -197,7 +197,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                             onClick={() => openMainEdit(item)}
                             style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
                           >
-                            <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 15 }} />
+                            <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 18 }} />
                           </IonButton>
                         )}
                         {item.quantity > 1 && !isExpanded && (
@@ -331,7 +331,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                               onClick={() => removeItem(gKey)}
                               style={{ minHeight: 40, minWidth: 40 }}
                             >
-                              <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 16 }} />
+                              <IonIcon slot="icon-only" icon={trashOutline} style={{ fontSize: 18 }} />
                             </IonButton>
                           </IonItem>
                         );

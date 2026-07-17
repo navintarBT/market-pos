@@ -56,18 +56,18 @@ const StockAlertSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) => {
 
             {outOfStock.length > 0 && (
               <>
-                <div style={{ padding: "12px 16px 6px", fontSize: "0.82rem", fontWeight: 700, color: "#dc2626" }}>
+                <div style={{ padding: "12px 16px 6px", fontSize: "0.82rem", fontWeight: 700, color: "var(--app-danger)" }}>
                   ❌ ໝົດແລ້ວ — {outOfStock.length} variant
                 </div>
                 {outOfStock.map(({ product: p, variant: v }, i) => (
-                  <IonItem key={i} lines="inset" style={{ "--background": "#fff5f5" }}>
+                  <IonItem key={i} lines="inset" style={{ "--background": "var(--app-danger-surface)" }}>
                     <IonIcon icon={alertCircleOutline} color="danger" slot="start" style={{ fontSize: 22 }} />
                     <IonLabel>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{p.name}</div>
                       <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 2 }}>
                         {v.size} / {v.color}
                       </div>
-                      <div style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: 2 }}>ສິນຄ້າໝົດ</div>
+                      <div style={{ fontSize: "0.78rem", color: "var(--app-danger)", marginTop: 2 }}>ສິນຄ້າໝົດ</div>
                     </IonLabel>
                   </IonItem>
                 ))}
@@ -76,18 +76,18 @@ const StockAlertSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) => {
 
             {lowStock.length > 0 && (
               <>
-                <div style={{ padding: "16px 16px 6px", fontSize: "0.82rem", fontWeight: 700, color: "#b45309" }}>
+                <div style={{ padding: "16px 16px 6px", fontSize: "0.82rem", fontWeight: 700, color: "var(--app-warning)" }}>
                   ⚠️ ໃກ້ໝົດ — {lowStock.length} variant
                 </div>
                 {lowStock.map(({ product: p, variant: v }, i) => (
-                  <IonItem key={i} lines="inset" style={{ "--background": "#fffdf0" }}>
+                  <IonItem key={i} lines="inset" style={{ "--background": "var(--app-warning-surface)" }}>
                     <IonIcon icon={warningOutline} color="warning" slot="start" style={{ fontSize: 22 }} />
                     <IonLabel>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{p.name}</div>
                       <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 2 }}>
                         {v.size} / {v.color}
                       </div>
-                      <div style={{ fontSize: "0.78rem", color: "#92400e", marginTop: 2 }}>
+                      <div style={{ fontSize: "0.78rem", color: "var(--app-warning)", marginTop: 2 }}>
                         ເຫຼືອ {v.stock} ຊິ້ນ · ເຕືອນທີ່ ≤ {v.minStock ?? 5} ຊິ້ນ
                       </div>
                     </IonLabel>

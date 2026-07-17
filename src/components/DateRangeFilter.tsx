@@ -59,7 +59,7 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button onClick={setQuickToday} disabled={disabled} style={{
           flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none",
-          background: isToday ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+          background: isToday ? "var(--ion-color-primary)" : "var(--ion-color-step-100, var(--app-surface-alt))",
           color: isToday ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
           fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
         }}>
@@ -67,7 +67,7 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
         </button>
         <button onClick={setQuickMonth} disabled={disabled} style={{
           flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none",
-          background: isMonth ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+          background: isMonth ? "var(--ion-color-primary)" : "var(--ion-color-step-100, var(--app-surface-alt))",
           color: isMonth ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
           fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
         }}>

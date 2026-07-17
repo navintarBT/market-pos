@@ -90,9 +90,9 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
                     {fmtK(product.costPrice ?? 0)} ກີບ
                   </p>
                 </div>
-                <div style={{ background: "#f0fdf4", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ background: "var(--app-success-surface)", borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ margin: 0, fontSize: "0.65rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>ກຳໄລ</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "#16a34a" }}>
+                  <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "var(--app-success)" }}>
                     {fmtK(profit)} ກີບ
                   </p>
                 </div>
@@ -108,7 +108,7 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
             {/* Table header */}
             <div style={{
               display: "grid", gridTemplateColumns: "1fr 1fr 80px",
-              background: "#f9fafb", padding: "8px 14px",
+              background: "var(--app-surface-alt)", padding: "8px 14px",
             }}>
               <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ໄຊສ໌</span>
               <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ສີ</span>
@@ -126,7 +126,7 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
                     display: "grid", gridTemplateColumns: "1fr 1fr 80px",
                     padding: "10px 14px",
                     borderTop: i > 0 ? "1px solid var(--app-surface-alt)" : "none",
-                    background: empty ? "#fef2f2" : "var(--app-surface)",
+                    background: empty ? "var(--app-danger-surface)" : "var(--app-surface)",
                   }}
                 >
                   <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ion-text-color)" }}>{v.size}</span>
@@ -134,7 +134,7 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
                   <div style={{ textAlign: "right" }}>
                     <span style={{
                       fontSize: "0.8rem", fontWeight: 700,
-                      color: empty ? "#dc2626" : low ? "#92400e" : "#16a34a",
+                      color: empty ? "var(--app-danger)" : low ? "#92400e" : "var(--app-success)",
                     }}>
                       {empty ? "ໝົດ" : v.stock}
                     </span>
@@ -147,14 +147,14 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
           {/* Total stock summary */}
           <div style={{
             marginTop: 14,
-            background: totalStock === 0 ? "#fef2f2" : "#f0fdf4",
+            background: totalStock === 0 ? "var(--app-danger-surface)" : "var(--app-success-surface)",
             borderRadius: 12, padding: "12px 16px",
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>ສະຕ໋ອກທັງໝົດ</span>
             <span style={{
               fontSize: "1.1rem", fontWeight: 800,
-              color: totalStock === 0 ? "#dc2626" : "#16a34a",
+              color: totalStock === 0 ? "var(--app-danger)" : "var(--app-success)",
             }}>
               {totalStock === 0 ? "ໝົດສະຕ໋ອກ" : `${totalStock} ຊີ້ນ`}
             </span>

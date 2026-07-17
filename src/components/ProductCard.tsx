@@ -51,7 +51,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
           {fmtK(product.price)} ກີບ
         </p>
         {product.costPrice != null && product.costPrice > 0 && (
-          <p style={{ margin: "0 0 6px", fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
+          <p style={{ margin: "0 0 6px", fontSize: "0.72rem", color: "var(--app-success)", fontWeight: 600 }}>
             ກຳໄລ {fmtK(product.price - product.costPrice)} ກີບ
           </p>
         )}
@@ -60,7 +60,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
         <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8, minHeight: 39, alignContent: "flex-start" }}>
           {product.variants.slice(0, 4).map((v, i) => {
             const empty = v.stock === 0;
-            const low = !empty && v.stock <= 2;
+            const low = !empty && v.stock <= (v.minStock ?? 5);
             return (
               <span
                 key={i}
@@ -73,7 +73,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
                   lineHeight: "14px",
                   whiteSpace: "nowrap",
                   background: empty ? "var(--ion-color-step-150, var(--app-border))" : low ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                  color: empty ? "var(--ion-color-medium, #9ca3af)" : low ? "#92400e" : "#166534",
+                  color: empty ? "var(--ion-color-medium, #9ca3af)" : low ? "var(--app-warning)" : "var(--app-success)",
                 }}
               >
                 {v.size}/{v.color}
@@ -94,7 +94,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{
             fontSize: "0.75rem",
-            color: outOfStock ? "#dc2626" : "var(--app-text-secondary)",
+            color: outOfStock ? "var(--app-danger)" : "var(--app-text-secondary)",
             fontWeight: outOfStock ? 700 : 400,
           }}>
             {outOfStock ? "⚠ ໝົດສະຕ໋ອກ" : `ສະຕ໋ອກລວມ: ${totalStock}`}
@@ -103,7 +103,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
           {isAdmin && (
             <div style={{ display: "flex", gap: 4 }}>
               <IonButton fill="clear" size="small" onClick={() => onRestock(product)}
-                style={{ minHeight: 36, minWidth: 36, "--color": "#16a34a" }}>
+                style={{ minHeight: 36, minWidth: 36, "--color": "var(--app-success)" }}>
                 <IonIcon slot="icon-only" icon={addCircleOutline} />
               </IonButton>
               <IonButton fill="clear" size="small" onClick={() => onEdit(product)}

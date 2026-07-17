@@ -113,7 +113,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
           <IonTitle style={{ fontWeight: 700 }}>ພາບລວມທຸກຮ້ານ</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent style={{ "--background": "#fef6ee" }}>
+      <IonContent style={{ "--background": "var(--ion-background-color)" }}>
         <div style={{ padding: "16px 16px 40px" }}>
           {/* Date filter */}
           <DateRangeFilter from={from} to={to} setFrom={setFrom} setTo={setTo} />
@@ -139,19 +139,19 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                 <div style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  background: totalNetProfit >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 12, padding: "11px 16px",
+                  background: totalNetProfit >= 0 ? "var(--app-success-surface)" : "var(--app-danger-surface)", borderRadius: 12, padding: "11px 16px",
                 }}>
-                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: totalNetProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: totalNetProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                     📊 ກຳໄລສຸດທິລວມ
                   </span>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: totalNetProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: totalNetProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                     {fmtK(totalNetProfit)} ກີບ
                   </span>
                 </div>
                 {totalIncome > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", borderRadius: 12, padding: "11px 16px" }}>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#2563eb" }}>💰 ລາຍຮັບອື່ນລວມ</span>
-                    <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2563eb" }}>{fmtK(totalIncome)} ກີບ</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--app-info-surface)", borderRadius: 12, padding: "11px 16px" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-info)" }}>💰 ລາຍຮັບອື່ນລວມ</span>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--app-info)" }}>{fmtK(totalIncome)} ກີບ</span>
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f5f5f4", borderRadius: 12, padding: "11px 16px" }}>
@@ -172,11 +172,11 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#92400e" }}>−{fmtK(totalCost)} ກີບ</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--app-cost)" }}>−{fmtK(totalCost)} ກີບ</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: "0.78rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📊 ກຳໄລຂັ້ນຕົ້ນ</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: totalGrossProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: totalGrossProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                       {fmtK(totalGrossProfit)} ກີບ
                     </span>
                   </div>
@@ -185,7 +185,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                 {totalIncome > 0 && (
                   <>
                     <div style={{ height: 1, background: "var(--app-surface-alt)", margin: "4px 0 10px" }} />
-                    <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "#2563eb" }}>💰 ລາຍຮັບອື່ນ ຕາມຊ່ອງທາງ</p>
+                    <p style={{ margin: "0 0 6px", fontSize: "0.75rem", fontWeight: 700, color: "var(--app-info)" }}>💰 ລາຍຮັບອື່ນ ຕາມຊ່ອງທາງ</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
                       {[
                         { label: "💵 ເງິນສົດ", v: incCash },
@@ -194,7 +194,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                       ].filter((r) => r.v > 0).map((r) => (
                         <div key={r.label} style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ fontSize: "0.76rem", color: "var(--app-text-secondary)" }}>{r.label}</span>
-                          <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#2563eb" }}>{fmtK(r.v)} ກີບ</span>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--app-info)" }}>{fmtK(r.v)} ກີບ</span>
                         </div>
                       ))}
                     </div>
@@ -259,7 +259,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                       </p>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 800, fontSize: "0.9rem", color: r.netProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                      <p style={{ margin: 0, fontWeight: 800, fontSize: "0.9rem", color: r.netProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                         {fmtK(r.netProfit)} ກີບ
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.68rem", color: "var(--app-text-muted)" }}>ກຳໄລສຸດທິ</p>

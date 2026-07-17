@@ -261,9 +261,9 @@ const Summary: React.FC = () => {
 
     const navCards = [
       { id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ", color: "var(--ion-color-primary)", bg: "var(--app-accent-surface)" },
-      { id: "inventory" as SubSection, icon: "📦", label: "ຍອດເງິນຄ້າງ", color: "#d97706", bg: "#fef3c7" },
+      { id: "inventory" as SubSection, icon: "📦", label: "ຍອດເງິນຄ້າງ", color: "var(--app-warning)", bg: "var(--app-cost-surface)" },
       ...(showMonthly ? [{
-        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ", color: "#dc2626", bg: "#fef2f2",
+        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ", color: "var(--app-danger)", bg: "var(--app-danger-surface)",
       }] : []),
     ];
 
@@ -315,17 +315,17 @@ const Summary: React.FC = () => {
               {todaySales.length > 0 && (
                 <>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: tDiscount > 0 ? 6 : 8 }}>
-                    <div style={{ background: "#f0fdf4", borderRadius: 9, padding: "7px 8px" }}>
+                    <div style={{ background: "var(--app-success-surface)", borderRadius: 9, padding: "7px 8px" }}>
                       <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💵 ສົດ</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(tCash)} ກີບ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-success)" }}>{fmtK(tCash)} ກີບ</p>
                     </div>
-                    <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
+                    <div style={{ background: "var(--app-info-surface)", borderRadius: 9, padding: "7px 8px" }}>
                       <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📱 ໂອນ</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#2563eb" }}>{fmtK(tQR)} ກີບ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-info)" }}>{fmtK(tQR)} ກີບ</p>
                     </div>
-                    <div style={{ background: "#fffbeb", borderRadius: 9, padding: "7px 8px" }}>
+                    <div style={{ background: "var(--app-warning-surface)", borderRadius: 9, padding: "7px 8px" }}>
                       <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📦 COD</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#d97706" }}>{fmtK(tCod)} ກີບ</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-warning)" }}>{fmtK(tCod)} ກີບ</p>
                     </div>
                   </div>
                   {tDiscount > 0 && (
@@ -344,25 +344,25 @@ const Summary: React.FC = () => {
                 <>
                   <div style={{ height: 1, background: "var(--app-surface-alt)", margin: "2px 0 8px" }} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fef3c7", borderRadius: 9, padding: "7px 10px" }}>
-                      <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
-                      <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "#92400e" }}>{fmtK(tCost)} ກີບ</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--app-cost-surface)", borderRadius: 9, padding: "7px 10px" }}>
+                      <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "var(--app-cost)" }}>🏷️ ຕົ້ນທຶນສິນຄ້າ</span>
+                      <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "var(--app-cost)" }}>{fmtK(tCost)} ກີບ</span>
                     </div>
                     {tLoss > 0 ? (
                       <>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0fdf4", borderRadius: 9, padding: "7px 10px" }}>
-                          <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "#16a34a" }}>📊 ກຳໄລ (ກ່ອນຫັກຂາດທຶນ)</span>
-                          <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(tGross + tLoss)} ກີບ</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--app-success-surface)", borderRadius: 9, padding: "7px 10px" }}>
+                          <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "var(--app-success)" }}>📊 ກຳໄລ (ກ່ອນຫັກຂາດທຶນ)</span>
+                          <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "var(--app-success)" }}>{fmtK(tGross + tLoss)} ກີບ</span>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fef2f2", borderRadius: 9, padding: "7px 10px" }}>
-                          <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "#dc2626" }}>📉 ຂາດທຶນຈາກການຂາຍ</span>
-                          <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "#dc2626" }}>−{fmtK(tLoss)} ກີບ</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--app-danger-surface)", borderRadius: 9, padding: "7px 10px" }}>
+                          <span style={{ fontSize: "0.73rem", fontWeight: 600, color: "var(--app-danger)" }}>📉 ຂາດທຶນຈາກການຂາຍ</span>
+                          <span style={{ fontSize: "0.84rem", fontWeight: 800, color: "var(--app-danger)" }}>−{fmtK(tLoss)} ກີບ</span>
                         </div>
                       </>
                     ) : (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: tGross >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 9, padding: "7px 10px" }}>
-                        <span style={{ fontSize: "0.73rem", fontWeight: 600, color: tGross >= 0 ? "#16a34a" : "#dc2626" }}>📊 ກຳໄລຂັ້ນຕົ້ນ</span>
-                        <span style={{ fontSize: "0.84rem", fontWeight: 800, color: tGross >= 0 ? "#16a34a" : "#dc2626" }}>{fmtK(tGross)} ກີບ</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: tGross >= 0 ? "var(--app-success-surface)" : "var(--app-danger-surface)", borderRadius: 9, padding: "7px 10px" }}>
+                        <span style={{ fontSize: "0.73rem", fontWeight: 600, color: tGross >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>📊 ກຳໄລຂັ້ນຕົ້ນ</span>
+                        <span style={{ fontSize: "0.84rem", fontWeight: 800, color: tGross >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>{fmtK(tGross)} ກີບ</span>
                       </div>
                     )}
                     {todayExpenses > 0 && (
@@ -372,7 +372,7 @@ const Summary: React.FC = () => {
                       </div>
                     )}
                     <div style={{
-                      background: tNet >= 0 ? "linear-gradient(135deg, #16a34a, #15803d)" : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      background: tNet >= 0 ? "linear-gradient(135deg, var(--app-success), #15803d)" : "linear-gradient(135deg, var(--app-danger), #b91c1c)",
                       borderRadius: 11, padding: "10px 14px", color: "#fff",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
@@ -387,7 +387,7 @@ const Summary: React.FC = () => {
               )}
 
               {todaySales.length === 0 && (
-                <p style={{ textAlign: "center", color: "var(--app-text-muted)", paddingTop: 6 }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                <p style={{ textAlign: "center", color: "var(--app-text-muted)", paddingTop: 6 }}>💰 ຍັງບໍ່ມີລາຍການຂາຍ</p>
               )}
             </>
           ) : activeSub === "inventory" ? (
@@ -399,7 +399,7 @@ const Summary: React.FC = () => {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{
-                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                    background: "linear-gradient(135deg, #f59e0b, var(--app-warning))",
                     borderRadius: 12, padding: "11px 14px", color: "#fff",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}>
@@ -413,25 +413,25 @@ const Summary: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ background: "#f9fafb", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ background: "var(--app-surface-alt)", borderRadius: 10, padding: "10px 12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#92400e" }}>🏷️ ຕົ້ນທຶນ {costPct}%</span>
-                      <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#16a34a" }}>{profitPct}% ກຳໄລ 💰</span>
+                      <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--app-cost)" }}>🏷️ ຕົ້ນທຶນ {costPct}%</span>
+                      <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--app-success)" }}>{profitPct}% ກຳໄລ 💰</span>
                     </div>
                     <div style={{ height: 8, borderRadius: 8, background: "var(--app-border)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${costPct}%`, background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: "8px 0 0 8px", display: "inline-block", verticalAlign: "top" }} />
-                      <div style={{ height: "100%", width: `${profitPct}%`, background: "linear-gradient(90deg, #34d399, #16a34a)", borderRadius: "0 8px 8px 0", display: "inline-block", verticalAlign: "top" }} />
+                      <div style={{ height: "100%", width: `${costPct}%`, background: "linear-gradient(90deg, #f59e0b, var(--app-warning))", borderRadius: "8px 0 0 8px", display: "inline-block", verticalAlign: "top" }} />
+                      <div style={{ height: "100%", width: `${profitPct}%`, background: "linear-gradient(90deg, #34d399, var(--app-success))", borderRadius: "0 8px 8px 0", display: "inline-block", verticalAlign: "top" }} />
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    <div style={{ background: "#fef3c7", borderRadius: 10, padding: "9px 11px" }}>
-                      <p style={{ margin: 0, fontSize: "0.63rem", color: "#92400e", fontWeight: 700 }}>🏷️ ຕົ້ນທຶນຄ້າງ</p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.92rem", fontWeight: 800, color: "#92400e" }}>{fmtK(invCostTotal)} ກີບ</p>
+                    <div style={{ background: "var(--app-cost-surface)", borderRadius: 10, padding: "9px 11px" }}>
+                      <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-cost)", fontWeight: 700 }}>🏷️ ຕົ້ນທຶນຄ້າງ</p>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.92rem", fontWeight: 800, color: "var(--app-cost)" }}>{fmtK(invCostTotal)} ກີບ</p>
                     </div>
-                    <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "9px 11px" }}>
-                      <p style={{ margin: 0, fontSize: "0.63rem", color: "#16a34a", fontWeight: 700 }}>💰 ກຳໄລທີ່ຄາດ</p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.92rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(invProfTotal)} ກີບ</p>
+                    <div style={{ background: "var(--app-success-surface)", borderRadius: 10, padding: "9px 11px" }}>
+                      <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-success)", fontWeight: 700 }}>💰 ກຳໄລທີ່ຄາດ</p>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.92rem", fontWeight: 800, color: "var(--app-success)" }}>{fmtK(invProfTotal)} ກີບ</p>
                     </div>
                   </div>
                 </div>
@@ -459,8 +459,8 @@ const Summary: React.FC = () => {
 
                   {mHasCost && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      <Row label="🏷️ ຕົ້ນທຶນຂາຍ" value={`${fmtK(mCost)} ກີບ`} bg="#fef3c7" color="#92400e" />
-                      <Row label="📊 ກຳໄລຂາຍ"  value={`${fmtK(mGross)} ກີບ`} bg="#f0fdf4" color="#16a34a" />
+                      <Row label="🏷️ ຕົ້ນທຶນຂາຍ" value={`${fmtK(mCost)} ກີບ`} bg="var(--app-cost-surface)" color="var(--app-cost)" />
+                      <Row label="📊 ກຳໄລຂາຍ"  value={`${fmtK(mGross)} ກີບ`} bg="var(--app-success-surface)" color="var(--app-success)" />
                     </div>
                   )}
 
@@ -469,19 +469,19 @@ const Summary: React.FC = () => {
                       background: "var(--app-surface)", borderRadius: 14, padding: "12px",
                       border: "1.5px solid #fcd34d", boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
                     }}>
-                      <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.8rem", color: "#92400e" }}>
+                      <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.8rem", color: "var(--app-cost)" }}>
                         📦 ສິນຄ້າຕີກັບ ({monthReturns.length} ລາຍການ)
                       </p>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                        <Row label="💸 ຍອດຄືນລູກຄ້າ"  value={`−${fmtK(mRetRevenue)} ກີບ`} bg="#fef2f2" color="#dc2626" />
+                        <Row label="💸 ຍອດຄືນລູກຄ້າ"  value={`−${fmtK(mRetRevenue)} ກີບ`} bg="var(--app-danger-surface)" color="var(--app-danger)" />
                         {mHasCost && (
                           <>
-                            <Row label="🏷️ ຕົ້ນທຶນທີ່ໄດ້ຄືນ" value={`+${fmtK(mRetCost)} ກີບ`} bg="#f0fdf4" color="#16a34a" />
+                            <Row label="🏷️ ຕົ້ນທຶນທີ່ໄດ້ຄືນ" value={`+${fmtK(mRetCost)} ກີບ`} bg="var(--app-success-surface)" color="var(--app-success)" />
                             <Row
                               label={mRetProfit >= 0 ? "📉 ກຳໄລທີ່ເສຍ" : "📈 ກຳໄລທີ່ໄດ້ຄືນ"}
                               value={`${mRetProfit >= 0 ? "−" : "+"}${fmtK(Math.abs(mRetProfit))} ກີບ`}
-                              bg={mRetProfit >= 0 ? "#fef2f2" : "#f0fdf4"}
-                              color={mRetProfit >= 0 ? "#dc2626" : "#16a34a"}
+                              bg={mRetProfit >= 0 ? "var(--app-danger-surface)" : "var(--app-success-surface)"}
+                              color={mRetProfit >= 0 ? "var(--app-danger)" : "var(--app-success)"}
                             />
                           </>
                         )}
@@ -500,7 +500,7 @@ const Summary: React.FC = () => {
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <Row label="💰 ຍອດຂາຍສຸດທິ" value={`${fmtK(mNetRevenue)} ກີບ`} bg="var(--app-accent-surface)" color="#c2410c" bold />
                     {mHasCost && (
-                      <Row label="🏷️ ຕົ້ນທຶນສຸດທິ" value={`${fmtK(mNetCost)} ກີບ`} bg="#fef3c7" color="#92400e" />
+                      <Row label="🏷️ ຕົ້ນທຶນສຸດທິ" value={`${fmtK(mNetCost)} ກີບ`} bg="var(--app-cost-surface)" color="var(--app-cost)" />
                     )}
                     {monthExpenses > 0 && (
                       <Row label="📋 ລາຍຈ່າຍຮ້ານ" value={`−${fmtK(monthExpenses)} ກີບ`} bg="#f5f5f4" color="var(--app-text-secondary)" />
@@ -508,8 +508,8 @@ const Summary: React.FC = () => {
                     {mHasCost && (
                       <div style={{
                         background: mNetProfit >= 0
-                          ? "linear-gradient(135deg, #16a34a, #15803d)"
-                          : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                          ? "linear-gradient(135deg, var(--app-success), #15803d)"
+                          : "linear-gradient(135deg, var(--app-danger), #b91c1c)",
                         borderRadius: 12, padding: "11px 14px", color: "#fff",
                         display: "flex", justifyContent: "space-between", alignItems: "center",
                         boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
@@ -524,7 +524,7 @@ const Summary: React.FC = () => {
                   </div>
 
                   {monthSales.length === 0 && (
-                    <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "20px 0" }}>ຍັງບໍ່ມີລາຍການຂາຍ</p>
+                    <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "20px 0" }}>💰 ຍັງບໍ່ມີລາຍການຂາຍ</p>
                   )}
                 </div>
               )}
@@ -598,8 +598,8 @@ const Summary: React.FC = () => {
               ) : (
                 <div style={{ background: "var(--app-surface)", borderRadius: 16, padding: "14px 14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
-                    <Row label="💰 ລາຍຮັບລວມ" value={`${fmtK(finIncomeTotal)} ກີບ`} bg="#f0fdf4" color="#16a34a" bold />
-                    <Row label="💸 ລາຍຈ່າຍລວມ" value={`−${fmtK(finExpenseTotal)} ກີບ`} bg="#fef2f2" color="#dc2626" bold />
+                    <Row label="💰 ລາຍຮັບລວມ" value={`${fmtK(finIncomeTotal)} ກີບ`} bg="var(--app-success-surface)" color="var(--app-success)" bold />
+                    <Row label="💸 ລາຍຈ່າຍລວມ" value={`−${fmtK(finExpenseTotal)} ກີບ`} bg="var(--app-danger-surface)" color="var(--app-danger)" bold />
                   </div>
 
                   {finIncomeTotal > 0 && (
@@ -608,17 +608,17 @@ const Summary: React.FC = () => {
                         ລາຍຮັບແຍກຕາມປະເພດ
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 10 }}>
-                        <div style={{ background: "#f0fdf4", borderRadius: 9, padding: "7px 8px" }}>
+                        <div style={{ background: "var(--app-success-surface)", borderRadius: 9, padding: "7px 8px" }}>
                           <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💵 ສົດ</p>
-                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#16a34a" }}>{fmtK(finIncomeCash)} ກີບ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-success)" }}>{fmtK(finIncomeCash)} ກີບ</p>
                         </div>
-                        <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
+                        <div style={{ background: "var(--app-info-surface)", borderRadius: 9, padding: "7px 8px" }}>
                           <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📱 ໂອນ</p>
-                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#2563eb" }}>{fmtK(finIncomeTransfer)} ກີບ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-info)" }}>{fmtK(finIncomeTransfer)} ກີບ</p>
                         </div>
-                        <div style={{ background: "#fffbeb", borderRadius: 9, padding: "7px 8px" }}>
+                        <div style={{ background: "var(--app-warning-surface)", borderRadius: 9, padding: "7px 8px" }}>
                           <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>📦 COD</p>
-                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#d97706" }}>{fmtK(finIncomeCod)} ກີບ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-warning)" }}>{fmtK(finIncomeCod)} ກີບ</p>
                         </div>
                       </div>
                     </>
@@ -630,9 +630,9 @@ const Summary: React.FC = () => {
                         ລາຍຈ່າຍແຍກຕາມປະເພດ
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
-                        <div style={{ background: "#eff6ff", borderRadius: 9, padding: "7px 8px" }}>
+                        <div style={{ background: "var(--app-info-surface)", borderRadius: 9, padding: "7px 8px" }}>
                           <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏪 ທຸລະກິດ</p>
-                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "#1d4ed8" }}>{fmtK(finExpenseBusiness)} ກີບ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-info)" }}>{fmtK(finExpenseBusiness)} ກີບ</p>
                         </div>
                         <div style={{ background: "var(--app-accent-surface)", borderRadius: 9, padding: "7px 8px" }}>
                           <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>👤 ສ່ວນຕົວ</p>
@@ -644,8 +644,8 @@ const Summary: React.FC = () => {
 
                   <div style={{
                     background: finNet >= 0
-                      ? "linear-gradient(135deg, #16a34a, #15803d)"
-                      : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      ? "linear-gradient(135deg, var(--app-success), #15803d)"
+                      : "linear-gradient(135deg, var(--app-danger), #b91c1c)",
                     borderRadius: 12, padding: "11px 14px", color: "#fff",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}>

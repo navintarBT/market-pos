@@ -25,9 +25,9 @@ import { getShopProfile, updateShopProfile, updateOwnerEmail } from "../data/sho
 import type { ShopProfile } from "../data/types";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  active:    { label: "ໃຊ້ງານ",    color: "#16a34a", bg: "#f0fdf4" },
-  trial:     { label: "ທົດລອງໃຊ້", color: "#d97706", bg: "#fffbeb" },
-  suspended: { label: "ລະງັບ",     color: "#dc2626", bg: "#fef2f2" },
+  active:    { label: "ໃຊ້ງານ",    color: "var(--app-success)", bg: "var(--app-success-surface)" },
+  trial:     { label: "ທົດລອງໃຊ້", color: "#d97706", bg: "var(--app-warning-surface)" },
+  suspended: { label: "ລະງັບ",     color: "var(--app-danger)", bg: "var(--app-danger-surface)" },
   cancelled: { label: "ຍົກເລີກ",   color: "var(--app-text-muted)", bg: "var(--app-surface-alt)" },
 };
 function PlanBadge({ status }: { status: string }) {
@@ -59,12 +59,12 @@ function AlertBanner({ kind, children }: { kind: "success" | "error"; children: 
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
-      background: success ? "#f0fdf4" : "#fef2f2",
-      border: `1px solid ${success ? "#bbf7d0" : "#fecaca"}`,
+      background: success ? "var(--app-success-surface)" : "var(--app-danger-surface)",
+      border: `1px solid ${success ? "var(--app-success)" : "var(--app-danger)"}`,
       borderRadius: 14, padding: "12px 14px", marginBottom: 14,
     }}>
-      <IonIcon icon={success ? checkmarkCircleOutline : alertCircleOutline} style={{ fontSize: 20, color: success ? "#16a34a" : "#dc2626", flexShrink: 0 }} />
-      <span style={{ fontWeight: 700, fontSize: "0.85rem", color: success ? "#166534" : "#991b1b" }}>{children}</span>
+      <IonIcon icon={success ? checkmarkCircleOutline : alertCircleOutline} style={{ fontSize: 20, color: success ? "var(--app-success)" : "var(--app-danger)", flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: "0.85rem", color: success ? "var(--app-success)" : "var(--app-danger)" }}>{children}</span>
     </div>
   );
 }
@@ -312,7 +312,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     <span>{{ trial: "ທົດລອງໃຊ້ 30 ວັນ", monthly: "ລາຍເດືອນ", yearly: "ລາຍປີ", unlimited: "♾ ບໍ່ຈຳກັດ" }[tenant.plan]}</span>
                     {tenant.expiresAt && (
-                      <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "#dc2626" : "var(--app-text-secondary)" }}>
+                      <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "var(--app-danger)" : "var(--app-text-secondary)" }}>
                         {(tenant.daysLeft ?? 0) <= 0
                           ? "ໝົດອາຍຸແລ້ວ"
                           : `ເຫຼືອ ${tenant.daysLeft} ວັນ (ໝົດ ${tenant.expiresAt.toLocaleDateString("en-GB")})`}
@@ -375,7 +375,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                     </div>
 
                     {emailError && (
-                      <div style={{ marginBottom: 12, color: "#991b1b", fontWeight: 700, fontSize: "0.82rem" }}>
+                      <div style={{ marginBottom: 12, color: "var(--app-danger)", fontWeight: 700, fontSize: "0.82rem" }}>
                         {emailError}
                       </div>
                     )}

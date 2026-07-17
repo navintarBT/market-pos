@@ -14,6 +14,7 @@ import { getBundles, addBundle, updateBundle, deleteBundle } from "../data/bundl
 
 import { uploadProductImage } from "../data/imageRepository";
 import ImagePicker from "./ImagePicker";
+import EmptyState from "./EmptyState";
 import type { Bundle, BundleItem, Product } from "../data/types";
 
 interface Props {
@@ -142,10 +143,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
         </div>
       )}
       {!loading && bundles.length === 0 && (
-        <div style={{ textAlign: "center", padding: "64px 32px" }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-          <IonText color="medium"><p>ກົດ + ເພື່ອສ້າງຊຸດທຳອິດ</p></IonText>
-        </div>
+        <EmptyState icon="🎁" title="ກົດ + ເພື່ອສ້າງຊຸດທຳອິດ" />
       )}
       <div style={{ padding: "12px 16px 24px" }}>
         {bundles.map((b) => {
@@ -174,7 +172,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                     {fmtK(b.price)} ກີບ
                   </span>
                   {cost > 0 && (
-                    <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--app-success)", fontWeight: 600 }}>
                       ກຳໄລ {fmtK(b.price - cost)} ກີບ
                     </span>
                   )}
@@ -298,19 +296,19 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
             {formItems.length > 0 && (
               <div style={{
                 marginTop: 4, marginBottom: 18,
-                padding: "12px 16px", background: "#fef3c7",
-                borderRadius: 12, border: "1px solid #fde68a",
+                padding: "12px 16px", background: "var(--app-cost-surface)",
+                borderRadius: 12, border: "1px solid var(--app-cost)",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 600 }}>ຕົ້ນທຶນລວມ</span>
-                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "#92400e" }}>
+                  <span style={{ fontSize: "0.82rem", color: "var(--app-cost)", fontWeight: 600 }}>ຕົ້ນທຶນລວມ</span>
+                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--app-cost)" }}>
                     {fmtK(bundleCost)} ກີບ
                   </span>
                 </div>
                 {sellPrice > 0 && !priceBelowCost && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                    <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>ກຳໄລ</span>
-                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#16a34a" }}>
+                    <span style={{ fontSize: "0.82rem", color: "var(--app-success)", fontWeight: 600 }}>ກຳໄລ</span>
+                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--app-success)" }}>
                       {fmtK(profit)} ກີບ
                     </span>
                   </div>
@@ -329,13 +327,13 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                 placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ${fmtK(bundleCost)}` : "0"}
                 style={{
                   width: "100%", padding: "12px 14px", fontSize: "1rem",
-                  border: `1.5px solid ${priceBelowCost ? "#dc2626" : "var(--app-border)"}`,
+                  border: `1.5px solid ${priceBelowCost ? "var(--app-danger)" : "var(--app-border)"}`,
                   borderRadius: 12, outline: "none", background: "var(--app-surface)",
                   color: "var(--ion-text-color)",
                 }}
               />
               {priceBelowCost && (
-                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#dc2626", fontWeight: 600 }}>
+                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "var(--app-danger)", fontWeight: 600 }}>
                   ⚠ ລາຄາຂາຍຕ່ຳກວ່າຕົ້ນທຶນ ({fmtK(bundleCost)} ກີບ)
                 </p>
               )}
@@ -415,7 +413,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                   onClick={() => toggleProductInBundle(p)}
                   style={{
                     width: "100%", textAlign: "left", cursor: "pointer",
-                    background: selected ? "#f0fdf4" : "var(--app-surface)",
+                    background: selected ? "var(--app-success-surface)" : "var(--app-surface)",
                     borderRadius: 12, padding: "12px 16px", marginBottom: 8,
                     border: `1.5px solid ${selected ? "#86efac" : "var(--app-border)"}`,
                     display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -429,7 +427,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                         </div>
                     }
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "#16a34a" : "var(--ion-text-color)" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "var(--app-success)" : "var(--ion-text-color)" }}>
                         {p.name}
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
@@ -441,7 +439,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                   <div style={{
                     width: 28, height: 28, borderRadius: 14, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    background: selected ? "#16a34a" : "#f5f5f4",
+                    background: selected ? "var(--app-success)" : "#f5f5f4",
                     transition: "background 0.15s",
                   }}>
                     <IonIcon

@@ -8,6 +8,7 @@ import { fmtK, fmtDate, fmtTime } from "../utils/format";
 import { getTransfersByDateRange, deleteTransfer } from "../data/transferRepository";
 import type { TransferRecord } from "../data/transferRepository";
 import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
+import EmptyState from "./EmptyState";
 
 interface Props {
   isOpen: boolean;
@@ -80,7 +81,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             {/* Summary card */}
             <div style={{
               margin: "8px 16px 12px",
-              background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              background: "linear-gradient(135deg, var(--app-info), var(--app-info))",
               borderRadius: 16, padding: "16px 20px",
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
               gap: 8,
@@ -98,10 +99,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             </div>
 
             {records.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 32px", color: "var(--app-text-muted)" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📤</div>
-                <p style={{ margin: 0 }}>ບໍ່ມີລາຍການຍ້າຍໃນຊ່ວງເວລານີ້</p>
-              </div>
+              <EmptyState icon="📤" title="ບໍ່ມີລາຍການຍ້າຍໃນຊ່ວງເວລານີ້" />
             )}
 
             <div style={{ padding: "0 16px 32px" }}>
@@ -124,14 +122,14 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                           {" · "}{dateStr} {timeStr}
                         </p>
                         {r.note && (
-                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "#3b82f6", fontWeight: 600 }}>
+                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-info)", fontWeight: 600 }}>
                             📌 {r.note}
                           </p>
                         )}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
                         <div style={{ textAlign: "right" }}>
-                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#dc2626" }}>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "var(--app-danger)" }}>
                             -{r.quantity} ຊິ້ນ
                           </p>
                           {r.costPrice > 0 && (

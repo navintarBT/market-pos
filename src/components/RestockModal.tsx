@@ -83,7 +83,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
                   padding: "12px 14px", borderRadius: 12, marginBottom: 8,
-                  background: adding > 0 ? "#f0fdf4" : "var(--ion-color-step-50, #f9fafb)",
+                  background: adding > 0 ? "var(--app-success-surface)" : "var(--ion-color-step-50, var(--app-surface-alt))",
                   border: `1.5px solid ${adding > 0 ? "#86efac" : "var(--ion-color-step-150, var(--app-border))"}`,
                   transition: "all 0.15s",
                 }}
@@ -95,14 +95,14 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
                   <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                     ປັດຈຸບັນ {v.stock} ຊິ້ນ
                     {adding > 0 && (
-                      <span style={{ color: "#16a34a", fontWeight: 700 }}>
+                      <span style={{ color: "var(--app-success)", fontWeight: 700 }}>
                         {" "}→ {v.stock + adding} ຊິ້ນ
                       </span>
                     )}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "1.1rem", color: "#16a34a", fontWeight: 800 }}>+</span>
+                  <span style={{ fontSize: "1.1rem", color: "var(--app-success)", fontWeight: 800 }}>+</span>
                   <NumInput
                     value={adding}
                     onChange={(n) => setAdd(v.size, v.color, n)}
@@ -121,7 +121,7 @@ const RestockModal: React.FC<Props> = ({ product, shopId, onDismiss, onSaved }) 
           })}
 
           {error && (
-            <p style={{ color: "#dc2626", fontSize: "0.82rem", textAlign: "center", marginTop: 12 }}>
+            <p style={{ color: "var(--app-danger)", fontSize: "0.82rem", textAlign: "center", marginTop: 12 }}>
               ບັນທຶກບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່
             </p>
           )}

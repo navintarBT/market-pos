@@ -17,17 +17,18 @@ import NumInput from "../components/NumInput";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import WalletCard from "../components/WalletCard";
 import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
+import EmptyState from "../components/EmptyState";
 
 type PaymentKind = "cash" | "transfer" | "cod";
 
 const PAYMENT_TOGGLE_STYLE: Record<PaymentKind, { label: string; color: string }> = {
-  cash: { label: "💵 ເງິນສົດ", color: "#16a34a" },
-  transfer: { label: "📱 ໂອນ", color: "#2563eb" },
-  cod: { label: "📦 COD", color: "#d97706" },
+  cash: { label: "💵 ເງິນສົດ", color: "var(--app-success)" },
+  transfer: { label: "📱 ໂອນ", color: "var(--app-info)" },
+  cod: { label: "📦 COD", color: "var(--app-warning)" },
 };
 
 const EXPENSE_CATEGORY_STYLE: Record<ExpenseCategory, { label: string; chipLabel: string; color: string }> = {
-  shop: { label: "ລາຍຈ່າຍຮ້ານ", chipLabel: "🏪 ລາຍຈ່າຍຮ້ານ", color: "#1d4ed8" },
+  shop: { label: "ລາຍຈ່າຍຮ້ານ", chipLabel: "🏪 ລາຍຈ່າຍຮ້ານ", color: "var(--app-info)" },
   capital: { label: "ທຶນທຸລະກິດ", chipLabel: "💼 ທຶນທຸລະກິດ", color: "#7c3aed" },
   general: { label: "ສ່ວນຕົວ", chipLabel: "👤 ສ່ວນຕົວ", color: "#c2410c" },
 };
@@ -372,7 +373,7 @@ const Finance: React.FC = () => {
                 padding: "20px 18px",
                 borderRadius: 18,
                 border: "none",
-                background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                background: "linear-gradient(135deg, var(--app-danger), var(--app-danger))",
                 boxShadow: "0 6px 20px rgba(239,68,68,0.3)",
                 cursor: "pointer",
                 textAlign: "left",
@@ -477,8 +478,8 @@ const Finance: React.FC = () => {
           <div
             style={{
               background: isExpTab
-                ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                : "linear-gradient(135deg, #22c55e, #16a34a)",
+                ? "linear-gradient(135deg, var(--app-danger), var(--app-danger))"
+                : "linear-gradient(135deg, var(--app-success), var(--app-success))",
               borderRadius: 20,
               padding: "18px 20px",
               marginBottom: 16,
@@ -534,7 +535,7 @@ const Finance: React.FC = () => {
                   onClick={() => setExpCatFilter(v)}
                   style={{
                     flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-                    background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+                    background: expCatFilter === v ? "var(--ion-color-primary)" : "var(--ion-color-step-100, var(--app-surface-alt))",
                     color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
                     fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
                   }}
@@ -552,10 +553,7 @@ const Finance: React.FC = () => {
             </div>
           ) : isExpTab ? (
             visibleExpenses.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
-                <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
-              </div>
+              <EmptyState icon="🧾" title="ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້" />
             ) : (
               visibleExpenses.map((item) => {
                 const timeStr = fmtTime(item.createdAt);
@@ -602,7 +600,7 @@ const Finance: React.FC = () => {
                       }}
                     >
                       <span
-                        style={{ fontWeight: 800, color: "#ef4444", fontSize: "1rem" }}
+                        style={{ fontWeight: 800, color: "var(--app-danger)", fontSize: "1rem" }}
                       >
                         {fmtK(item.amount)} ກີບ
                       </span>
@@ -648,7 +646,7 @@ const Finance: React.FC = () => {
                             border: "none",
                             padding: "6px",
                             cursor: "pointer",
-                            color: "#ef4444",
+                            color: "var(--app-danger)",
                             display: "flex",
                             alignItems: "center",
                           }}
@@ -662,10 +660,7 @@ const Finance: React.FC = () => {
               })
             )
           ) : incomes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <div style={{ fontSize: 48, marginBottom: 8 }}>💰</div>
-              <p style={{ color: "var(--app-text-secondary)", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
-            </div>
+            <EmptyState icon="💰" title="ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້" />
           ) : (
             incomes.map((item) => {
               const timeStr = fmtTime(item.createdAt);
@@ -712,7 +707,7 @@ const Finance: React.FC = () => {
                     }}
                   >
                     <span
-                      style={{ fontWeight: 800, color: "#22c55e", fontSize: "1rem" }}
+                      style={{ fontWeight: 800, color: "var(--app-success)", fontSize: "1rem" }}
                     >
                       {fmtK(item.amount)} ກີບ
                     </span>
@@ -755,7 +750,7 @@ const Finance: React.FC = () => {
                           border: "none",
                           padding: "6px",
                           cursor: "pointer",
-                          color: "#ef4444",
+                          color: "var(--app-danger)",
                           display: "flex",
                           alignItems: "center",
                         }}

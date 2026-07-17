@@ -235,10 +235,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
     fontSize: "1rem", padding: "8px 0", color: "var(--ion-text-color)",
   };
   const errText: React.CSSProperties = {
-    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "#dc2626",
+    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "var(--app-danger)",
   };
   const warnText: React.CSSProperties = {
-    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "#d97706",
+    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "var(--app-warning)",
   };
 
   return (
@@ -308,7 +308,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
               value={price}
               onChange={(n) => { setPrice(n); clearFieldError("price"); clearFieldError("priceWarn"); }}
               placeholder="ເຊັ່ນ: 150.000"
-              style={{ ...inputBase, borderBottom: `2px solid ${errors.price ? "#dc2626" : "transparent"}` }}
+              style={{ ...inputBase, borderBottom: `2px solid ${errors.price ? "var(--app-danger)" : "transparent"}` }}
             />
           </IonItem>
           {errors.price && <p style={{ ...errText, paddingLeft: 16 }}>{errors.price}</p>}
@@ -321,7 +321,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
               value={costPrice}
               onChange={(n) => { setCostPrice(n); clearFieldError("cost"); clearFieldError("priceWarn"); }}
               placeholder="ເຊັ່ນ: 80.000"
-              style={{ ...inputBase, borderBottom: `2px solid ${errors.cost ? "#dc2626" : "transparent"}` }}
+              style={{ ...inputBase, borderBottom: `2px solid ${errors.cost ? "var(--app-danger)" : "transparent"}` }}
             />
           </IonItem>
           {errors.cost && <p style={{ ...errText, paddingLeft: 16 }}>{errors.cost}</p>}
@@ -331,7 +331,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         {errors.priceWarn && (
           <div style={{
             margin: "8px 0", padding: "8px 14px",
-            background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
+            background: "var(--app-warning-surface)", border: "1px solid var(--app-warning)", borderRadius: 8,
           }}>
             <p style={{ ...warnText, margin: 0 }}>⚠ {errors.priceWarn}</p>
           </div>
@@ -384,7 +384,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
           const isInvalid = errors.badVariants?.has(i) ?? false;
           const missSize  = isInvalid && !v.size.trim();
           const missColor = isInvalid && !v.color.trim();
-          const borderInvalid = "1.5px solid #dc2626";
+          const borderInvalid = "1.5px solid var(--app-danger)";
           const borderNormal  = "1.5px solid var(--app-border)";
           return (
             <div key={i}>
@@ -404,8 +404,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   }}
                   style={{
                     "--min-height": "44px", textAlign: "center",
-                    "--border-color": missSize ? "#dc2626" : undefined,
-                    "--highlight-color-focused": missSize ? "#dc2626" : undefined,
+                    "--border-color": missSize ? "var(--app-danger)" : undefined,
+                    "--highlight-color-focused": missSize ? "var(--app-danger)" : undefined,
                   }}
                 />
                 <IonInput
@@ -423,8 +423,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   }}
                   style={{
                     "--min-height": "44px", textAlign: "center",
-                    "--border-color": missColor ? "#dc2626" : undefined,
-                    "--highlight-color-focused": missColor ? "#dc2626" : undefined,
+                    "--border-color": missColor ? "var(--app-danger)" : undefined,
+                    "--highlight-color-focused": missColor ? "var(--app-danger)" : undefined,
                   }}
                 />
                 <NumInput

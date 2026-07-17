@@ -14,7 +14,6 @@ import {
   IonButton,
   IonIcon,
   IonSpinner,
-  IonText,
   IonModal,
   IonFooter,
   IonButtons,
@@ -31,6 +30,7 @@ import VariantPicker from "../components/VariantPicker";
 import CartSheet from "../components/CartSheet";
 import CheckoutModal from "../components/CheckoutModal";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import EmptyState from "../components/EmptyState";
 import type { Bundle, BundleItem, Product, ProductVariant } from "../data/types";
 
 const Sell: React.FC = () => {
@@ -301,16 +301,10 @@ const Sell: React.FC = () => {
         {activeTab === "products" && (
           <>
             {!loading && products.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>🛍️</div>
-                <IonText color="medium"><p>ຍັງບໍ່ມີສິນຄ້າ</p></IonText>
-              </div>
+              <EmptyState icon="🛍️" title="ຍັງບໍ່ມີສິນຄ້າ" />
             )}
             {!loading && products.length > 0 && filtered.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-                <IonText color="medium"><p>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p></IonText>
-              </div>
+              <EmptyState icon="🔍" title="ບໍ່ມີສິນຄ້າໃນໝວດນີ້" />
             )}
             {!loading && filtered.length > 0 && (
               <IonGrid style={{ padding: "12px 8px" }}>
@@ -349,7 +343,7 @@ const Sell: React.FC = () => {
                             display: "inline-block", fontSize: "0.72rem", fontWeight: 600,
                             padding: "2px 8px", borderRadius: 20,
                             background: outOfStock ? "rgba(220,38,38,0.12)" : totalStock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                            color: outOfStock ? "#dc2626" : totalStock <= 3 ? "#92400e" : "#166534",
+                            color: outOfStock ? "var(--app-danger)" : totalStock <= 3 ? "var(--app-warning)" : "var(--app-success)",
                           }}>
                             {outOfStock ? "ໝົດ" : `${totalStock} ຊິ້ນ`}
                           </div>
@@ -367,10 +361,7 @@ const Sell: React.FC = () => {
         {activeTab === "bundles" && (
           <>
             {!loading && bundles.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-                <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ສ້າງໄດ້ທີ່ໜ້າສິນຄ້າ</p></IonText>
-              </div>
+              <EmptyState icon="🎁" title="ຍັງບໍ່ມີຊຸດ — ສ້າງໄດ້ທີ່ໜ້າສິນຄ້າ" />
             )}
             {!loading && bundles.length > 0 && (
               <IonGrid style={{ padding: "12px 8px" }}>
@@ -412,7 +403,7 @@ const Sell: React.FC = () => {
                               display: "inline-block", marginTop: 4,
                               fontSize: "0.68rem", fontWeight: 700,
                               padding: "2px 8px", borderRadius: 20,
-                              background: "#fee2e2", color: "#dc2626",
+                              background: "var(--app-danger-surface)", color: "var(--app-danger)",
                             }}>
                               ສິນຄ້າໝົດ
                             </div>
@@ -499,7 +490,7 @@ const Sell: React.FC = () => {
                   {autoVariant ? (
                     <div style={{
                       fontSize: "0.78rem", color: "var(--app-text-secondary)", padding: "8px 12px",
-                      background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0",
+                      background: "var(--app-success-surface)", borderRadius: 8, border: "1px solid #bbf7d0",
                     }}>
                       ✓ {autoVariant.size}{autoVariant.color ? ` / ${autoVariant.color}` : ""} (ອັດຕະໂນມັດ)
                     </div>

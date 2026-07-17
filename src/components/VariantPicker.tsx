@@ -119,8 +119,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                     display: "inline-block", marginTop: 4,
                     fontSize: "0.72rem", fontWeight: 600,
                     padding: "2px 8px", borderRadius: 20,
-                    background: outOfStock ? "rgba(220,38,38,0.12)" : v.stock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                    color: outOfStock ? "#dc2626" : v.stock <= 3 ? "#92400e" : "#166534",
+                    background: outOfStock ? "rgba(220,38,38,0.12)" : v.stock <= (v.minStock ?? 5) ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
+                    color: outOfStock ? "var(--app-danger)" : v.stock <= (v.minStock ?? 5) ? "var(--app-warning)" : "var(--app-success)",
                   }}>
                     {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock} ຊິ້ນ`}
                   </div>
@@ -128,7 +128,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
 
                 {/* Right: stepper */}
                 {outOfStock ? (
-                  <span style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>ໝົດ</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--app-danger)", fontWeight: 600 }}>ໝົດ</span>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <button

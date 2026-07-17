@@ -15,7 +15,6 @@ import {
   IonRefresherContent,
   IonAlert,
   IonSpinner,
-  IonText,
   IonButtons,
   IonButton,
   IonBadge,
@@ -34,6 +33,7 @@ import BundleManager from "../components/BundleManager";
 import ReturnForm from "../components/ReturnForm";
 import RestockModal from "../components/RestockModal";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import EmptyState from "../components/EmptyState";
 import type { Product, Category } from "../data/types";
 import { useIonViewWillEnter } from "@ionic/react";
 
@@ -144,7 +144,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                     position: "absolute", top: 4, right: 2,
                     fontSize: "0.6rem", minWidth: 16, height: 16,
                     borderRadius: 8, padding: "0 3px",
-                    background: "#ff3b30", color: "#ffffff", fontWeight: 700,
+                    background: "var(--app-danger)", color: "#ffffff", fontWeight: 700,
                   }}
                 >
                   {alertCount}
@@ -212,7 +212,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                         style={{
                           flexShrink: 0, padding: "7px 18px", borderRadius: 24,
                           border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
-                          background: isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-50, #f9fafb)",
+                          background: isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-50, var(--app-surface-alt))",
                           color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                           fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
                           boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
@@ -239,11 +239,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         })()}
 
         {!loading && products.length === 0 && (
-          <IonText color="medium">
-            <p style={{ textAlign: "center", padding: 32 }}>
-              {isAdmin ? "ກົດ + ເພື່ອເພີ່ມສິນຄ້າທຳອິດ" : "ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ"}
-            </p>
-          </IonText>
+          <EmptyState icon="🛍️" title={isAdmin ? "ກົດ + ເພື່ອເພີ່ມສິນຄ້າທຳອິດ" : "ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ"} />
         )}
 
         {isAdmin && (

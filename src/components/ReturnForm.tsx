@@ -36,7 +36,7 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
   return (
     <div style={{
       background: "var(--app-surface)", borderRadius: 12, padding: "10px 14px",
-      border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "var(--app-border)"}`,
+      border: `1.5px solid ${isOver ? "var(--app-danger)" : isActive ? accentColor : "var(--app-border)"}`,
       boxShadow: isActive ? `0 2px 8px ${accentColor}20` : "0 1px 3px rgba(0,0,0,0.04)",
       display: "flex", alignItems: "center", gap: 10, transition: "border-color 0.15s",
     }}>
@@ -45,11 +45,11 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
           {v.size}{v.color ? ` / ${v.color}` : ""}
         </p>
         {isReduce ? (
-          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "#ef4444" : isActive ? "#dc2626" : "var(--app-text-muted)" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isOver ? "var(--app-danger)" : isActive ? "var(--app-danger)" : "var(--app-text-muted)" }}>
             {isOver ? `⚠ stock ມີ ${v.stock} ຊິ້ນ — ເກີນ!` : isActive ? `${v.stock} → ${v.stock - parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
           </p>
         ) : (
-          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "#16a34a" : "var(--app-text-muted)" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "0.7rem", fontWeight: 600, color: isActive ? "var(--app-success)" : "var(--app-text-muted)" }}>
             {isActive ? `${v.stock} → ${v.stock + parsed} ຊິ້ນ` : `${v.stock} ຊິ້ນ`}
           </p>
         )}
@@ -72,9 +72,9 @@ function VariantRow({ v, idx, qty, setQty, accentColor, isReduce }: {
           onBlur={() => commit(parsed)}
           style={{
             width: 52, height: 32, borderRadius: 8,
-            border: `1.5px solid ${isOver ? "#ef4444" : isActive ? accentColor : "var(--app-border)"}`,
+            border: `1.5px solid ${isOver ? "var(--app-danger)" : isActive ? accentColor : "var(--app-border)"}`,
             textAlign: "center", fontSize: "1rem", fontWeight: 800,
-            color: isOver ? "#ef4444" : isActive ? accentColor : "var(--app-text-muted)",
+            color: isOver ? "var(--app-danger)" : isActive ? accentColor : "var(--app-text-muted)",
             background: "var(--app-surface)", outline: "none",
           }}
         />
@@ -322,7 +322,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
           <div style={{ display: "flex", padding: "0 16px 10px", gap: 8, background: "var(--ion-toolbar-background, #fff)" }}>
             {(["return", "transfer"] as Tab[]).map((tab) => {
               const label = tab === "return" ? "ຕີກັບສິນຄ້າ" : "ຍ້າຍເຄື່ອງ";
-              const accent = tab === "return" ? "var(--ion-color-primary)" : "#3b82f6";
+              const accent = tab === "return" ? "var(--ion-color-primary)" : "var(--app-info)";
               const isActive = activeTab === tab;
               return (
                 <button
@@ -381,9 +381,9 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                     <div style={{ display: "flex", gap: 8 }}>
                       {(
                         [
-                          { v: "cash" as const, label: "💵 ສົດ", color: "#16a34a" },
-                          { v: "transfer" as const, label: "📱 ໂອນ", color: "#2563eb" },
-                          { v: "cod" as const, label: "📦 COD", color: "#d97706" },
+                          { v: "cash" as const, label: "💵 ສົດ", color: "var(--app-success)" },
+                          { v: "transfer" as const, label: "📱 ໂອນ", color: "var(--app-info)" },
+                          { v: "cod" as const, label: "📦 COD", color: "var(--app-warning)" },
                         ] as const
                       ).map(({ v, label, color }) => (
                         <button
@@ -423,7 +423,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                     {tProduct.photoUrl
                       ? <img src={tProduct.photoUrl} alt={tProduct.name} loading="lazy" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
-                      : <div style={{ width: 48, height: 48, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>📦</div>
+                      : <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--app-info-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 24 }}>📦</div>
                     }
                     <div>
                       <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{tProduct.name}</p>
@@ -432,7 +432,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   </div>
                   <VariantSteppers
                     product={tProduct} qtys={tQtys} setQty={tSetQty}
-                    accentColor="#3b82f6" isReduce
+                    accentColor="var(--app-info)" isReduce
                   />
                   {/* Note field */}
                   <div style={{ marginTop: 16 }}>
@@ -481,7 +481,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   {tEntries.map(({ v, qty, idx }) => (
                     <span key={idx} style={{
                       fontSize: "0.75rem", fontWeight: 700,
-                      background: "#fef2f2", color: "#dc2626",
+                      background: "var(--app-danger-surface)", color: "var(--app-danger)",
                       padding: "3px 10px", borderRadius: 20,
                     }}>
                       {v.size}{v.color ? `/${v.color}` : ""} -{qty}
@@ -515,7 +515,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                     expand="block"
                     onClick={handleTransfer}
                     disabled={tEntries.length === 0 || tSaving || hasOverStock}
-                    style={{ minHeight: 52, "--border-radius": "14px", "--background": hasOverStock ? "#9ca3af" : "#3b82f6", "--background-activated": "#1d4ed8" }}
+                    style={{ minHeight: 52, "--border-radius": "14px", "--background": hasOverStock ? "#9ca3af" : "var(--app-info)", "--background-activated": "var(--app-info)" }}
                   >
                     {tSaving
                       ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IonSpinner name="dots" style={{ width: 20, height: 20 }} /> ກຳລັງດຳເນີນການ...</span>

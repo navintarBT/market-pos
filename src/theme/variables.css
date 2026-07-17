@@ -122,6 +122,23 @@
   --app-accent-surface: #fff7ed;
   --app-accent-border: #fed7aa;
   --app-border: #e5e7eb;
+
+  /* Semantic status tokens — one fixed color+surface pair per meaning,
+     used instead of the various one-off status hex literals that had
+     drifted across screens (e.g. #16a34a vs #22c55e both meaning
+     "success"). --app-cost is deliberately separate from --app-warning:
+     same hue family, different meaning (product cost price vs. a
+     low-stock/generic warning). */
+  --app-success: var(--ion-color-success);
+  --app-success-surface: #f0fdf4;
+  --app-danger: var(--ion-color-danger);
+  --app-danger-surface: #fef2f2;
+  --app-warning: var(--ion-color-warning);
+  --app-warning-surface: #fffbeb;
+  --app-cost: #92400e;
+  --app-cost-surface: #fef3c7;
+  --app-info: #2563eb;
+  --app-info-surface: #eff6ff;
 }
 
 /* Toolbar title & buttons */
@@ -214,5 +231,19 @@ ion-card {
     --app-accent-surface: #3a2a1a;
     --app-accent-border: #5c4530;
     --app-border: #3a332c;
+
+    /* Semantic status tokens (dark) — brighter text on a muted dark-tinted
+       surface, instead of the light-only pastel tints used everywhere
+       these status colors originally appeared. */
+    --app-success: #4ade80;
+    --app-success-surface: #15301f;
+    --app-danger: #f87171;
+    --app-danger-surface: #3a1518;
+    --app-warning: #fbbf24;
+    --app-warning-surface: #3a2c10;
+    --app-cost: #d9a066;
+    --app-cost-surface: #3a2a15;
+    --app-info: #60a5fa;
+    --app-info-surface: #16233a;
   }
 }

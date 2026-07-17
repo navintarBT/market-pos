@@ -8,6 +8,7 @@ import { fmtK, fmtDate, fmtTime } from "../utils/format";
 import { getReturnsByDateRange, deleteReturn } from "../data/returnRepository";
 import type { ReturnRecord } from "../data/types";
 import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
+import EmptyState from "./EmptyState";
 
 interface Props {
   isOpen: boolean;
@@ -16,9 +17,9 @@ interface Props {
 }
 
 const PAYMENT_BADGE: Record<"cash" | "transfer" | "cod", { label: string; bg: string; color: string }> = {
-  cash: { label: "💵 ສົດ", bg: "#dcfce7", color: "#166534" },
-  transfer: { label: "📱 ໂອນ", bg: "#eff6ff", color: "#1d4ed8" },
-  cod: { label: "📦 COD", bg: "#fef3c7", color: "#b45309" },
+  cash: { label: "💵 ສົດ", bg: "var(--app-success-surface)", color: "var(--app-success)" },
+  transfer: { label: "📱 ໂອນ", bg: "var(--app-info-surface)", color: "var(--app-info)" },
+  cod: { label: "📦 COD", bg: "var(--app-warning-surface)", color: "var(--app-warning)" },
 };
 
 const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
@@ -86,7 +87,7 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             {/* Summary card */}
             <div style={{
               margin: "8px 16px 12px",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              background: "linear-gradient(135deg, #f59e0b, var(--app-warning))",
               borderRadius: 16, padding: "16px 20px",
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
               gap: 8,
@@ -105,10 +106,7 @@ const ReturnHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
 
             {/* Empty */}
             {records.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 32px", color: "var(--app-text-muted)" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
-                <p style={{ margin: 0 }}>ບໍ່ມີລາຍການຕີກັບໃນຊ່ວງເວລານີ້</p>
-              </div>
+              <EmptyState icon="📦" title="ບໍ່ມີລາຍການຕີກັບໃນຊ່ວງເວລານີ້" />
             )}
 
             {/* Records list */}

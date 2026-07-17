@@ -23,6 +23,7 @@ import { useAuth } from "../context/AuthContext";
 import { createStaffUser, deleteStaffUser, getShopUsers, resetStaffPassword, updateStaffEmail, updateStaffPermissions, updateStaffUser } from "../data/shopRepository";
 import type { ShopUser, StaffPermissions } from "../data/types";
 import ShopHeaderTag from "../components/ShopHeaderTag";
+import EmptyState from "../components/EmptyState";
 
 const cardStyle: React.CSSProperties = {
   background: "var(--app-surface)",
@@ -271,8 +272,8 @@ const StaffSettings: React.FC = () => {
               {(message || error) && (
                 <div style={{
                   ...cardStyle,
-                  borderLeft: `4px solid ${error ? "#dc2626" : "#16a34a"}`,
-                  color: error ? "#991b1b" : "#166534",
+                  borderLeft: `4px solid ${error ? "var(--app-danger)" : "var(--app-success)"}`,
+                  color: error ? "var(--app-danger)" : "var(--app-success)",
                   fontWeight: 700,
                 }}>
                   {error ?? message}
@@ -301,11 +302,11 @@ const StaffSettings: React.FC = () => {
                 {/* Add form */}
                 {showForm && (
                   <div style={{
-                    background: "#f0fdf4", border: "1.5px solid #bbf7d0",
+                    background: "var(--app-success-surface)", border: "1.5px solid #bbf7d0",
                     borderRadius: 12, padding: 14, marginBottom: 14,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#166534" }}>ເພີ່ມພະນັກງານໃໝ່</span>
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--app-success)" }}>ເພີ່ມພະນັກງານໃໝ່</span>
                       <button onClick={handleCloseForm} disabled={creating}
                         style={{ background: "none", border: "none", color: "var(--app-text-muted)", cursor: "pointer", padding: 4, lineHeight: 0 }}>
                         <IonIcon icon={closeOutline} style={{ fontSize: 20 }} />
@@ -342,10 +343,10 @@ const StaffSettings: React.FC = () => {
                 {/* Staff list */}
                 <IonList style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--app-accent-border)" }}>
                   {staff.length === 0 ? (
-                    <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)" }}>
-                      <IonLabel style={{ textAlign: "center", color: "var(--app-text-secondary)", fontSize: "0.85rem", padding: "16px 0" }}>
-                        ຍັງບໍ່ມີພະນັກງານ
-                      </IonLabel>
+                    <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)", "--padding-start": "0", "--inner-padding-end": "0" }}>
+                      <div style={{ width: "100%" }}>
+                        <EmptyState icon="👥" title="ຍັງບໍ່ມີພະນັກງານ" />
+                      </div>
                     </IonItem>
                   ) : staff.map((user) => (
                     <div key={user.id}>
@@ -394,7 +395,7 @@ const StaffSettings: React.FC = () => {
                               fill="clear" size="small"
                               disabled={deletingId === user.id}
                               onClick={() => setDeleteTarget(user)}
-                              style={{ "--color": "#dc2626" }}
+                              style={{ "--color": "var(--app-danger)" }}
                             >
                               {deletingId === user.id
                                 ? <IonSpinner name="crescent" style={{ width: 18, height: 18 }} />
@@ -412,7 +413,7 @@ const StaffSettings: React.FC = () => {
                       {/* Inline edit form */}
                       {editingId === user.id && (
                         <div style={{
-                          background: "#fffbeb", border: "1.5px solid #fde68a",
+                          background: "var(--app-warning-surface)", border: "1.5px solid var(--app-warning)",
                           borderRadius: 10, margin: "0 8px 8px", padding: 12,
                         }}>
                           <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
@@ -432,7 +433,7 @@ const StaffSettings: React.FC = () => {
                             expand="block" fill="outline" size="small"
                             disabled={resettingId === user.id || saving}
                             onClick={() => handleResetPassword(user)}
-                            style={{ "--border-radius": "10px", "--color": "#b45309", "--border-color": "#fcd34d", marginTop: 12, marginBottom: 10, height: 38 }}
+                            style={{ "--border-radius": "10px", "--color": "var(--app-warning)", "--border-color": "#fcd34d", marginTop: 12, marginBottom: 10, height: 38 }}
                           >
                             {resettingId === user.id ? (<><IonSpinner name="dots" style={{ width: 16, height: 16, marginRight: 6 }} /> ກຳລັງສົ່ງ...</>) : "📧 Reset ລະຫັດຜ່ານ (ສົ່ງ email)"}
                           </IonButton>

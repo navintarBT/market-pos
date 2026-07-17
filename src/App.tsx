@@ -28,8 +28,12 @@ function AppRoutes() {
   if (loading) {
     return (
       <IonApp>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-          <IonSpinner name="crescent" />
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", gap: 18 }}>
+          <img src="/MinnyOne.png" alt="MinnyOne" style={{ width: 96, height: 96 }} />
+          <div style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: "2rem", lineHeight: 1 }}>
+            <span style={{ color: "#1c1917" }}>Minny</span><span style={{ color: "#e07b39" }}>One</span>
+          </div>
+          <IonSpinner name="crescent" style={{ marginTop: 8 }} />
         </div>
       </IonApp>
     );

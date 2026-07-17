@@ -21,7 +21,7 @@ import {
   IonBadge,
   IonMenuButton,
 } from "@ionic/react";
-import { addOutline, notificationsOutline, cubeOutline, giftOutline, returnUpBackOutline } from "ionicons/icons";
+import { addOutline, notificationsOutline, cubeOutline, returnUpBackOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getProducts, addProduct, updateProduct, deleteProduct } from "../data/productRepository";
 import { getCategories } from "../data/categoryRepository";
@@ -52,11 +52,11 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [bundleOpen, setBundleOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [restockTarget, setRestockTarget] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [productTab, setProductTab] = useState<"retail" | "bundle">("retail");
 
   const isAdmin = permissions.canManageProducts;
   const isOwner = role === "customer";
@@ -152,11 +152,6 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
               )}
             </IonButton>
 
-            {isAdmin && (
-              <IonButton onClick={() => setBundleOpen(true)}>
-                <IonIcon slot="icon-only" icon={giftOutline} />
-              </IonButton>
-            )}
             <IonMenuButton autoHide={false} />
           </IonButtons>
         </IonToolbar>
@@ -167,6 +162,34 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           <IonRefresherContent />
         </IonRefresher>
 
+        {isAdmin && (
+          <div style={{ display: "flex", gap: 0, margin: "12px 16px 0", borderRadius: 12, background: "var(--ion-color-step-50, var(--app-surface-alt))", padding: 4 }}>
+            {([
+              { v: "retail" as const, label: "ສິນຄ້າລາຍຍ່ອຍ" },
+              { v: "bundle" as const, label: "ສິນຄ້າເປັນຊຸດ" },
+            ]).map(({ v, label }) => (
+              <button
+                key={v}
+                onClick={() => setProductTab(v)}
+                style={{
+                  flex: 1, padding: "9px 0", borderRadius: 9, border: "none",
+                  background: productTab === v ? "var(--ion-item-background, #ffffff)" : "transparent",
+                  color: productTab === v ? "var(--ion-text-color)" : "var(--ion-color-medium, var(--app-text-secondary))",
+                  fontWeight: productTab === v ? 700 : 600, fontSize: "0.88rem", cursor: "pointer",
+                  boxShadow: productTab === v ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+                  transition: "all 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {productTab === "bundle" ? (
+          shopId && <BundleManager products={products} shopId={shopId} isOwner={isOwner} />
+        ) : (
+        <>
         {loading && (
           <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
             <IonSpinner name="crescent" />
@@ -239,17 +262,9 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
             </IonFab>
           </>
         )}
+        </>
+        )}
       </IonContent>
-
-      {shopId && (
-        <BundleManager
-          isOpen={bundleOpen}
-          products={products}
-          shopId={shopId}
-          isOwner={isOwner}
-          onDismiss={() => setBundleOpen(false)}
-        />
-      )}
 
       <ProductDetailSheet
         product={detailProduct}

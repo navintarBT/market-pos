@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter,
   IonButtons, IonButton, IonIcon, IonSpinner, IonAlert, IonInput, IonLabel,
-  IonText,
+  IonText, IonFab, IonFabButton,
 } from "@ionic/react";
 import {
-  addOutline, closeOutline, trashOutline, createOutline,
+  addOutline, trashOutline, createOutline,
   chevronBackOutline, checkmarkOutline, imageOutline,
 } from "ionicons/icons";
 import { fmtK } from "../utils/format";
@@ -17,14 +17,12 @@ import ImagePicker from "./ImagePicker";
 import type { Bundle, BundleItem, Product } from "../data/types";
 
 interface Props {
-  isOpen: boolean;
   products: Product[];
   shopId: string;
   isOwner?: boolean;
-  onDismiss: () => void;
 }
 
-const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = false, onDismiss }) => {
+const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) => {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,7 +52,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
     finally { setLoading(false); }
   }, [shopId]);
 
-  useEffect(() => { if (isOpen) load(); }, [isOpen, load]);
+  useEffect(() => { load(); }, [load]);
 
   function openCreate() {
     setEditingId(null);
@@ -137,88 +135,77 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
   return (
     <>
-      {/* ── Bundle list ── */}
-      <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle style={{ fontWeight: 700 }}>ຊຸດຂາຍ</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={openCreate}>
-                <IonIcon slot="icon-only" icon={addOutline} />
-              </IonButton>
-              <IonButton onClick={onDismiss}>
-                <IonIcon slot="icon-only" icon={closeOutline} />
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          {loading && (
-            <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-              <IonSpinner name="crescent" color="primary" />
-            </div>
-          )}
-          {!loading && bundles.length === 0 && (
-            <div style={{ textAlign: "center", padding: "64px 32px" }}>
-              <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-              <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ກົດ + ດ້ານເທິງເພື່ອສ້າງ</p></IonText>
-            </div>
-          )}
-          <div style={{ padding: "12px 16px 24px" }}>
-            {bundles.map((b) => {
-              const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
-              return (
-                <div key={b.id} style={{
-                  background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-                  display: "flex", alignItems: "center", gap: 12,
-                }}>
-                  {/* Photo */}
-                  <div style={{
-                    width: 54, height: 54, borderRadius: 10, flexShrink: 0,
-                    background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center",
-                    overflow: "hidden",
-                  }}>
-                    {b.photoUrl
-                      ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "var(--ion-color-primary)" }} />
-                    }
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{b.name}</p>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
-                      <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ion-color-primary)" }}>
-                        {fmtK(b.price)} ກີບ
-                      </span>
-                      {cost > 0 && (
-                        <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
-                          ກຳໄລ {fmtK(b.price - cost)} ກີບ
-                        </span>
-                      )}
-                    </div>
-                    <p style={{
-                      margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)",
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" · ")}
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                    <IonButton fill="clear" size="small" onClick={() => openEdit(b)}>
-                      <IonIcon slot="icon-only" icon={createOutline} />
-                    </IonButton>
-                    {isOwner && (
-                      <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
-                        <IonIcon slot="icon-only" icon={trashOutline} />
-                      </IonButton>
-                    )}
-                  </div>
+      {/* ── Bundle list (inline — rendered as the "ສິນຄ້າເປັນຊຸດ" tab of the Products page) ── */}
+      {loading && (
+        <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+          <IonSpinner name="crescent" color="primary" />
+        </div>
+      )}
+      {!loading && bundles.length === 0 && (
+        <div style={{ textAlign: "center", padding: "64px 32px" }}>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
+          <IonText color="medium"><p>ກົດ + ເພື່ອສ້າງຊຸດທຳອິດ</p></IonText>
+        </div>
+      )}
+      <div style={{ padding: "12px 16px 24px" }}>
+        {bundles.map((b) => {
+          const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
+          return (
+            <div key={b.id} style={{
+              background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
+              {/* Photo */}
+              <div style={{
+                width: 54, height: 54, borderRadius: 10, flexShrink: 0,
+                background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
+              }}>
+                {b.photoUrl
+                  ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "var(--ion-color-primary)" }} />
+                }
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{b.name}</p>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
+                  <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ion-color-primary)" }}>
+                    {fmtK(b.price)} ກີບ
+                  </span>
+                  {cost > 0 && (
+                    <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
+                      ກຳໄລ {fmtK(b.price - cost)} ກີບ
+                    </span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </IonContent>
-      </IonModal>
+                <p style={{
+                  margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" · ")}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                <IonButton fill="clear" size="small" onClick={() => openEdit(b)}>
+                  <IonIcon slot="icon-only" icon={createOutline} />
+                </IonButton>
+                {isOwner && (
+                  <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
+                    <IonIcon slot="icon-only" icon={trashOutline} />
+                  </IonButton>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <IonFab vertical="bottom" horizontal="end" slot="fixed">
+        <IonFabButton onClick={openCreate}>
+          <IonIcon icon={addOutline} />
+        </IonFabButton>
+      </IonFab>
 
       {/* ── Bundle form ── */}
       <IonModal isOpen={formOpen} onDidDismiss={() => setFormOpen(false)}>

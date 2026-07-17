@@ -44,6 +44,7 @@ const Summary: React.FC = () => {
   const [tTo,   setTTo]   = useState(todayStr);
   const [todaySales,    setTodaySales]    = useState<Sale[]>([]);
   const [todayExpenses, setTodayExpenses] = useState(0);
+  const [todayReturns,  setTodayReturns]  = useState<ReturnRecord[]>([]);
   const [products,      setProducts]      = useState<Product[]>([]);
   const [todayLoading,  setTodayLoading]  = useState(false);
   const [activeSub,     setActiveSub]     = useState<SubSection>("sales");
@@ -104,13 +105,15 @@ const Summary: React.FC = () => {
     setTodayLoading(true);
     try {
       const [from, to] = parseRange(tFrom, tTo);
-      const [s, exps, prods] = await Promise.all([
+      const [s, exps, rets, prods] = await Promise.all([
         getSalesByDateRange(shopId, from, to),
         getExpensesByDateRange(shopId, from, to),
+        getReturnsByDateRange(shopId, from, to),
         getProducts(shopId),
       ]);
       setTodaySales(s);
       setTodayExpenses(exps.filter((e) => e.category === "shop").reduce((sum, e) => sum + e.amount, 0));
+      setTodayReturns(rets);
       setProducts(prods);
     } finally {
       setTodayLoading(false);
@@ -170,7 +173,12 @@ const Summary: React.FC = () => {
   const tCost       = todaySales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const tGross      = tRevenue - tCost;
-  const tNet        = tGross - todayExpenses;
+  // Net profit must account for same-day returns (mirrors mNetProfit below) —
+  // otherwise a return processed today doesn't reduce "today's" profit until
+  // it shows up in the monthly tab.
+  const tRetRevenue = todayReturns.reduce((s, r) => s + (r.sellingPrice ?? 0) * r.quantity, 0);
+  const tRetCost    = todayReturns.reduce((s, r) => s + r.costPrice * r.quantity, 0);
+  const tNet        = (tRevenue - tRetRevenue) - (tCost - tRetCost) - todayExpenses;
   const tHasCost    = todaySales.some(sale => sale.items.some(item => item.costPrice));
   const tLoss       = todaySales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {

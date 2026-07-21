@@ -161,7 +161,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                 overflow: "hidden",
               }}>
                 {b.photoUrl
-                  ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ? <img src={b.photoUrl} alt={b.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "var(--ion-color-primary)" }} />
                 }
               </div>
@@ -421,7 +421,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     {p.photoUrl
-                      ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+                      ? <img src={p.photoUrl} alt={p.name} loading="lazy" decoding="async" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
                       : <div style={{ width: 38, height: 38, borderRadius: 8, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 20 }}>👕</span>
                         </div>

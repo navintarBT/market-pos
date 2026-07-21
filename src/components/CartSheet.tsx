@@ -569,7 +569,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                   }}
                 >
                   {p.photoUrl
-                    ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+                    ? <img src={p.photoUrl} alt={p.name} loading="lazy" decoding="async" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
                     : <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>👕</div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>

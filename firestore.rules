@@ -98,7 +98,18 @@ service cloud.firestore {
       match /sales/{saleId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
         allow create: if isShopMember(shopId) && validSale(request.resource.data);
-        allow update: if false;
+        // Price edit / split-price / partial item removal (SalesHistory) only ever
+        // touch `items` + `total` — mirrors the UI gate (canEditCartPrice for price
+        // edits, canDeleteSales for item removal); everything else on a recorded
+        // sale (paymentType, sellerUid, createdAt, ...) stays immutable.
+        allow update: if (
+            isControlAdmin()
+            || isShopOwner(shopId)
+            || (isShopMember(shopId) && (hasStaffPermission(shopId, 'canEditCartPrice') || hasStaffPermission(shopId, 'canDeleteSales')))
+          )
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'total'])
+          && request.resource.data.total is number
+          && request.resource.data.total >= 0;
         allow delete: if isControlAdmin()
           || isShopOwner(shopId)
           || (isShopMember(shopId) && hasStaffPermission(shopId, 'canDeleteSales'));

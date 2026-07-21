@@ -247,7 +247,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
                       fontSize: "1rem", fontWeight: 800,
                     }}>
                       {r.profileUrl
-                        ? <img src={r.profileUrl} alt={r.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ? <img src={r.profileUrl} alt={r.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         : r.name.slice(0, 1).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>

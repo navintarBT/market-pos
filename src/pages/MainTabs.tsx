@@ -116,7 +116,7 @@ const MainTabs: React.FC = () => {
                 margin: "0 auto 12px",
               }}>
                 {shopProfile?.profileUrl ? (
-                  <img src={shopProfile.profileUrl} alt={shopProfile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={shopProfile.profileUrl} alt={shopProfile.name} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <IonIcon icon={businessOutline} style={{ fontSize: 32, color: "var(--ion-color-primary)" }} />
                 )}

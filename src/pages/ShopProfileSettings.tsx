@@ -277,7 +277,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {displayUrl ? (
-                      <img src={displayUrl} alt={shop?.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={displayUrl} alt={shop?.name} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <IonIcon icon={businessOutline} style={{ fontSize: 42, color: "var(--ion-color-primary)" }} />
                     )}

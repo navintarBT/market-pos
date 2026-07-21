@@ -3,7 +3,6 @@ import {
   IonCardContent,
   IonButton,
   IonIcon,
-  IonImg,
 } from "@ionic/react";
 import { createOutline, trashOutline, addCircleOutline } from "ionicons/icons";
 import type { Product } from "../data/types";
@@ -29,7 +28,13 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, canViewFina
       {/* Image / placeholder — tap to view detail */}
       <div onClick={() => onDetail(product)} style={{ cursor: "pointer" }}>
         {product.photoUrl ? (
-          <IonImg src={product.photoUrl} alt={product.name} style={{ height: 130, objectFit: "cover" }} />
+          <img
+            src={product.photoUrl}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }}
+          />
         ) : (
           <div style={{
             height: 100,

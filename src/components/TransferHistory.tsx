@@ -81,7 +81,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             {/* Summary card */}
             <div style={{
               margin: "8px 16px 12px",
-              background: "linear-gradient(135deg, var(--app-info), var(--app-info))",
+              background: "linear-gradient(135deg, var(--app-info), #1d4ed8)",
               borderRadius: 16, padding: "16px 20px",
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
               gap: 8,

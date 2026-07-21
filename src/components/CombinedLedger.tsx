@@ -354,7 +354,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
 
         <div style={{ padding: "12px 16px 100px" }}>
           <div style={{
-            background: isExpTab ? "linear-gradient(135deg, var(--app-danger), var(--app-danger))" : "linear-gradient(135deg, var(--app-success), var(--app-success))",
+            background: isExpTab ? "linear-gradient(135deg, var(--app-danger), #b91c1c)" : "linear-gradient(135deg, var(--app-success), #15803d)",
             borderRadius: 20, padding: "18px 20px", marginBottom: 16,
             boxShadow: isExpTab ? "0 6px 20px rgba(239,68,68,0.3)" : "0 6px 20px rgba(34,197,94,0.3)",
           }}>
@@ -482,7 +482,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
           )}
         </div>
 
-        <IonFab vertical="bottom" horizontal="end" slot="fixed">
+        <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: "max(env(safe-area-inset-bottom), 16px)" }}>
           <IonFabButton onClick={() => (isExpTab ? openExpAdd() : openIncAdd())}>
             <IonIcon icon={addOutline} />
           </IonFabButton>

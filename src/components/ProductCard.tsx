@@ -13,13 +13,14 @@ interface Props {
   product: Product;
   isAdmin: boolean;
   canDelete: boolean;
+  canViewFinance: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDetail: (product: Product) => void;
   onRestock: (product: Product) => void;
 }
 
-const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onDelete, onDetail, onRestock }) => {
+const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, canViewFinance, onEdit, onDelete, onDetail, onRestock }) => {
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   const outOfStock = totalStock === 0;
 
@@ -50,7 +51,7 @@ const ProductCard: React.FC<Props> = ({ product, isAdmin, canDelete, onEdit, onD
         <p style={{ margin: "0 0 2px", fontWeight: 800, fontSize: "1.1rem", color: "var(--ion-color-primary)" }}>
           {fmtK(product.price)} ກີບ
         </p>
-        {product.costPrice != null && product.costPrice > 0 && (
+        {canViewFinance && product.costPrice != null && product.costPrice > 0 && (
           <p style={{ margin: "0 0 6px", fontSize: "0.72rem", color: "var(--app-success)", fontWeight: 600 }}>
             ກຳໄລ {fmtK(product.price - product.costPrice)} ກີບ
           </p>

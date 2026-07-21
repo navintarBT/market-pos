@@ -60,6 +60,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
 
   const isAdmin = permissions.canManageProducts;
   const isOwner = role === "customer";
+  const canViewFinance = isOwner || permissions.canViewFinance;
 
   const alertCount = useMemo(() =>
     products.filter((p) => p.variants.some((v) => v.stock <= (v.minStock ?? 5))).length,
@@ -229,7 +230,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                 <IonRow>
                   {filtered.map((p) => (
                     <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
-                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
+                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} canViewFinance={canViewFinance} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
                     </IonCol>
                   ))}
                 </IonRow>
@@ -264,6 +265,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
 
       <ProductDetailSheet
         product={detailProduct}
+        canViewFinance={canViewFinance}
         onDismiss={() => setDetailProduct(null)}
       />
 
@@ -283,6 +285,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
       <InventoryReportSheet
         isOpen={inventoryOpen}
         products={products}
+        canViewFinance={canViewFinance}
         onDismiss={() => setInventoryOpen(false)}
       />
 

@@ -38,6 +38,7 @@ const PERM_LABELS: { key: keyof StaffPermissions; label: string; icon: string }[
   { key: "canEditCartPrice", label: "ແກ້ໄຂລາຄາໃນກະຕ່າ", icon: "✏️" },
   { key: "canDeleteSales", label: "ລຶບປະຫວັດການຂາຍ", icon: "🗑️" },
   { key: "canAddExpenses", label: "ຈັດການລາຍຈ່າຍ & ລາຍຮັບ (ເພີ່ມ / ແກ້ໄຂ / ລຶບ)", icon: "💸" },
+  { key: "canViewFinance", label: "ເບິ່ງຂໍ້ມູນການເງິນ (ຕົ້ນທຶນ, ກຳໄລ, ກະເປົາເງິນ)", icon: "💰" },
 ];
 
 const DEFAULT_PERMS: StaffPermissions = {
@@ -45,6 +46,7 @@ const DEFAULT_PERMS: StaffPermissions = {
   canEditCartPrice: false,
   canDeleteSales: false,
   canAddExpenses: false,
+  canViewFinance: false,
 };
 
 function PermCheckbox({

@@ -72,7 +72,8 @@ const EXPENSE_PAYMENT_OPTIONS = ["cash", "transfer"] as const;
 const INCOME_PAYMENT_OPTIONS = ["cash", "transfer", "cod"] as const;
 
 const Finance: React.FC = () => {
-  const { shopId, permissions, features } = useAuth();
+  const { shopId, role, permissions, features } = useAuth();
+  const canViewFinance = role === "customer" || permissions.canViewFinance;
 
   const [section, setSection] = useState<"menu" | "shopExpense" | "ledger">("menu");
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
@@ -373,7 +374,7 @@ const Finance: React.FC = () => {
                 padding: "20px 18px",
                 borderRadius: 18,
                 border: "none",
-                background: "linear-gradient(135deg, var(--app-danger), var(--app-danger))",
+                background: "linear-gradient(135deg, var(--app-danger), #b91c1c)",
                 boxShadow: "0 6px 20px rgba(239,68,68,0.3)",
                 cursor: "pointer",
                 textAlign: "left",
@@ -389,7 +390,7 @@ const Finance: React.FC = () => {
               <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
             </button>
 
-            {features.ledgerEnabled && (
+            {features.ledgerEnabled && canViewFinance && (
               <button
                 onClick={() => setSection("ledger")}
                 style={{
@@ -478,8 +479,8 @@ const Finance: React.FC = () => {
           <div
             style={{
               background: isExpTab
-                ? "linear-gradient(135deg, var(--app-danger), var(--app-danger))"
-                : "linear-gradient(135deg, var(--app-success), var(--app-success))",
+                ? "linear-gradient(135deg, var(--app-danger), #b91c1c)"
+                : "linear-gradient(135deg, var(--app-success), #15803d)",
               borderRadius: 20,
               padding: "18px 20px",
               marginBottom: 16,

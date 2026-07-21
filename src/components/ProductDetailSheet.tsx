@@ -8,14 +8,15 @@ import { fmtK } from "../utils/format";
 
 interface Props {
   product: Product | null;
+  canViewFinance: boolean;
   onDismiss: () => void;
 }
 
-const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
+const ProductDetailSheet: React.FC<Props> = ({ product, canViewFinance, onDismiss }) => {
   if (!product) return null;
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
-  const hasCost = product.costPrice != null && product.costPrice > 0;
+  const hasCost = canViewFinance && product.costPrice != null && product.costPrice > 0;
   const profit = hasCost ? product.price - (product.costPrice ?? 0) : 0;
 
   return (
@@ -84,9 +85,9 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
             </div>
             {hasCost && (
               <>
-                <div style={{ background: "#fef3c7", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ background: "var(--app-cost-surface)", borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ margin: 0, fontSize: "0.65rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>ຕົ້ນທຶນ</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "#92400e" }}>
+                  <p style={{ margin: "4px 0 0", fontSize: "1.15rem", fontWeight: 800, color: "var(--app-cost)" }}>
                     {fmtK(product.costPrice ?? 0)} ກີບ
                   </p>
                 </div>
@@ -134,7 +135,7 @@ const ProductDetailSheet: React.FC<Props> = ({ product, onDismiss }) => {
                   <div style={{ textAlign: "right" }}>
                     <span style={{
                       fontSize: "0.8rem", fontWeight: 700,
-                      color: empty ? "var(--app-danger)" : low ? "#92400e" : "var(--app-success)",
+                      color: empty ? "var(--app-danger)" : low ? "var(--app-warning)" : "var(--app-success)",
                     }}>
                       {empty ? "ໝົດ" : v.stock}
                     </span>

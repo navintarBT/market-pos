@@ -74,7 +74,8 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile } = useAuth();
+  const { shopId, role, permissions, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile } = useAuth();
+  const canViewFinance = role === "customer" || permissions.canViewFinance;
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
 
@@ -294,7 +295,7 @@ const MainTabs: React.FC = () => {
             <IonIcon icon={walletOutline} />
             <IonLabel>ການເງິນ</IonLabel>
           </IonTabButton>
-          {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && (
+          {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && canViewFinance && (
             <IonTabButton tab="summary" href="/tabs/summary">
               <IonIcon icon={barChartOutline} />
               <IonLabel>ສະຫຼຸບ</IonLabel>

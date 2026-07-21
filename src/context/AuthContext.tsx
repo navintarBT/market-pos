@@ -22,6 +22,7 @@ const OWNER_PERMISSIONS: StaffPermissions = {
   canEditCartPrice: true,
   canDeleteSales: true,
   canAddExpenses: true,
+  canViewFinance: true,
 };
 
 const DEFAULT_FEATURES: ShopFeatures = {
@@ -82,6 +83,7 @@ const NO_PERMISSIONS: StaffPermissions = {
   canEditCartPrice: false,
   canDeleteSales: false,
   canAddExpenses: false,
+  canViewFinance: false,
 };
 
 const BLANK_STATE: AuthState = {
@@ -120,6 +122,7 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
         canEditCartPrice: sp?.canEditCartPrice ?? false,
         canDeleteSales: sp?.canDeleteSales ?? false,
         canAddExpenses: sp?.canAddExpenses ?? false,
+        canViewFinance: sp?.canViewFinance ?? false,
       };
       const dn = su?.displayName as string | undefined;
       if (dn) displayName = dn;

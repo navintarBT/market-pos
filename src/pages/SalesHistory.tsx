@@ -186,7 +186,7 @@ const SalesHistory: React.FC = () => {
   const totalCost = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const grossProfit = totalRevenue - totalCost;
-  const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
+  const hasCostData = (isOwner || permissions.canViewFinance) && sales.some((sale) => sale.items.some((item) => item.costPrice));
   const lossTotal = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {
       if (!item.isGift && item.costPrice != null && item.unitPrice < item.costPrice) {
@@ -904,7 +904,7 @@ const SalesHistory: React.FC = () => {
               const saleCost = selectedSale.items.reduce(
                 (s, i) => s + (i.costPrice != null ? i.costPrice * i.quantity : 0), 0
               );
-              const hasCostData = selectedSale.items.some((i) => i.costPrice != null);
+              const hasCostData = (isOwner || permissions.canViewFinance) && selectedSale.items.some((i) => i.costPrice != null);
               const saleProfit = selectedSale.total - saleCost;
               const lossItems = selectedSale.items.filter(
                 (i) => !i.isGift && i.costPrice != null && i.unitPrice < i.costPrice

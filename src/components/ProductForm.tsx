@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
-  IonContent, IonItem, IonLabel, IonInput, IonNote, IonIcon,
+  IonContent, IonItem, IonLabel, IonInput, IonIcon,
   IonList, IonListHeader, IonText, IonSpinner, IonAlert,
 } from "@ionic/react";
 import { addOutline, trashOutline, chevronDownOutline, checkmarkOutline, closeOutline, createOutline } from "ionicons/icons";
@@ -54,6 +54,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   const [manageCatMode, setManageCatMode] = useState(false);
   const [editCatTarget, setEditCatTarget] = useState<Category | null>(null);
   const [deleteCatTarget, setDeleteCatTarget] = useState<Category | null>(null);
+  const contentRef = useRef<HTMLIonContentElement>(null);
   const [deleteVariantIdx, setDeleteVariantIdx] = useState<number | null>(null);
   const [catError, setCatError] = useState<string | null>(null);
 
@@ -203,7 +204,13 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
     setErrors(newErrors);
 
     const hasBlocker = newErrors.name || newErrors.price || newErrors.cost || newErrors.variantsMsg;
-    if (hasBlocker) return;
+    if (hasBlocker) {
+      // The blocking field(s) can be scrolled out of view (e.g. user is down
+      // at the variants section when ຊື່ສິນຄ້າ up top is still empty), which
+      // otherwise makes clicking ບັນທຶກ look like it silently did nothing.
+      contentRef.current?.scrollToTop(300);
+      return;
+    }
 
     setBusy(true);
     try {
@@ -264,7 +271,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="ion-padding">
+      <IonContent className="ion-padding" ref={contentRef}>
 
         {/* Image */}
         <div style={{ marginBottom: 16 }}>
@@ -279,15 +286,16 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
         {/* Name */}
         <IonList lines="full">
-          <IonItem className={errors.name ? "ion-invalid ion-touched" : ""}>
-            <IonLabel position="stacked">ຊື່ສິນຄ້າ *</IonLabel>
+          <IonItem>
+            <IonLabel position="stacked" color={errors.name ? "danger" : undefined}>ຊື່ສິນຄ້າ *</IonLabel>
             <IonInput
               value={name}
               onIonInput={(e) => { setName(e.detail.value ?? ""); clearFieldError("name"); }}
               placeholder="ເຊັ່ນ: ເສື້ອຍືດ oversize"
+              style={{ borderBottom: `2px solid ${errors.name ? "var(--app-danger)" : "transparent"}` }}
             />
-            {errors.name && <IonNote slot="error">{errors.name}</IonNote>}
           </IonItem>
+          {errors.name && <p style={{ ...errText, paddingLeft: 16 }}>{errors.name}</p>}
           <IonItem button detail={false} onClick={() => setCatPickerOpen(true)}>
             <IonLabel position="stacked">ໝວດໝູ່</IonLabel>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 0 8px" }}>

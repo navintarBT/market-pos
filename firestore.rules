@@ -28,6 +28,11 @@ service cloud.firestore {
           isShopOwner(resource.data.shopId)
           && resource.data.role == 'staff'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'updatedAt'])
+        )
+        || (
+          // Self-service: any user may set their own profile photo.
+          request.auth != null && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profileUrl', 'updatedAt'])
         );
       allow delete: if isControlAdmin()
         || (
@@ -90,9 +95,18 @@ service cloud.firestore {
       );
 
       match /products/{productId} {
-        allow read:           if isControlAdmin() || isShopMember(shopId);
-        allow create, update: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
-        allow delete:         if isShopOwner(shopId);
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        // Selling (recordSale) and cancelling/editing a sale (deleteSale,
+        // removeItemFromSale) adjust product stock as part of their
+        // transaction even though neither action is "managing products" —
+        // any shop member may update ONLY `variants` (stock) for that;
+        // changing name/price/cost/photo/category still needs
+        // canManageProducts.
+        allow update: if isShopOwner(shopId)
+          || hasStaffPermission(shopId, 'canManageProducts')
+          || (isShopMember(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['variants']));
+        allow delete: if isShopOwner(shopId);
       }
 
       match /sales/{saleId} {
@@ -168,6 +182,10 @@ service cloud.firestore {
       match /users/{uid} {
         allow read:  if isControlAdmin() || isShopMember(shopId);
         allow write: if isControlAdmin() || isShopOwner(shopId);
+        // Self-service: any shop member may set their own profile photo on
+        // their own nested record (the denormalized copy the staff list reads).
+        allow update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profileUrl', 'updatedAt']);
       }
 
       match /transfers/{transferId} {

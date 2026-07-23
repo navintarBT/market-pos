@@ -54,6 +54,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   const [manageCatMode, setManageCatMode] = useState(false);
   const [editCatTarget, setEditCatTarget] = useState<Category | null>(null);
   const [deleteCatTarget, setDeleteCatTarget] = useState<Category | null>(null);
+  const [deleteVariantIdx, setDeleteVariantIdx] = useState<number | null>(null);
   const [catError, setCatError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -439,7 +440,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   placeholder="5"
                   style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "var(--app-surface)", color: "var(--ion-text-color)", fontSize: "1rem" }}
                 />
-                <IonButton fill="clear" color="danger" onClick={() => removeVariant(i)}
+                <IonButton fill="clear" color="danger" onClick={() => setDeleteVariantIdx(i)}
                   disabled={variants.length === 1} style={{ minHeight: 44, minWidth: 44, margin: 0 }}>
                   <IonIcon slot="icon-only" icon={trashOutline} />
                 </IonButton>
@@ -506,6 +507,28 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         { text: "ລຶບ", role: "destructive", handler: handleDeleteCategory },
       ]}
       onDidDismiss={() => setDeleteCatTarget(null)}
+    />
+
+    <IonAlert
+      isOpen={deleteVariantIdx !== null}
+      header="ລຶບ Variant"
+      message={(() => {
+        const v = variants[deleteVariantIdx ?? -1];
+        const label = v && (v.size.trim() || v.color.trim()) ? `${v.size} / ${v.color}` : `ລາຍການທີ ${(deleteVariantIdx ?? 0) + 1}`;
+        return `ຕ້ອງການລຶບ "${label}" ແມ່ນບໍ່?`;
+      })()}
+      buttons={[
+        { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteVariantIdx(null) },
+        {
+          text: "ລຶບ",
+          role: "destructive",
+          handler: () => {
+            if (deleteVariantIdx !== null) removeVariant(deleteVariantIdx);
+            setDeleteVariantIdx(null);
+          },
+        },
+      ]}
+      onDidDismiss={() => setDeleteVariantIdx(null)}
     />
 
     {/* Category picker sheet */}

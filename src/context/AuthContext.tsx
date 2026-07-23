@@ -43,6 +43,7 @@ interface AuthState {
   permissions: StaffPermissions;
   features: ShopFeatures;
   shopProfile: ShopProfile | null;
+  myProfileUrl: string | null;
   availableShops: { id: string; name: string; profileUrl?: string }[];
   needsShopPick: boolean;
 }
@@ -53,6 +54,7 @@ interface AuthContextValue extends AuthState {
   switchShop: (shopId: string) => Promise<void>;
   showShopPicker: () => void;
   setShopProfile: (profile: ShopProfile) => void;
+  setMyProfileUrl: (url: string | null) => void;
 }
 
 function parseTenant(data: Record<string, unknown>): TenantInfo {
@@ -90,7 +92,7 @@ const BLANK_STATE: AuthState = {
   user: null, shopId: null, role: null, displayName: "",
   tenant: null, blocked: false, loading: false,
   permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
-  shopProfile: null, availableShops: [], needsShopPick: false,
+  shopProfile: null, myProfileUrl: null, availableShops: [], needsShopPick: false,
 };
 
 async function loadShopData(user: User, userData: Record<string, unknown>, shopId: string) {
@@ -168,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDoc(doc(db, "users", user.uid));
       const data = snap.data();
       const role = data?.role as string | undefined;
+      const myProfileUrl = (data?.profileUrl as string | undefined) ?? null;
 
       if (!data || !["customer", "staff"].includes(role ?? "")) {
         await firebaseSignOut(auth);
@@ -214,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
-          shopProfile: shopData.shopProfile,
+          shopProfile: shopData.shopProfile, myProfileUrl,
           availableShops, needsShopPick: false,
         });
         return;
@@ -228,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId: saved, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
-          shopProfile: shopData.shopProfile,
+          shopProfile: shopData.shopProfile, myProfileUrl,
           availableShops, needsShopPick: false,
         });
         return;
@@ -239,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user, shopId: null, role: role as "customer" | "staff", displayName: user.email ?? "",
         tenant: null, blocked: false, loading: false,
         permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
-        shopProfile: null,
+        shopProfile: null, myProfileUrl,
         availableShops, needsShopPick: true,
       });
     });
@@ -259,6 +262,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, loading: true }));
     const snap = await getDoc(doc(db, "users", state.user!.uid));
     const userData = (snap.data() ?? {}) as Record<string, unknown>;
+    const myProfileUrl = (userData.profileUrl as string | undefined) ?? null;
     const shopData = await loadShopData(state.user!, userData, shopId);
     localStorage.setItem(savedShopKey(state.user!.uid), shopId);
     setState(prev => ({
@@ -272,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       permissions: shopData.permissions,
       features: shopData.features,
       shopProfile: shopData.shopProfile,
+      myProfileUrl,
       needsShopPick: false,
     }));
   }
@@ -284,8 +289,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, shopProfile: profile }));
   }
 
+  function setMyProfileUrl(url: string | null) {
+    setState(prev => ({ ...prev, myProfileUrl: url }));
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker, setShopProfile }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker, setShopProfile, setMyProfileUrl }}>
       {children}
     </AuthContext.Provider>
   );

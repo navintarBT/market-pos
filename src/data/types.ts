@@ -92,6 +92,7 @@ export interface ShopUser {
   email: string;
   role: "customer" | "staff";
   displayName?: string;
+  profileUrl?: string;
   createdAt?: Date;
   permissions?: StaffPermissions;
 }

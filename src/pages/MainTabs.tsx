@@ -26,6 +26,7 @@ import {
   warningOutline,
   logOutOutline,
   peopleOutline,
+  personCircleOutline,
   walletOutline,
   shirtOutline,
   timeOutline,
@@ -34,6 +35,7 @@ import {
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
+import MyProfileModal from "../components/MyProfileModal";
 
 const Sell = lazy(() => import("./Sell"));
 const Products = lazy(() => import("./Products"));
@@ -74,10 +76,11 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, permissions, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile } = useAuth();
+  const { shopId, role, permissions, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile, myProfileUrl } = useAuth();
   const canViewFinance = role === "customer" || permissions.canViewFinance;
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+  const [myProfileOpen, setMyProfileOpen] = useState(false);
 
   useEffect(() => {
     if (tenant && !tenant.isExpired && tenant.daysLeft !== null && tenant.daysLeft <= 7) {
@@ -115,8 +118,8 @@ const MainTabs: React.FC = () => {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 margin: "0 auto 12px",
               }}>
-                {shopProfile?.profileUrl ? (
-                  <img src={shopProfile.profileUrl} alt={shopProfile.name} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                {myProfileUrl || shopProfile?.profileUrl ? (
+                  <img src={myProfileUrl ?? shopProfile?.profileUrl} alt={shopProfile?.name ?? "profile"} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <IonIcon icon={businessOutline} style={{ fontSize: 32, color: "var(--ion-color-primary)" }} />
                 )}
@@ -164,6 +167,12 @@ const MainTabs: React.FC = () => {
                 ບັນຊີ
               </div>
               <IonList lines="none">
+                <IonMenuToggle autoHide={false}>
+                  <IonItem button detail={false} onClick={() => setMyProfileOpen(true)} style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                    <IonIcon slot="start" icon={personCircleOutline} color="primary" />
+                    <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຂ້ອຍ</IonLabel>
+                  </IonItem>
+                </IonMenuToggle>
                 {availableShops.length > 1 && (
                   <IonMenuToggle autoHide={false}>
                     <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "var(--app-accent-surface)" }}>
@@ -191,6 +200,8 @@ const MainTabs: React.FC = () => {
           </div>
         </IonContent>
       </IonMenu>
+
+      <MyProfileModal isOpen={myProfileOpen} onDismiss={() => setMyProfileOpen(false)} />
 
       <IonModal
         isOpen={showExpiryAlert}

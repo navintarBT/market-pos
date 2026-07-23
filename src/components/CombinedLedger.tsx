@@ -277,9 +277,14 @@ export default function CombinedLedger({ shops, onBack }: Props) {
   const transferBalance = scopedShopIds.reduce((s, id) => s + (walletByShop[id]?.transferBalance ?? 0), 0);
   const codOutstanding = scopedShopIds.reduce((s, id) => s + (walletByShop[id]?.codOutstanding ?? 0), 0);
 
-  const expTotal = scopedExpenses.reduce((s, e) => s + e.amount, 0);
-  const expCash = scopedExpenses.filter((e) => (e.paymentType ?? "cash") === "cash").reduce((s, e) => s + e.amount, 0);
-  const expTransfer = scopedExpenses.filter((e) => e.paymentType === "transfer").reduce((s, e) => s + e.amount, 0);
+  // Matches the category chip (ທັງໝົດ/ຮ້ານ/ທຶນ/ສ່ວນຕົວ) so the summary card
+  // total always reflects whichever filter is selected, instead of always
+  // summing every category regardless of the filter.
+  const visibleExpenses = expCatFilter === "all" ? scopedExpenses : scopedExpenses.filter((e) => e.category === expCatFilter);
+
+  const expTotal = visibleExpenses.reduce((s, e) => s + e.amount, 0);
+  const expCash = visibleExpenses.filter((e) => (e.paymentType ?? "cash") === "cash").reduce((s, e) => s + e.amount, 0);
+  const expTransfer = visibleExpenses.filter((e) => e.paymentType === "transfer").reduce((s, e) => s + e.amount, 0);
 
   const incTotal = scopedIncomes.reduce((s, i) => s + i.amount, 0);
   const incCash = scopedIncomes.filter((i) => i.paymentType === "cash").reduce((s, i) => s + i.amount, 0);
@@ -288,7 +293,6 @@ export default function CombinedLedger({ shops, onBack }: Props) {
 
   const isExpTab = activeTab === "expense";
   const loading = isExpTab ? expLoading : incLoading;
-  const visibleExpenses = expCatFilter === "all" ? scopedExpenses : scopedExpenses.filter((e) => e.category === expCatFilter);
 
   return (
     <IonPage>

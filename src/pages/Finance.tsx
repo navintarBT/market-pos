@@ -151,7 +151,7 @@ const Finance: React.FC = () => {
     loadExpenses();
     loadIncomes();
     loadWallet();
-  });
+  }, [loadExpenses, loadIncomes, loadWallet]);
 
   useEffect(() => {
     loadExpenses();
@@ -303,7 +303,14 @@ const Finance: React.FC = () => {
   // ── Computed totals ──────────────────────────────────────────────────────
 
   const shopOnlyExpenses = expenses.filter((e) => e.category === "shop");
-  const expenseBase = section === "shopExpense" ? shopOnlyExpenses : expenses;
+  // Matches `visibleExpenses` below exactly, so the summary card total always
+  // reflects whichever category chip (ທັງໝົດ/ຮ້ານ/ທຶນ/ສ່ວນຕົວ) is selected,
+  // instead of always summing every category regardless of the filter.
+  const expenseBase = section === "shopExpense"
+    ? shopOnlyExpenses
+    : expCatFilter === "all"
+      ? expenses
+      : expenses.filter((e) => e.category === expCatFilter);
 
   const expTotal = expenseBase.reduce((s, e) => s + e.amount, 0);
   const expCash = expenseBase
@@ -326,11 +333,7 @@ const Finance: React.FC = () => {
 
   const isExpTab = section === "shopExpense" ? true : activeTab === "expense";
   const loading = isExpTab ? expLoading : incLoading;
-  const visibleExpenses = section === "shopExpense"
-    ? shopOnlyExpenses
-    : expCatFilter === "all"
-      ? expenses
-      : expenses.filter((e) => e.category === expCatFilter);
+  const visibleExpenses = expenseBase;
 
   return (
     <IonPage>

@@ -126,7 +126,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
     }
   }, [shopId]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
 
   function handleEdit() {
     setName(shop?.name ?? "");

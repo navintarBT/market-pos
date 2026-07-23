@@ -62,7 +62,7 @@ const Sell: React.FC = () => {
     }
   }, [shopId]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {

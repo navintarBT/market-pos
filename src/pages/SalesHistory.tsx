@@ -95,7 +95,7 @@ const SalesHistory: React.FC = () => {
     }
   }, [shopId, fromDate, toDate]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {

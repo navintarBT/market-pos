@@ -134,7 +134,7 @@ const StaffSettings: React.FC = () => {
     load();
     setShowForm(false);
     setEditingId(null);
-  });
+  }, [load]);
 
   function handleOpenForm() {
     setStaffName(""); setStaffEmail(""); setStaffPassword("");
@@ -354,12 +354,16 @@ const StaffSettings: React.FC = () => {
                     <div key={user.id}>
                       <IonItem lines="none" style={{ "--background": "var(--ion-item-background, #ffffff)", "--padding-bottom": "6px", "--padding-top": "6px" }}>
                         <div slot="start" style={{
-                          width: 38, height: 38, borderRadius: 12,
+                          width: 38, height: 38, borderRadius: 12, overflow: "hidden", flexShrink: 0,
                           background: user.role === "customer" ? "var(--app-accent-surface)" : "#ccfbf1",
                           color: user.role === "customer" ? "#c2410c" : "#0f766e",
                           display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
                         }}>
-                          {(user.displayName || user.email).slice(0, 1).toUpperCase()}
+                          {user.profileUrl ? (
+                            <img src={user.profileUrl} alt={user.displayName || user.email} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            (user.displayName || user.email).slice(0, 1).toUpperCase()
+                          )}
                         </div>
                         <IonLabel>
                           <h3 style={{ fontWeight: 800 }}>{user.displayName || user.email}</h3>

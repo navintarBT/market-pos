@@ -148,7 +148,7 @@ const Summary: React.FC = () => {
     if (showMonthly) loadMonthly();
     if (showFinanceSummary) loadFinance();
     loadWallet();
-  });
+  }, [showToday, showMonthly, showFinanceSummary, loadToday, loadMonthly, loadFinance, loadWallet]);
 
   async function handleRefresh(e: CustomEvent) {
     await Promise.all([
@@ -231,6 +231,7 @@ const Summary: React.FC = () => {
   const finIncomeCod      = finIncomes.filter(i => i.paymentType === "cod").reduce((s, i) => s + i.amount, 0);
 
   const finExpenseTotal    = finExpenses.reduce((s, e) => s + e.amount, 0);
+  const finExpenseShop     = finExpenses.filter(e => e.category === "shop").reduce((s, e) => s + e.amount, 0);
   const finExpenseBusiness = finExpenses.filter(e => e.category === "capital").reduce((s, e) => s + e.amount, 0);
   const finExpensePersonal = finExpenses.filter(e => e.category === "general").reduce((s, e) => s + e.amount, 0);
 
@@ -263,7 +264,7 @@ const Summary: React.FC = () => {
       { id: "sales" as SubSection, icon: "💰", label: "ຍອດຂາຍ", color: "var(--ion-color-primary)", bg: "var(--app-accent-surface)" },
       { id: "inventory" as SubSection, icon: "📦", label: "ຍອດເງິນຄ້າງ", color: "var(--app-warning)", bg: "var(--app-cost-surface)" },
       ...(showMonthly ? [{
-        id: "returns" as SubSection, icon: "↩️", label: "ຍອດຕີກັບ", color: "var(--app-danger)", bg: "var(--app-danger-surface)",
+        id: "returns" as SubSection, icon: "📊", label: "ສະຫຼຸບລວມ", color: "var(--app-danger)", bg: "var(--app-danger-surface)",
       }] : []),
     ];
 
@@ -629,9 +630,13 @@ const Summary: React.FC = () => {
                       <p style={{ margin: "0 0 6px", fontSize: "0.73rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                         ລາຍຈ່າຍແຍກຕາມປະເພດ
                       </p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 10 }}>
+                        <div style={{ background: "var(--app-cost-surface)", borderRadius: 9, padding: "7px 8px" }}>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏪 ລາຍຈ່າຍຮ້ານ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-cost)" }}>{fmtK(finExpenseShop)} ກີບ</p>
+                        </div>
                         <div style={{ background: "var(--app-info-surface)", borderRadius: 9, padding: "7px 8px" }}>
-                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏪 ທຸລະກິດ</p>
+                          <p style={{ margin: 0, fontSize: "0.63rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>💼 ທຶນທຸລະກິດ</p>
                           <p style={{ margin: "2px 0 0", fontSize: "0.84rem", fontWeight: 800, color: "var(--app-info)" }}>{fmtK(finExpenseBusiness)} ກີບ</p>
                         </div>
                         <div style={{ background: "var(--app-accent-surface)", borderRadius: 9, padding: "7px 8px" }}>

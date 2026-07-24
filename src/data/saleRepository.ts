@@ -2,7 +2,7 @@ import {
   collection,
   doc,
   deleteDoc,
-  getDoc,
+  getDocFromCache,
   getDocs,
   query,
   orderBy,
@@ -56,6 +56,14 @@ export async function recordSale(
   sellerUid: string,
   sellerName: string
 ): Promise<string> {
+  // Check connectivity up front — a transaction attempted with zero network
+  // (e.g. airplane mode) doesn't reliably reject, it can hang indefinitely
+  // waiting for a connection that isn't coming, leaving the UI stuck on a
+  // spinner forever instead of ever reaching the catch block below.
+  if (!navigator.onLine) {
+    return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName);
+  }
+
   try {
     return await runTransaction(db, async (tx) => {
       const changes = buildStockChanges(items);
@@ -129,7 +137,15 @@ async function recordSaleProvisional(
 
   for (const [productId, productChanges] of byProduct) {
     const productRef = doc(productsCol(shopId), productId);
-    const snap = await getDoc(productRef);
+    let snap;
+    try {
+      // Read straight from the local cache — a plain getDoc() tries the
+      // server first and can hang the same way the transaction did if the
+      // client hasn't yet realized it's offline.
+      snap = await getDocFromCache(productRef);
+    } catch {
+      continue; // never cached locally — can't adjust its stock offline
+    }
     if (snap.exists()) {
       const variants: any[] = [...(snap.data().variants ?? [])];
       for (const ch of productChanges) {
@@ -153,7 +169,12 @@ async function recordSaleProvisional(
     provisional: true, // flag for reconciliation
   });
 
-  await batch.commit();
+  // Don't await: the write already applies to the local cache synchronously
+  // (that's what makes it show up in the UI), but commit()'s promise only
+  // resolves once the server acknowledges it — which, while offline, can
+  // take until the next reconnect. Awaiting it here would hang the checkout
+  // UI the same way the transaction did.
+  batch.commit().catch(() => {});
   return saleRef.id;
 }
 

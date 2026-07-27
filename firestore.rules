@@ -81,11 +81,20 @@ service cloud.firestore {
     }
 
     // ── Shops ─────────────────────────────────────────────────────────────
+    // Every write below (except pure control-admin actions) also requires
+    // isTenantActive(shopId) — a shop that's suspended/cancelled/expired can
+    // still be READ (so an owner can view/export their own history) but
+    // can't keep recording sales, adding products, etc. Reads stay open on
+    // purpose; only the "keep running the business" actions are gated.
+    // This closes the gap where the app's own "blocked" screen was a
+    // client-side-only check that anyone talking to Firestore directly
+    // (bypassing the app) could ignore.
     match /shops/{shopId} {
       allow read: if isControlAdmin() || isShopMember(shopId);
       allow create, delete: if isControlAdmin();
       allow update: if isControlAdmin() || (
-        isShopOwner(shopId)
+        isTenantActive(shopId)
+        && isShopOwner(shopId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'profileUrl', 'updatedAt'])
         && request.resource.data.name is string
         && (
@@ -96,103 +105,121 @@ service cloud.firestore {
 
       match /products/{productId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        allow create: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'));
         // Selling (recordSale) and cancelling/editing a sale (deleteSale,
         // removeItemFromSale) adjust product stock as part of their
         // transaction even though neither action is "managing products" —
         // any shop member may update ONLY `variants` (stock) for that;
         // changing name/price/cost/photo/category still needs
         // canManageProducts.
-        allow update: if isShopOwner(shopId)
+        allow update: if isTenantActive(shopId) && (
+          isShopOwner(shopId)
           || hasStaffPermission(shopId, 'canManageProducts')
-          || (isShopMember(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['variants']));
-        allow delete: if isShopOwner(shopId);
+          || (isShopMember(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['variants']))
+        );
+        allow delete: if isTenantActive(shopId) && isShopOwner(shopId);
       }
 
       match /sales/{saleId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if isShopMember(shopId) && validSale(request.resource.data);
+        allow create: if isTenantActive(shopId) && isShopMember(shopId) && validSale(request.resource.data);
         // Price edit / split-price / partial item removal (SalesHistory) only ever
         // touch `items` + `total` — mirrors the UI gate (canEditCartPrice for price
         // edits, canDeleteSales for item removal); everything else on a recorded
         // sale (paymentType, sellerUid, createdAt, ...) stays immutable.
         allow update: if (
             isControlAdmin()
-            || isShopOwner(shopId)
-            || (isShopMember(shopId) && (hasStaffPermission(shopId, 'canEditCartPrice') || hasStaffPermission(shopId, 'canDeleteSales')))
+            || (isTenantActive(shopId) && (
+              isShopOwner(shopId)
+              || (isShopMember(shopId) && (hasStaffPermission(shopId, 'canEditCartPrice') || hasStaffPermission(shopId, 'canDeleteSales')))
+            ))
           )
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'total'])
           && request.resource.data.total is number
           && request.resource.data.total >= 0;
         allow delete: if isControlAdmin()
-          || isShopOwner(shopId)
-          || (isShopMember(shopId) && hasStaffPermission(shopId, 'canDeleteSales'));
+          || (isTenantActive(shopId) && (
+            isShopOwner(shopId)
+            || (isShopMember(shopId) && hasStaffPermission(shopId, 'canDeleteSales'))
+          ));
       }
 
       match /expenses/{expenseId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+        allow create: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'createdAt'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+        allow update: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow delete: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses');
+        allow delete: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'));
       }
 
       match /incomes/{incomeId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+        allow create: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType', 'createdAt'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.paymentType in ['cash', 'transfer', 'cod'];
-        allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+        allow update: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
           && request.resource.data.keys().hasAll(['description', 'amount', 'paymentType'])
           && request.resource.data.amount is number
           && request.resource.data.amount > 0;
-        allow delete: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses');
+        allow delete: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'));
       }
 
       match /categories/{categoryId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'))
+        allow create: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'))
           && request.resource.data.keys().hasAll(['name'])
           && request.resource.data.name is string;
-        allow update: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'))
+        allow update: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'))
           && request.resource.data.name is string;
-        allow delete: if isShopOwner(shopId);
+        allow delete: if isTenantActive(shopId) && isShopOwner(shopId);
       }
 
       match /bundles/{bundleId} {
         allow read:           if isControlAdmin() || isShopMember(shopId);
-        allow create, update: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
-        allow delete:         if isShopOwner(shopId);
+        allow create, update: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'));
+        allow delete:         if isTenantActive(shopId) && isShopOwner(shopId);
       }
 
       match /returns/{returnId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts')) && validReturn(request.resource.data);
+        allow create: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'))
+          && validReturn(request.resource.data);
         allow update: if false;
-        allow delete: if isControlAdmin() || isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        allow delete: if isControlAdmin()
+          || (isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts')));
       }
 
       match /users/{uid} {
         allow read:  if isControlAdmin() || isShopMember(shopId);
-        allow write: if isControlAdmin() || isShopOwner(shopId);
+        allow write: if isControlAdmin() || (isTenantActive(shopId) && isShopOwner(shopId));
         // Self-service: any shop member may set their own profile photo on
         // their own nested record (the denormalized copy the staff list reads).
+        // Not gated on tenant status — a harmless personal action, not "running
+        // the business."
         allow update: if request.auth != null && request.auth.uid == uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profileUrl', 'updatedAt']);
       }
 
       match /transfers/{transferId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
-        allow create: if isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        allow create: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'));
         allow update: if false;
-        allow delete: if isControlAdmin() || isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts');
+        allow delete: if isControlAdmin()
+          || (isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts')));
       }
     }
 
@@ -229,6 +256,27 @@ service cloud.firestore {
       return request.auth != null
         && exists(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid)).data.permissions[key] == true;
+    }
+
+    // Mirrors parseTenant() in AuthContext.tsx: blocked if status is
+    // suspended/cancelled, or if the relevant expiry timestamp
+    // (trialEndsAt for trial, expiresAt otherwise) has passed. A tenant with
+    // no expiry field at all (e.g. an unlimited plan) is never expired on
+    // that basis. If the tenant doc is missing entirely, fail OPEN (treat as
+    // active) — matches the client's own default in AuthContext.tsx, so a
+    // shop that for some reason has no tenants/{shopId} doc doesn't get
+    // silently locked out of every write.
+    function isTenantActive(shopId) {
+      let path = /databases/$(database)/documents/tenants/$(shopId);
+      return !exists(path) || tenantNotExpired(get(path).data);
+    }
+
+    function tenantNotExpired(t) {
+      let expiry = t.status == 'trial' && ('trialEndsAt' in t)
+        ? t.trialEndsAt
+        : (('expiresAt' in t) ? t.expiresAt : null);
+      return t.status != 'suspended' && t.status != 'cancelled'
+        && (expiry == null || expiry > request.time);
     }
 
     function validSale(data) {

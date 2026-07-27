@@ -19,7 +19,7 @@ import {
   IonButtons,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { cartOutline, checkmarkOutline } from "ionicons/icons";
+import { cartOutline, checkmarkOutline, addOutline, removeOutline } from "ionicons/icons";
 import { IonMenuButton } from "@ionic/react";
 import { fmtK } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
@@ -35,7 +35,7 @@ import type { Bundle, BundleItem, Product, ProductVariant } from "../data/types"
 
 const Sell: React.FC = () => {
   const { shopId } = useAuth();
-  const { count, total, addItem } = useCart();
+  const { items, count, total, addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,7 @@ const Sell: React.FC = () => {
   const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
   const [bundlePickerTarget, setBundlePickerTarget] = useState<Bundle | null>(null);
   const [chosenVariants, setChosenVariants] = useState<Record<number, ProductVariant>>({});
+  const [bundleQty, setBundleQty] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
@@ -70,10 +71,37 @@ const Sell: React.FC = () => {
     (e.target as HTMLIonRefresherElement).complete();
   }
 
+  // Stock already sitting in the cart (as a plain item or inside a bundle)
+  // isn't sold yet, but it's spoken for — subtract it from what's shown as
+  // available so selling several bundles/products in one visit doesn't let
+  // the seller add more than what's actually left.
+  function reservedKey(productId: string, size: string, color: string) {
+    return `${productId}|${size}|${color}`;
+  }
+  const reserved = new Map<string, number>();
+  for (const item of items) {
+    if (item.isBundle && item.bundleItems) {
+      for (const bi of item.bundleItems) {
+        const key = reservedKey(bi.productId, bi.variantSize ?? "", bi.variantColor ?? "");
+        reserved.set(key, (reserved.get(key) ?? 0) + bi.quantity * item.quantity);
+      }
+    } else {
+      const key = reservedKey(item.productId, item.variant.size, item.variant.color);
+      reserved.set(key, (reserved.get(key) ?? 0) + item.quantity);
+    }
+  }
+  const productsEffective = products.map((p) => ({
+    ...p,
+    variants: p.variants.map((v) => {
+      const inCart = reserved.get(reservedKey(p.id, v.size, v.color)) ?? 0;
+      return inCart > 0 ? { ...v, stock: Math.max(0, v.stock - inCart) } : v;
+    }),
+  }));
+
   const categories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
   const filtered = activeCategory === "all"
-    ? products
-    : products.filter((p) => p.category === activeCategory);
+    ? productsEffective
+    : productsEffective.filter((p) => p.category === activeCategory);
 
   function handleAddToCart(items: { variant: ProductVariant; quantity: number }[]) {
     if (!pickerProduct) return;
@@ -93,12 +121,13 @@ const Sell: React.FC = () => {
   function openBundlePicker(bundle: Bundle) {
     setBundlePickerTarget(bundle);
     setChosenVariants({});
+    setBundleQty(1);
   }
 
   function confirmBundleToCart() {
     if (!bundlePickerTarget) return;
     const bundleItemsWithVariants: BundleItem[] = bundlePickerTarget.items.map((item, idx) => {
-      const p = products.find((x) => x.id === item.productId);
+      const p = productsEffective.find((x) => x.id === item.productId);
       const auto = p?.variants.length === 1 ? p.variants[0] : null;
       const chosen = auto ?? chosenVariants[idx];
       return { ...item, variantSize: chosen?.size ?? "", variantColor: chosen?.color ?? "" };
@@ -114,7 +143,7 @@ const Sell: React.FC = () => {
       productId: bundlePickerTarget.id,
       productName: bundlePickerTarget.name,
       variant: { size: "__bundle__", color: variantFingerprint, stock: 99 },
-      quantity: 1,
+      quantity: bundleQty,
       originalPrice: bundlePickerTarget.price,
       unitPrice: bundlePickerTarget.price,
       costPrice: costPrice > 0 ? costPrice : undefined,
@@ -126,7 +155,7 @@ const Sell: React.FC = () => {
 
   function isBundleAvailable(bundle: Bundle): boolean {
     for (const bi of bundle.items) {
-      const p = products.find((x) => x.id === bi.productId);
+      const p = productsEffective.find((x) => x.id === bi.productId);
       if (!p) return false;
       const hasStock = p.variants.some((v) => v.stock >= bi.quantity);
       if (!hasStock) return false;
@@ -136,11 +165,31 @@ const Sell: React.FC = () => {
 
   const allVariantsChosen = bundlePickerTarget !== null &&
     bundlePickerTarget.items.every((item, idx) => {
-      const p = products.find((x) => x.id === item.productId);
+      const p = productsEffective.find((x) => x.id === item.productId);
       if (!p) return false;
       if (p.variants.length === 1) return true;
       return !!chosenVariants[idx];
     });
+
+  // Most units of this bundle configuration buildable from what's left in
+  // stock right now (after subtracting what's already reserved in the cart).
+  function computeMaxBundleQty(): number {
+    if (!bundlePickerTarget) return 0;
+    let max = Infinity;
+    bundlePickerTarget.items.forEach((item, idx) => {
+      const p = productsEffective.find((x) => x.id === item.productId);
+      const autoVariant = p?.variants.length === 1 ? p.variants[0] : null;
+      const chosen = autoVariant ?? chosenVariants[idx] ?? null;
+      const stock = chosen?.stock ?? 0;
+      max = Math.min(max, Math.floor(stock / item.quantity));
+    });
+    return Number.isFinite(max) ? Math.max(0, max) : 0;
+  }
+  const maxBundleQty = computeMaxBundleQty();
+
+  useEffect(() => {
+    setBundleQty((q) => Math.min(Math.max(q, 1), Math.max(maxBundleQty, 1)));
+  }, [maxBundleQty]);
 
   function openCheckout() {
     setCartOpen(false);
@@ -472,7 +521,7 @@ const Sell: React.FC = () => {
               ເລືອກ variant ໃຫ້ແຕ່ລະສິນຄ້າໃນຊຸດ
             </p>
             {bundlePickerTarget?.items.map((item, idx) => {
-              const p = products.find((x) => x.id === item.productId);
+              const p = productsEffective.find((x) => x.id === item.productId);
               const autoVariant = p?.variants.length === 1 ? p.variants[0] : null;
               const chosen = autoVariant ?? chosenVariants[idx] ?? null;
               return (
@@ -498,7 +547,7 @@ const Sell: React.FC = () => {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {p?.variants.map((v, vi) => {
                         const isChosen = chosenVariants[idx]?.size === v.size && chosenVariants[idx]?.color === v.color;
-                        const outOfStock = v.stock < item.quantity;
+                        const outOfStock = v.stock < item.quantity * bundleQty;
                         return (
                           <button
                             key={vi}
@@ -532,13 +581,53 @@ const Sell: React.FC = () => {
 
         <IonFooter>
           <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
+            {allVariantsChosen && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ion-text-color)" }}>
+                  ຈຳນວນຊຸດ {maxBundleQty > 0 && <span style={{ color: "var(--app-text-secondary)", fontWeight: 400 }}>(ເຫຼືອເຮັດໄດ້ {maxBundleQty} ຊຸດ)</span>}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={() => setBundleQty((q) => Math.max(1, q - 1))}
+                    disabled={bundleQty <= 1}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      border: "1.5px solid var(--ion-color-step-150, var(--app-border))",
+                      background: bundleQty <= 1 ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: bundleQty <= 1 ? "not-allowed" : "pointer",
+                      color: bundleQty <= 1 ? "var(--ion-color-step-300, #d4d4d0)" : "var(--ion-text-color)",
+                    }}
+                  >
+                    <IonIcon icon={removeOutline} style={{ fontSize: 18 }} />
+                  </button>
+                  <span style={{ minWidth: 28, textAlign: "center", fontSize: "1.1rem", fontWeight: 700, color: "var(--ion-color-primary)" }}>
+                    {bundleQty}
+                  </span>
+                  <button
+                    onClick={() => setBundleQty((q) => Math.min(maxBundleQty, q + 1))}
+                    disabled={bundleQty >= maxBundleQty}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      border: `1.5px solid ${bundleQty >= maxBundleQty ? "var(--ion-color-step-150, var(--app-border))" : "var(--ion-color-primary)"}`,
+                      background: bundleQty >= maxBundleQty ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-color-primary)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: bundleQty >= maxBundleQty ? "not-allowed" : "pointer",
+                      color: bundleQty >= maxBundleQty ? "#d4d4d0" : "#fff",
+                    }}
+                  >
+                    <IonIcon icon={addOutline} style={{ fontSize: 18 }} />
+                  </button>
+                </div>
+              </div>
+            )}
             <IonButton
               expand="block"
-              disabled={!allVariantsChosen}
+              disabled={!allVariantsChosen || bundleQty < 1}
               onClick={confirmBundleToCart}
               style={{ minHeight: 52, "--border-radius": "14px" }}
             >
-              ເພີ່ມໃສ່ກະຕ່າ · {fmtK(bundlePickerTarget?.price ?? 0)} ກີບ
+              ເພີ່ມໃສ່ກະຕ່າ {bundleQty > 1 ? `${bundleQty} ຊຸດ · ` : "· "}{fmtK((bundlePickerTarget?.price ?? 0) * bundleQty)} ກີບ
             </IonButton>
           </div>
         </IonFooter>

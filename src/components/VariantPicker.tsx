@@ -93,6 +93,10 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
             const qty = qtys[key] ?? 0;
             const outOfStock = v.stock === 0;
             const selected = qty > 0;
+            // Live remaining after what's currently dialed in on the +/- stepper
+            // or typed into the qty box — not just the raw stock number — so
+            // the seller can see at a glance how much is left as they select.
+            const remaining = v.stock - qty;
 
             return (
               <div
@@ -119,10 +123,10 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                     display: "inline-block", marginTop: 4,
                     fontSize: "0.72rem", fontWeight: 600,
                     padding: "2px 8px", borderRadius: 20,
-                    background: outOfStock ? "rgba(220,38,38,0.12)" : v.stock <= (v.minStock ?? 5) ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                    color: outOfStock ? "var(--app-danger)" : v.stock <= (v.minStock ?? 5) ? "var(--app-warning)" : "var(--app-success)",
+                    background: outOfStock ? "rgba(220,38,38,0.12)" : remaining <= (v.minStock ?? 5) ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
+                    color: outOfStock ? "var(--app-danger)" : remaining <= (v.minStock ?? 5) ? "var(--app-warning)" : "var(--app-success)",
                   }}>
-                    {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock} ຊິ້ນ`}
+                    {outOfStock ? "ໝົດ" : `ເຫຼືອ ${remaining} ຊິ້ນ`}
                   </div>
                 </div>
 

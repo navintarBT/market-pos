@@ -31,6 +31,7 @@ import CartSheet from "../components/CartSheet";
 import CheckoutModal from "../components/CheckoutModal";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import EmptyState from "../components/EmptyState";
+import { reservedKey, computeReserved } from "../utils/stock";
 import type { Bundle, BundleItem, Product, ProductVariant } from "../data/types";
 
 const Sell: React.FC = () => {
@@ -75,21 +76,7 @@ const Sell: React.FC = () => {
   // isn't sold yet, but it's spoken for — subtract it from what's shown as
   // available so selling several bundles/products in one visit doesn't let
   // the seller add more than what's actually left.
-  function reservedKey(productId: string, size: string, color: string) {
-    return `${productId}|${size}|${color}`;
-  }
-  const reserved = new Map<string, number>();
-  for (const item of items) {
-    if (item.isBundle && item.bundleItems) {
-      for (const bi of item.bundleItems) {
-        const key = reservedKey(bi.productId, bi.variantSize ?? "", bi.variantColor ?? "");
-        reserved.set(key, (reserved.get(key) ?? 0) + bi.quantity * item.quantity);
-      }
-    } else {
-      const key = reservedKey(item.productId, item.variant.size, item.variant.color);
-      reserved.set(key, (reserved.get(key) ?? 0) + item.quantity);
-    }
-  }
+  const reserved = computeReserved(items);
   const productsEffective = products.map((p) => ({
     ...p,
     variants: p.variants.map((v) => {

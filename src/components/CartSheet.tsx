@@ -19,6 +19,7 @@ import { trashOutline, addOutline, removeOutline, createOutline, chevronDownOutl
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { fmtK, fmtVariant } from "../utils/format";
+import { reservedKey, computeReserved } from "../utils/stock";
 import NumInput from "./NumInput";
 import VariantPicker from "./VariantPicker";
 import type { SaleItem, Product, ProductVariant } from "../data/types";
@@ -123,6 +124,34 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
       setQty(key, currentQty - 1);
       if (currentQty - 1 === 1) setExpandedKey(null);
     }
+  }
+
+  // How high this line's own quantity could go, given real stock and what
+  // every OTHER cart line (including this one's own current quantity) has
+  // already claimed. Without this the "+" button here had no ceiling at all —
+  // it let a seller bump a cart line past what recordSale would actually
+  // accept, so "add to cart" succeeded but "pay" failed with "insufficient
+  // stock" for an item that was already sitting in the cart.
+  const totalReserved = computeReserved(items);
+  function maxQtyFor(item: SaleItem): number {
+    if (item.isBundle && item.bundleItems) {
+      let max = Infinity;
+      for (const bi of item.bundleItems) {
+        const p = products.find((x) => x.id === bi.productId);
+        const v = p?.variants.find((vv) => vv.size === (bi.variantSize ?? "") && vv.color === (bi.variantColor ?? ""));
+        const rawStock = v?.stock ?? 0;
+        const key = reservedKey(bi.productId, bi.variantSize ?? "", bi.variantColor ?? "");
+        const reservedByOthers = (totalReserved.get(key) ?? 0) - bi.quantity * item.quantity;
+        max = Math.min(max, Math.floor((rawStock - reservedByOthers) / bi.quantity));
+      }
+      return Number.isFinite(max) ? Math.max(0, max) : 0;
+    }
+    const p = products.find((x) => x.id === item.productId);
+    const v = p?.variants.find((vv) => vv.size === item.variant.size && vv.color === item.variant.color);
+    const rawStock = v?.stock ?? 0;
+    const key = reservedKey(item.productId, item.variant.size, item.variant.color);
+    const reservedByOthers = (totalReserved.get(key) ?? 0) - item.quantity;
+    return Math.max(0, rawStock - reservedByOthers);
   }
 
   return (
@@ -281,6 +310,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
 
                           <IonButton
                             fill="clear" size="small"
+                            disabled={item.quantity >= maxQtyFor(item)}
                             onClick={() => setQty(key, item.quantity + 1)}
                             style={{ minHeight: 44, minWidth: 44 }}
                           >

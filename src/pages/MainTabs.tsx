@@ -88,6 +88,23 @@ const MainTabs: React.FC = () => {
     }
   }, [tenant]);
 
+  // Warm every tab's lazy-loaded chunk up front, right after the tab bar
+  // mounts. Otherwise the FIRST switch to a given tab crosses a real async
+  // gap (fetch the chunk → show the Suspense spinner → mount) — a timing
+  // window where a fast tap can catch the tab bar mid-transition and briefly
+  // render the wrong tab's content. Pre-fetching means every tab's code is
+  // already cached by the time the user actually taps it, so switching is a
+  // synchronous mount with no gap for that to happen in.
+  useEffect(() => {
+    import("./Sell");
+    import("./Products");
+    import("./Summary");
+    import("./Finance");
+    import("./SalesHistory");
+    import("./ShopProfileSettings");
+    import("./StaffSettings");
+  }, []);
+
   return (
     <CartProvider>
       <IonMenu contentId="main-content" side="end">

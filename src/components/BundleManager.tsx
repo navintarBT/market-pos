@@ -27,7 +27,7 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -96,8 +96,8 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
         setBundles((prev) => [...prev, { id, ...data }]);
       }
       setFormOpen(false);
-    } catch {
-      setSaveError(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "ບັນທຶກບໍ່ສຳເລັດ");
     } finally {
       setSaving(false);
       setUploading(false);
@@ -477,11 +477,11 @@ const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) =
 
       {/* ── Save error ── */}
       <IonAlert
-        isOpen={saveError}
+        isOpen={!!saveError}
         header="ບັນທຶກບໍ່ສຳເລັດ"
-        message="ກວດສອບການເຊື່ອມຕໍ່ internet ຫຼື ສິດທິ Firestore ແລ້ວລອງໃໝ່"
-        buttons={[{ text: "ຕົກລົງ", handler: () => setSaveError(false) }]}
-        onDidDismiss={() => setSaveError(false)}
+        message={saveError ?? ""}
+        buttons={[{ text: "ຕົກລົງ", handler: () => setSaveError(null) }]}
+        onDidDismiss={() => setSaveError(null)}
       />
     </>
   );

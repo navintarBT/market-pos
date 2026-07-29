@@ -230,8 +230,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         canBeGift,
       });
       onDismiss();
-    } catch {
-      setErrors(prev => ({ ...prev, save: "ບັນທຶກບໍ່ສຳເລັດ ລອງໃໝ່ອີກຄັ້ງ" }));
+    } catch (err) {
+      setErrors(prev => ({ ...prev, save: err instanceof Error ? err.message : "ບັນທຶກບໍ່ສຳເລັດ ລອງໃໝ່ອີກຄັ້ງ" }));
     } finally {
       setBusy(false);
       setUploading(false);

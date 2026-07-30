@@ -286,7 +286,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function setShopProfile(profile: ShopProfile) {
-    setState(prev => ({ ...prev, shopProfile: profile }));
+    setState(prev => ({
+      ...prev,
+      shopProfile: profile,
+      // Keep the multi-shop switcher/dashboard list (AllShopsDashboard,
+      // ShopPicker) in sync too — it's a separate snapshot fetched once at
+      // login/switchShop, so without this an edited shop's new name/photo
+      // only shows in the current shop's own views, not in those lists.
+      availableShops: prev.availableShops.map(s =>
+        s.id === profile.id ? { ...s, name: profile.name, profileUrl: profile.profileUrl } : s
+      ),
+    }));
   }
 
   function setMyProfileUrl(url: string | null) {

@@ -35,6 +35,7 @@ export async function deleteProduct(shopId: string, productId: string): Promise<
   await deleteDoc(doc(productsCol(shopId), productId));
 }
 
+/** `qty` is a signed delta — positive adds stock, negative removes it (clamped at 0). */
 export async function restockProduct(
   shopId: string,
   productId: string,
@@ -48,8 +49,8 @@ export async function restockProduct(
     const variants: any[] = [...(snap.data().variants ?? [])];
     for (const add of adds) {
       const idx = variants.findIndex((v) => v.size === add.size && v.color === add.color);
-      if (idx !== -1 && add.qty > 0) {
-        variants[idx] = { ...variants[idx], stock: variants[idx].stock + add.qty };
+      if (idx !== -1 && add.qty !== 0) {
+        variants[idx] = { ...variants[idx], stock: Math.max(0, variants[idx].stock + add.qty) };
       }
     }
     tx.update(ref, { variants });

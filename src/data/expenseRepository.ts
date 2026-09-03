@@ -26,6 +26,8 @@ function mapExpense(d: any): Expense {
     category: data.category ?? "shop",
     paymentType: (data.paymentType as "cash" | "transfer") ?? "cash",
     createdAt: (data.createdAt as Timestamp).toDate(),
+    createdByUid: data.createdByUid as string | undefined,
+    createdByName: data.createdByName as string | undefined,
   };
 }
 
@@ -58,14 +60,17 @@ export async function addExpense(
   description: string,
   amount: number,
   category: ExpenseCategory,
-  paymentType?: "cash" | "transfer"
+  paymentType?: "cash" | "transfer",
+  createdAt?: Date,
+  createdBy?: { uid: string; name: string }
 ): Promise<string> {
   const ref = await addDoc(expensesCol(shopId), {
     description,
     amount,
     category,
     paymentType: paymentType ?? "cash",
-    createdAt: Timestamp.now(),
+    createdAt: createdAt ? Timestamp.fromDate(createdAt) : Timestamp.now(),
+    ...(createdBy ? { createdByUid: createdBy.uid, createdByName: createdBy.name } : {}),
   });
   return ref.id;
 }
@@ -76,13 +81,15 @@ export async function updateExpense(
   description: string,
   amount: number,
   category: ExpenseCategory,
-  paymentType?: "cash" | "transfer"
+  paymentType?: "cash" | "transfer",
+  createdAt?: Date
 ): Promise<void> {
   await updateDoc(doc(expensesCol(shopId), expenseId), {
     description,
     amount,
     category,
     paymentType: paymentType ?? "cash",
+    ...(createdAt ? { createdAt: Timestamp.fromDate(createdAt) } : {}),
   });
 }
 

@@ -5,10 +5,11 @@ import {
   IonRefresher, IonRefresherContent, IonModal, IonButtons, IonButton,
 } from "@ionic/react";
 import { addOutline, closeOutline, createOutline, trashOutline, chevronBackOutline } from "ionicons/icons";
+import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances, type WalletBalances } from "../data/walletRepository";
-import { fmtK, fmtDate, fmtTime } from "../utils/format";
+import { fmtK, fmtDate, fmtTime, dateInputStr, dateFromInputStr } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
 import WalletCard from "./WalletCard";
@@ -61,6 +62,7 @@ interface Props {
 }
 
 export default function CombinedLedger({ shops, onBack }: Props) {
+  const { user, displayName } = useAuth();
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
   const [fromDate, setFromDate] = useState(monthStartStr());
   const [toDate, setToDate] = useState(todayStr());
@@ -74,6 +76,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
   const [expDeleteError, setExpDeleteError] = useState<string | null>(null);
   const [expDesc, setExpDesc] = useState("");
   const [expAmount, setExpAmount] = useState(0);
+  const [expDate, setExpDate] = useState(todayStr());
   const [expCategory, setExpCategory] = useState<ExpenseCategory>("shop");
   const [expPayment, setExpPayment] = useState<"cash" | "transfer">("cash");
   const [expShopId, setExpShopId] = useState(shops[0]?.id ?? "");
@@ -158,6 +161,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
     setExpEditTarget(null);
     setExpDesc("");
     setExpAmount(0);
+    setExpDate(todayStr());
     setExpCategory("shop");
     setExpPayment("cash");
     setExpShopId(shops[0]?.id ?? "");
@@ -165,6 +169,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
 
   function openExpAdd() {
     setExpShopId(shops[0]?.id ?? "");
+    setExpDate(todayStr());
     setExpModalOpen(true);
   }
 
@@ -172,6 +177,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
     setExpEditTarget(e);
     setExpDesc(e.description);
     setExpAmount(e.amount);
+    setExpDate(dateInputStr(e.createdAt));
     setExpCategory((e.category as ExpenseCategory) ?? "shop");
     setExpPayment(e.paymentType ?? "cash");
     setExpShopId(e.shopId);
@@ -182,10 +188,12 @@ export default function CombinedLedger({ shops, onBack }: Props) {
     if (!expDesc.trim() || expAmount <= 0 || !expShopId) return;
     setExpBusy(true);
     try {
+      const pickedDate = dateFromInputStr(expDate);
       if (expEditTarget) {
-        await updateExpense(expEditTarget.shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment);
+        await updateExpense(expEditTarget.shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate);
       } else {
-        await addExpense(expShopId, expDesc.trim(), expAmount, expCategory, expPayment);
+        await addExpense(expShopId, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate,
+          user ? { uid: user.uid, name: displayName || user.email || "" } : undefined);
       }
       dismissExpModal();
       await Promise.all([loadExpenses(), loadWallet()]);
@@ -419,6 +427,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                       </p>
                       <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {dateStr} · {timeStr} · {item.category === "shop" ? `🏪 ${item.shopName}` : "🤝 ສ່ວນກາງ"}
+                        {item.createdByName && ` · 👤 ${item.createdByName}`}
                       </p>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
@@ -537,6 +546,13 @@ export default function CombinedLedger({ shops, onBack }: Props) {
             <div>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຄຳອະທິບາຍ</p>
               <input type="text" value={expDesc} onChange={(e) => setExpDesc(e.target.value)} placeholder="ຊື່ລາຍຈ່າຍ" style={{
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "0.95rem",
+                outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
+              }} />
+            </div>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ວັນທີ</p>
+              <input type="date" value={expDate} max={todayStr()} onChange={(e) => setExpDate(e.target.value || todayStr())} style={{
                 width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)", fontSize: "0.95rem",
                 outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />

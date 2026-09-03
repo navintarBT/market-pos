@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -183,6 +183,26 @@ const Sell: React.FC = () => {
     setTimeout(() => setCheckoutOpen(true), 300);
   }
 
+  // The bundle picker's "ເພີ່ມໃສ່ກະຕ່າ" confirm button sits in the modal's
+  // footer, right at the bottom of the screen — the same screen position the
+  // floating cart bar slides into the instant the item lands (count 0→1).
+  // If the tap that confirms the add is followed by any stray/duplicate
+  // touch event while the modal is still mid-close-animation, it can land on
+  // the bar underneath and pop the cart open before its own re-render has
+  // settled, which looked like "an empty cart flashes up". Give the bar a
+  // brief grace period after it first appears before it's actually tappable.
+  const [cartBarReady, setCartBarReady] = useState(true);
+  const prevCountRef = useRef(count);
+  useEffect(() => {
+    if (count > 0 && prevCountRef.current === 0) {
+      setCartBarReady(false);
+      const t = setTimeout(() => setCartBarReady(true), 400);
+      prevCountRef.current = count;
+      return () => clearTimeout(t);
+    }
+    prevCountRef.current = count;
+  }, [count]);
+
   return (
     <IonPage>
       <IonHeader>
@@ -227,7 +247,7 @@ const Sell: React.FC = () => {
             zIndex: 10,
             transform: count > 0 ? "translateY(0)" : "translateY(140%)",
             opacity: count > 0 ? 1 : 0,
-            pointerEvents: count > 0 ? "auto" : "none",
+            pointerEvents: count > 0 && cartBarReady ? "auto" : "none",
             transition: "transform 0.25s ease, opacity 0.2s ease",
           }}
         >

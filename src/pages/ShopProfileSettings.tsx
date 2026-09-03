@@ -263,13 +263,38 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
               }}>
                 <div style={{
                   height: 118,
+                  position: "relative",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   background: `
-                    radial-gradient(circle, rgba(255,255,255,0.13) 1px, transparent 1px),
-                    linear-gradient(135deg, #c25e1e 0%, var(--ion-color-primary) 55%, #f59e0b 100%)
+                    linear-gradient(120deg, transparent 32%, rgba(255,255,255,0.38) 47%, rgba(255,255,255,0.08) 53%, transparent 68%),
+                    radial-gradient(ellipse at 50% 130%, rgba(0,0,0,0.16) 0%, transparent 62%),
+                    linear-gradient(135deg, #d2540f 0%, #e2650f 26%, #f2882c 52%, #ffc266 74%, #ea7420 100%)
                   `,
-                  backgroundSize: "22px 22px, 100% 100%",
-                }} />
-                <div style={{ padding: "0 16px 16px", marginTop: -42 }}>
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -14px 26px -14px rgba(0,0,0,0.18)",
+                }}>
+                  {/* Fixed black/white split, not theme (var(--ion-*)) colors on
+                      purpose — this banner's orange gradient is a brand color that
+                      stays the same in light and dark mode (see --ion-color-primary
+                      in theme/variables.css, defined once, no dark override), so
+                      black/white keep the same contrast against it either way. */}
+                  <span style={{
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "2.3rem",
+                    lineHeight: 1,
+                    letterSpacing: "0.5px",
+                    whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}>
+                    <span style={{ color: "#0a0a0a", textShadow: "0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.25)" }}>Minny</span>
+                    <span style={{ color: "#ffffff", textShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>One</span>
+                  </span>
+                </div>
+                <div style={{ padding: "16px 16px 16px" }}>
                   <div style={{
                     width: 84, height: 84, borderRadius: 18,
                     background: "var(--app-surface)", border: "4px solid var(--app-surface)",

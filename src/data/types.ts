@@ -108,6 +108,8 @@ export interface Expense {
   category: ExpenseCategory;
   paymentType?: "cash" | "transfer";
   createdAt: Date;
+  createdByUid?: string;
+  createdByName?: string;
 }
 
 export interface Income {

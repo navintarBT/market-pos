@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances } from "../data/walletRepository";
-import { fmtK, fmtDate, fmtTime } from "../utils/format";
+import { fmtK, fmtDate, fmtTime, dateInputStr, dateFromInputStr } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
 import NumInput from "../components/NumInput";
 import ShopHeaderTag from "../components/ShopHeaderTag";
@@ -72,7 +72,7 @@ const EXPENSE_PAYMENT_OPTIONS = ["cash", "transfer"] as const;
 const INCOME_PAYMENT_OPTIONS = ["cash", "transfer", "cod"] as const;
 
 const Finance: React.FC = () => {
-  const { shopId, role, permissions, features } = useAuth();
+  const { shopId, role, permissions, features, user, displayName } = useAuth();
   const canViewFinance = role === "customer" || permissions.canViewFinance;
 
   const [section, setSection] = useState<"menu" | "shopExpense" | "ledger">("menu");
@@ -89,6 +89,7 @@ const Finance: React.FC = () => {
   const [expDeleteError, setExpDeleteError] = useState<string | null>(null);
   const [expDesc, setExpDesc] = useState("");
   const [expAmount, setExpAmount] = useState(0);
+  const [expDate, setExpDate] = useState(todayStr());
   const [expCategory, setExpCategory] = useState<ExpenseCategory>("shop");
   const [expPayment, setExpPayment] = useState<"cash" | "transfer">("cash");
   const [expBusy, setExpBusy] = useState(false);
@@ -174,6 +175,7 @@ const Finance: React.FC = () => {
     setExpEditTarget(null);
     setExpDesc("");
     setExpAmount(0);
+    setExpDate(todayStr());
     setExpCategory("shop");
     setExpPayment("cash");
   }
@@ -182,6 +184,7 @@ const Finance: React.FC = () => {
     setExpEditTarget(e);
     setExpDesc(e.description);
     setExpAmount(e.amount);
+    setExpDate(dateInputStr(e.createdAt));
     setExpCategory((e.category as ExpenseCategory) ?? "shop");
     setExpPayment(e.paymentType ?? "cash");
     setExpModalOpen(true);
@@ -191,28 +194,19 @@ const Finance: React.FC = () => {
     if (!shopId || !expDesc.trim() || expAmount <= 0) return;
     setExpBusy(true);
     try {
+      const pickedDate = dateFromInputStr(expDate);
       if (expEditTarget) {
-        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment);
-        setExpenses((prev) =>
-          prev.map((e) =>
-            e.id === expEditTarget.id
-              ? { ...e, description: expDesc.trim(), amount: expAmount, paymentType: expPayment }
-              : e
-          )
-        );
+        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate);
       } else {
-        const id = await addExpense(shopId, expDesc.trim(), expAmount, expCategory, expPayment);
-        const newItem: Expense = {
-          id,
-          description: expDesc.trim(),
-          amount: expAmount,
-          paymentType: expPayment,
-          category: expCategory,
-          createdAt: new Date(),
-        };
-        setExpenses((prev) => [newItem, ...prev]);
+        await addExpense(shopId, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate,
+          user ? { uid: user.uid, name: displayName || user.email || "" } : undefined);
       }
+      // Re-fetch rather than patch local state — a backdated entry can land
+      // outside the currently-filtered date range, or need re-sorting among
+      // same-range entries, either of which a manual splice/prepend would get
+      // wrong.
       dismissExpModal();
+      loadExpenses();
       loadWallet();
     } finally {
       setExpBusy(false);
@@ -592,6 +586,7 @@ const Finance: React.FC = () => {
                       </p>
                       <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {dateStr} · {timeStr}
+                        {item.createdByName && ` · 👤 ${item.createdByName}`}
                       </p>
                     </div>
                     <div
@@ -831,6 +826,28 @@ const Finance: React.FC = () => {
                 value={expDesc}
                 onChange={(e) => setExpDesc(e.target.value)}
                 placeholder="ຊື່ລາຍຈ່າຍ"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1.5px solid var(--app-border)",
+                  fontSize: "0.95rem",
+                  outline: "none",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
+                ວັນທີ
+              </p>
+              <input
+                type="date"
+                value={expDate}
+                max={todayStr()}
+                onChange={(e) => setExpDate(e.target.value || todayStr())}
                 style={{
                   width: "100%",
                   padding: "10px 12px",

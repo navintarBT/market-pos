@@ -9,6 +9,21 @@ export function monthStartStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** 1st day of the previous calendar month. */
+export function lastMonthStartStr(): string {
+  const d = new Date();
+  d.setDate(1); // pin to day 1 first so setMonth can't overflow into the wrong month
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Last day of the previous calendar month. */
+export function lastMonthEndStr(): string {
+  const d = new Date();
+  d.setDate(0); // day 0 == the day before the 1st of the current month
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const dateInputStyle: React.CSSProperties = {
   flex: 1, border: "none", outline: "none",
   fontSize: "0.82rem", background: "transparent",
@@ -27,6 +42,7 @@ interface Props {
 export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, style }: Props) {
   const isToday = from === todayStr() && to === todayStr();
   const isMonth = from === monthStartStr() && to === todayStr();
+  const isLastMonth = from === lastMonthStartStr() && to === lastMonthEndStr();
 
   function setQuickToday() {
     const t = todayStr();
@@ -37,6 +53,11 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
   function setQuickMonth() {
     setFrom(monthStartStr());
     setTo(todayStr());
+  }
+
+  function setQuickLastMonth() {
+    setFrom(lastMonthStartStr());
+    setTo(lastMonthEndStr());
   }
 
   return (
@@ -72,6 +93,14 @@ export default function DateRangeFilter({ from, to, setFrom, setTo, disabled, st
           fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
         }}>
           1 ເດືອນ
+        </button>
+        <button onClick={setQuickLastMonth} disabled={disabled} style={{
+          flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none",
+          background: isLastMonth ? "var(--ion-color-primary)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+          color: isLastMonth ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
+          fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
+        }}>
+          ເດືອນທີ່ຜ່ານມາ
         </button>
       </div>
     </div>

@@ -26,3 +26,19 @@ export function fmtTime(date: Date): string {
 export function fmtDateTime(date: Date): string {
   return `${fmtDate(date)} ${fmtTime(date)}`;
 }
+
+/** Date -> "yyyy-mm-dd", for <input type="date"> value props. */
+export function dateInputStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * "yyyy-mm-dd" -> Date at local noon, for reading <input type="date"> back
+ * out. Noon (not midnight) avoids the entry landing on the wrong calendar
+ * day from a timezone/DST edge case, while still sorting sensibly among
+ * same-day entries.
+ */
+export function dateFromInputStr(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0);
+}

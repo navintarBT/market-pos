@@ -259,7 +259,17 @@ ion-card {
    (`has-shop-tag`, added to the <IonToolbar>) with !important — the same
    specificity-fight technique already used above against Ionic's own
    defaults. Scoped to that class only, so ordinary modal/page toolbars
-   (narrow back/close button in slot="start") keep Ionic's default centering. */
+   (narrow back/close button in slot="start") keep Ionic's default centering.
+   Both sides are set to the SAME value — ion-title centers its text within
+   (width - padding-start - padding-end), so asymmetric padding here would
+   push the visible text off-center instead of truly centering it.
+   On narrow phones, the longest of these titles (e.g. "ປະຫວັດການຂາຍ") can
+   still run out of room and ellipsis even with a tight padding budget, so
+   the font-size is also nudged down slightly here — shrinking the text
+   itself is the only way to guarantee it fits in full on small screens
+   without giving up centering or shrinking the shop-name pill further. */
 ion-toolbar.has-shop-tag ion-title {
-  padding-inline-start: 180px !important;
+  padding-inline-start: 100px !important;
+  padding-inline-end: 100px !important;
+  font-size: 0.92rem !important;
 }

@@ -40,7 +40,7 @@ export default function ShopHeaderTag() {
         whiteSpace: "nowrap", textAlign: "left",
         textShadow: "0 1px 2px rgba(0,0,0,0.15)",
         overflow: "hidden", textOverflow: "ellipsis",
-        maxWidth: "clamp(50px, 20vw, 100px)",
+        maxWidth: "clamp(35px, 12vw, 56px)",
       }}>
         {shopProfile?.name ?? ""}
       </span>

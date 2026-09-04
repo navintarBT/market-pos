@@ -247,3 +247,19 @@ ion-card {
     --app-info-surface: #16233a;
   }
 }
+
+/* ===== Header title vs. shop-profile pill collision =====
+   On iOS, ion-title is absolutely positioned across the FULL toolbar width
+   with only a fixed 90px inline-start padding reserved (see @ionic/core's
+   title.ios.css) — enough for a lone back button, but not for the wider
+   ShopHeaderTag pill (avatar + shop name) that sits in slot="start" on the
+   main tab pages. A long page title then centers itself right underneath
+   the pill. `ion-title` has no per-instance `mode`/padding prop to scope
+   this to just these toolbars, so it's targeted here via a marker class
+   (`has-shop-tag`, added to the <IonToolbar>) with !important — the same
+   specificity-fight technique already used above against Ionic's own
+   defaults. Scoped to that class only, so ordinary modal/page toolbars
+   (narrow back/close button in slot="start") keep Ionic's default centering. */
+ion-toolbar.has-shop-tag ion-title {
+  padding-inline-start: 180px !important;
+}

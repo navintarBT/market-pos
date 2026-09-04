@@ -541,7 +541,7 @@ const Summary: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
           <div slot="start"><ShopHeaderTag /></div>
           <IonTitle style={{ fontWeight: 700 }}>ສະຫຼຸບ</IonTitle>
           <IonButtons slot="end"><IonMenuButton autoHide={false} /></IonButtons>

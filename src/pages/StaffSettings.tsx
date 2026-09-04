@@ -246,7 +246,7 @@ const StaffSettings: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
           <div slot="start"><ShopHeaderTag /></div>
           <IonTitle style={{ fontWeight: 700 }}>ພະນັກງານ</IonTitle>
           <IonButtons slot="end">

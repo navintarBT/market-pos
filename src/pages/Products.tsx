@@ -129,7 +129,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
           <div slot="start"><ShopHeaderTag /></div>
           <IonTitle>ສິນຄ້າ</IonTitle>
           <IonButtons slot="end">

@@ -1,10 +1,6 @@
 import { useHistory } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-function truncateName(name: string): string {
-  return name.length > 12 ? `${name.slice(0, 12)}…` : name;
-}
-
 export default function ShopHeaderTag() {
   const history = useHistory();
   const { shopProfile } = useAuth();
@@ -43,8 +39,10 @@ export default function ShopHeaderTag() {
         color: "#ffffff", fontWeight: 700, fontSize: "0.78rem",
         whiteSpace: "nowrap", textAlign: "left",
         textShadow: "0 1px 2px rgba(0,0,0,0.15)",
+        overflow: "hidden", textOverflow: "ellipsis",
+        maxWidth: "clamp(50px, 20vw, 100px)",
       }}>
-        {truncateName(shopProfile?.name ?? "")}
+        {shopProfile?.name ?? ""}
       </span>
     </button>
   );

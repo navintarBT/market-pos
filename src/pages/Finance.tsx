@@ -355,7 +355,7 @@ const Finance: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className={section === "menu" ? "has-shop-tag" : undefined}>
           {section === "menu" ? (
             <div slot="start"><ShopHeaderTag /></div>
           ) : (

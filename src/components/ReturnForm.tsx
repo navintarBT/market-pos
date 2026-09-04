@@ -231,7 +231,11 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
     return (
       <>
         {productCategories.length > 0 && (
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "4px 16px 8px", scrollbarWidth: "none" }}>
+          <div style={{
+            display: "flex", gap: 8, overflowX: "auto", padding: "4px 16px 8px", scrollbarWidth: "none",
+            position: "sticky", top: 0, zIndex: 5,
+            background: "var(--ion-background-color)",
+          }}>
             {["all", ...productCategories].map((cat) => {
               const isActive = listCat === cat;
               return (

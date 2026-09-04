@@ -210,11 +210,6 @@ const Sell: React.FC = () => {
           <div slot="start"><ShopHeaderTag /></div>
           <IonTitle style={{ fontWeight: 700 }}>ຂາຍ</IonTitle>
           <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
-            {count > 0 && (
-              <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>
-                {fmtK(total)} ກີບ
-              </span>
-            )}
             <IonButton fill="clear" onClick={() => setCartOpen(true)}
               style={{ minHeight: 44, minWidth: 44, "--color": "#ffffff", position: "relative" }}>
               <IonIcon slot="icon-only" icon={cartOutline} style={{ fontSize: 26 }} />
@@ -321,6 +316,8 @@ const Sell: React.FC = () => {
           <div style={{
             display: "flex", gap: 8, overflowX: "auto", padding: "4px 12px 6px",
             scrollbarWidth: "none",
+            position: "sticky", top: 0, zIndex: 5,
+            background: "var(--ion-background-color)",
           }}>
             {["all", ...categories].map((cat) => {
               const isActive = activeCategory === cat;

@@ -203,7 +203,11 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           return (
             <>
               {cats.length > 0 && (
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px 6px", scrollbarWidth: "none" }}>
+                <div style={{
+                  display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px 6px", scrollbarWidth: "none",
+                  position: "sticky", top: 0, zIndex: 5,
+                  background: "var(--ion-background-color)",
+                }}>
                   {["all", ...cats].map((cat) => {
                     const isActive = activeCategory === cat;
                     return (

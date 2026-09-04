@@ -125,22 +125,37 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, canViewFinanc
                       marginBottom: 8, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                     }}
                   >
-                    {/* Name + stock badge */}
+                    {/* Photo + name + stock badge */}
                     <div style={{
-                      display: "flex", justifyContent: "space-between",
-                      alignItems: "center", marginBottom: 8,
+                      display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
                     }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
-                        {product.name}
-                      </p>
-                      <span style={{
-                        background: totalStock === 0 ? "var(--app-danger-surface)" : "var(--app-success-surface)",
-                        color: totalStock === 0 ? "var(--app-danger)" : "var(--app-success)",
-                        fontSize: "0.72rem", fontWeight: 700,
-                        padding: "3px 10px", borderRadius: 20,
+                      {product.photoUrl
+                        ? <img src={product.photoUrl} alt={product.name} loading="lazy" decoding="async"
+                            style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+                        : <div style={{
+                            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                            background: "var(--app-accent-surface)",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                          }}>👕</div>
+                      }
+                      <div style={{
+                        flex: 1, minWidth: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
                       }}>
-                        {totalStock} ຊີ້ນ
-                      </span>
+                        <p style={{
+                          margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {product.name}
+                        </p>
+                        <span style={{
+                          background: totalStock === 0 ? "var(--app-danger-surface)" : "var(--app-success-surface)",
+                          color: totalStock === 0 ? "var(--app-danger)" : "var(--app-success)",
+                          fontSize: "0.72rem", fontWeight: 700,
+                          padding: "3px 10px", borderRadius: 20, flexShrink: 0,
+                        }}>
+                          {totalStock} ຊີ້ນ
+                        </span>
+                      </div>
                     </div>
 
                     {/* Value grid — cost/profit only for staff with financial visibility */}

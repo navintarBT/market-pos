@@ -159,6 +159,18 @@ service cloud.firestore {
         allow delete: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'));
       }
 
+      match /expenseCategories/{categoryId} {
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+          && request.resource.data.keys().hasAll(['name'])
+          && request.resource.data.name is string;
+        allow update: if isTenantActive(shopId)
+          && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canAddExpenses'))
+          && request.resource.data.name is string;
+        allow delete: if isTenantActive(shopId) && isShopOwner(shopId);
+      }
+
       match /incomes/{incomeId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
         allow create: if isTenantActive(shopId)

@@ -11,13 +11,15 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances } from "../data/walletRepository";
+import { getExpenseCategories, DEFAULT_EXPENSE_CATEGORIES, isShopScopedExpenseCategory } from "../data/expenseCategoryRepository";
 import { fmtK, fmtDate, fmtTime, dateInputStr, dateFromInputStr } from "../utils/format";
-import type { Expense, Income, ExpenseCategory } from "../data/types";
+import type { Expense, Income, ExpenseCategory, Category } from "../data/types";
 import NumInput from "../components/NumInput";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import WalletCard from "../components/WalletCard";
 import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
 import EmptyState from "../components/EmptyState";
+import ExpenseCategoryPicker from "../components/ExpenseCategoryPicker";
 
 type PaymentKind = "cash" | "transfer" | "cod";
 
@@ -32,6 +34,12 @@ const EXPENSE_CATEGORY_STYLE: Record<ExpenseCategory, { label: string; chipLabel
   capital: { label: "ທຶນທຸລະກິດ", chipLabel: "💼 ທຶນທຸລະກິດ", color: "#7c3aed" },
   general: { label: "ສ່ວນຕົວ", chipLabel: "👤 ສ່ວນຕົວ", color: "#c2410c" },
 };
+
+// Falls back to a generic tag style for custom categories, which have no
+// entry in EXPENSE_CATEGORY_STYLE (that map only covers the 3 defaults).
+function expCategoryBadge(category: ExpenseCategory): { label: string; color: string } {
+  return EXPENSE_CATEGORY_STYLE[category] ?? { label: `🏷️ ${category}`, color: "#6b7280" };
+}
 
 function PaymentToggle<T extends PaymentKind>({
   value,
@@ -95,6 +103,7 @@ const Finance: React.FC = () => {
   const [expBusy, setExpBusy] = useState(false);
   const [expDeleting, setExpDeleting] = useState(false);
   const [expCatFilter, setExpCatFilter] = useState<ExpenseCategory | "all">("all");
+  const [expCategories, setExpCategories] = useState<Category[]>([]);
 
   // Income state
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -148,16 +157,30 @@ const Finance: React.FC = () => {
     }
   }, [shopId, fromDate, toDate]);
 
+  const loadExpenseCategories = useCallback(async () => {
+    if (!shopId) return;
+    try {
+      setExpCategories(await getExpenseCategories(shopId));
+    } catch {
+      // non-fatal — the 3 defaults still work fine without custom categories loaded
+    }
+  }, [shopId]);
+
   useIonViewWillEnter(() => {
     loadExpenses();
     loadIncomes();
     loadWallet();
-  }, [loadExpenses, loadIncomes, loadWallet]);
+    loadExpenseCategories();
+  }, [loadExpenses, loadIncomes, loadWallet, loadExpenseCategories]);
 
   useEffect(() => {
     loadExpenses();
     loadIncomes();
   }, [loadExpenses, loadIncomes]);
+
+  useEffect(() => {
+    loadExpenseCategories();
+  }, [loadExpenseCategories]);
 
   useEffect(() => {
     loadWallet();
@@ -296,7 +319,7 @@ const Finance: React.FC = () => {
 
   // ── Computed totals ──────────────────────────────────────────────────────
 
-  const shopOnlyExpenses = expenses.filter((e) => e.category === "shop");
+  const shopOnlyExpenses = expenses.filter((e) => isShopScopedExpenseCategory(e.category));
   // Matches `visibleExpenses` below exactly, so the summary card total always
   // reflects whichever category chip (ທັງໝົດ/ຮ້ານ/ທຶນ/ສ່ວນຕົວ) is selected,
   // instead of always summing every category regardless of the filter.
@@ -522,12 +545,11 @@ const Finance: React.FC = () => {
           {/* Category filter chips — expense tab only, ledger view only */}
           {isExpTab && section === "ledger" && (
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "nowrap", overflowX: "auto", paddingBottom: 2 }}>
-              {([
-                { v: "all" as const, label: "ທັງໝົດ" },
-                { v: "shop" as const, label: EXPENSE_CATEGORY_STYLE.shop.chipLabel },
-                { v: "capital" as const, label: EXPENSE_CATEGORY_STYLE.capital.chipLabel },
-                { v: "general" as const, label: EXPENSE_CATEGORY_STYLE.general.chipLabel },
-              ] as const).map(({ v, label }) => (
+              {[
+                { v: "all", label: "ທັງໝົດ" },
+                ...DEFAULT_EXPENSE_CATEGORIES.map((v) => ({ v, label: EXPENSE_CATEGORY_STYLE[v].chipLabel })),
+                ...expCategories.map((c) => ({ v: c.name, label: `🏷️ ${c.name}` })),
+              ].map(({ v, label }) => (
                 <button
                   key={v}
                   onClick={() => setExpCatFilter(v)}
@@ -607,9 +629,9 @@ const Finance: React.FC = () => {
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
                           borderRadius: 20, color: "#fff",
-                          background: EXPENSE_CATEGORY_STYLE[(item.category as ExpenseCategory) ?? "shop"].color,
+                          background: expCategoryBadge(item.category ?? "shop").color,
                         }}>
-                          {EXPENSE_CATEGORY_STYLE[(item.category as ExpenseCategory) ?? "shop"].label}
+                          {expCategoryBadge(item.category ?? "shop").label}
                         </span>
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
@@ -884,28 +906,17 @@ const Finance: React.FC = () => {
               />
             </div>
             {section !== "shopExpense" && (
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
-                  ປະເພດລາຍຈ່າຍ
-                </p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {(["shop", "capital", "general"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setExpCategory(v)}
-                      style={{
-                        flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                        background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "var(--app-surface-alt)",
-                        color: expCategory === v ? "#fff" : "var(--app-text-secondary)",
-                        fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {EXPENSE_CATEGORY_STYLE[v].chipLabel}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ExpenseCategoryPicker
+                shopId={shopId ?? ""}
+                isOwner={role === "customer"}
+                value={expCategory}
+                onChange={setExpCategory}
+                defaultOrder={DEFAULT_EXPENSE_CATEGORIES}
+                categoryStyle={EXPENSE_CATEGORY_STYLE}
+                categories={expCategories}
+                onCategoriesChanged={setExpCategories}
+                onRenamed={loadExpenses}
+              />
             )}
             <div>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>

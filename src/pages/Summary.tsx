@@ -7,6 +7,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { getSalesByDateRange } from "../data/saleRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
+import { isShopScopedExpenseCategory } from "../data/expenseCategoryRepository";
 import { getIncomesByDateRange } from "../data/incomeRepository";
 import { getReturnsByDateRange } from "../data/returnRepository";
 import { getProducts } from "../data/productRepository";
@@ -112,7 +113,7 @@ const Summary: React.FC = () => {
         getProducts(shopId),
       ]);
       setTodaySales(s);
-      setTodayExpenses(exps.filter((e) => e.category === "shop").reduce((sum, e) => sum + e.amount, 0));
+      setTodayExpenses(exps.filter((e) => isShopScopedExpenseCategory(e.category)).reduce((sum, e) => sum + e.amount, 0));
       setTodayReturns(rets);
       setProducts(prods);
     } finally {
@@ -131,7 +132,7 @@ const Summary: React.FC = () => {
         getReturnsByDateRange(shopId, from, to),
       ]);
       setMonthSales(s);
-      setMonthExpenses(exps.filter((e) => e.category === "shop").reduce((sum, e) => sum + e.amount, 0));
+      setMonthExpenses(exps.filter((e) => isShopScopedExpenseCategory(e.category)).reduce((sum, e) => sum + e.amount, 0));
       setMonthReturns(rets);
     } finally {
       setMonthLoading(false);
@@ -231,7 +232,7 @@ const Summary: React.FC = () => {
   const finIncomeCod      = finIncomes.filter(i => i.paymentType === "cod").reduce((s, i) => s + i.amount, 0);
 
   const finExpenseTotal    = finExpenses.reduce((s, e) => s + e.amount, 0);
-  const finExpenseShop     = finExpenses.filter(e => e.category === "shop").reduce((s, e) => s + e.amount, 0);
+  const finExpenseShop     = finExpenses.filter(e => isShopScopedExpenseCategory(e.category)).reduce((s, e) => s + e.amount, 0);
   const finExpenseBusiness = finExpenses.filter(e => e.category === "capital").reduce((s, e) => s + e.amount, 0);
   const finExpensePersonal = finExpenses.filter(e => e.category === "general").reduce((s, e) => s + e.amount, 0);
 

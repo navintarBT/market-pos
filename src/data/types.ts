@@ -99,7 +99,10 @@ export interface ShopUser {
 
 export type PaymentType = "cash" | "qr" | "cod";
 
-export type ExpenseCategory = "capital" | "general" | "shop";
+// Was a fixed 3-value union; widened to allow custom categories (see
+// src/data/expenseCategoryRepository.ts). "shop"/"capital"/"general" are
+// still the three built-in defaults and remain valid values.
+export type ExpenseCategory = string;
 
 export interface Expense {
   id: string;

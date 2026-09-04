@@ -3,6 +3,7 @@ import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonIcon, IonButto
 import { chevronBackOutline } from "ionicons/icons";
 import { getSalesByDateRange } from "../data/saleRepository";
 import { getExpensesByDateRange } from "../data/expenseRepository";
+import { isShopScopedExpenseCategory } from "../data/expenseCategoryRepository";
 import { getIncomesByDateRange } from "../data/incomeRepository";
 import { fmtK } from "../utils/format";
 import type { Expense, Income, ExpenseCategory } from "../data/types";
@@ -65,7 +66,7 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
           // Only "shop"-category expenses count toward this shop's own P&L —
           // "capital"/"general" are shared/pooled across shops (see CombinedLedger)
           // and are only ever reflected in the grand total below, not per-shop.
-          const expense = expenses.filter((e) => e.category === "shop").reduce((s, e) => s + e.amount, 0);
+          const expense = expenses.filter((e) => isShopScopedExpenseCategory(e.category)).reduce((s, e) => s + e.amount, 0);
           const income = incomes.reduce((s, i) => s + i.amount, 0);
           const netProfit = grossProfit + income - expense;
           return { summary: { id: shop.id, name: shop.name, profileUrl: shop.profileUrl, revenue, cost, grossProfit, income, expense, netProfit }, expenses, incomes };
@@ -87,7 +88,11 @@ export default function AllShopsDashboard({ shops, onBack }: Props) {
 
   const expByCategory = (["shop", "capital", "general"] as const).map((cat) => ({
     cat,
-    total: allExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
+    // "shop" bucket folds in every shop-scoped category (default "shop" plus
+    // any custom one) — only "capital"/"general" stay their own exact bucket.
+    total: allExpenses
+      .filter((e) => (cat === "shop" ? isShopScopedExpenseCategory(e.category) : e.category === cat))
+      .reduce((s, e) => s + e.amount, 0),
   })).filter((c) => c.total > 0);
   const expCash = allExpenses.filter((e) => (e.paymentType ?? "cash") === "cash").reduce((s, e) => s + e.amount, 0);
   const expTransfer = allExpenses.filter((e) => e.paymentType === "transfer").reduce((s, e) => s + e.amount, 0);

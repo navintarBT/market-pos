@@ -9,12 +9,14 @@ import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
 import { getWalletBalances, type WalletBalances } from "../data/walletRepository";
+import { getExpenseCategories, DEFAULT_EXPENSE_CATEGORIES, isShopScopedExpenseCategory } from "../data/expenseCategoryRepository";
 import { fmtK, fmtDate, fmtTime, dateInputStr, dateFromInputStr } from "../utils/format";
-import type { Expense, Income, ExpenseCategory } from "../data/types";
+import type { Expense, Income, ExpenseCategory, Category } from "../data/types";
 import NumInput from "../components/NumInput";
 import WalletCard from "./WalletCard";
 import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
 import EmptyState from "./EmptyState";
+import ExpenseCategoryPicker from "./ExpenseCategoryPicker";
 
 interface ShopRef { id: string; name: string; profileUrl?: string }
 interface TaggedExpense extends Expense { shopId: string; shopName: string }
@@ -33,6 +35,12 @@ const EXPENSE_CATEGORY_STYLE: Record<ExpenseCategory, { label: string; chipLabel
   capital: { label: "ທຶນທຸລະກິດ", chipLabel: "💼 ທຶນທຸລະກິດ", color: "#7c3aed" },
   general: { label: "ສ່ວນຕົວ", chipLabel: "👤 ສ່ວນຕົວ", color: "#c2410c" },
 };
+
+// Falls back to a generic tag style for custom categories, which have no
+// entry in EXPENSE_CATEGORY_STYLE (that map only covers the 3 defaults).
+function expCategoryBadge(category: ExpenseCategory): { label: string; color: string } {
+  return EXPENSE_CATEGORY_STYLE[category] ?? { label: `🏷️ ${category}`, color: "#6b7280" };
+}
 
 function PaymentToggle<T extends PaymentKind>({ value, onChange, options }: {
   value: T; onChange: (v: T) => void; options: readonly T[];
@@ -62,7 +70,7 @@ interface Props {
 }
 
 export default function CombinedLedger({ shops, onBack }: Props) {
-  const { user, displayName } = useAuth();
+  const { user, displayName, role } = useAuth();
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
   const [fromDate, setFromDate] = useState(monthStartStr());
   const [toDate, setToDate] = useState(todayStr());
@@ -83,6 +91,11 @@ export default function CombinedLedger({ shops, onBack }: Props) {
   const [expBusy, setExpBusy] = useState(false);
   const [expDeleting, setExpDeleting] = useState(false);
   const [expCatFilter, setExpCatFilter] = useState<ExpenseCategory | "all">("all");
+  // Categories are stored per-shop, so this tracks whichever shop is
+  // currently selected in the add/edit form (expShopId) — not an aggregate
+  // across all shops, since create/edit/delete need to know exactly which
+  // shop's collection to write to.
+  const [expShopCategories, setExpShopCategories] = useState<Category[]>([]);
 
   const [incomes, setIncomes] = useState<TaggedIncome[]>([]);
   const [incLoading, setIncLoading] = useState(false);
@@ -150,6 +163,11 @@ export default function CombinedLedger({ shops, onBack }: Props) {
 
   useEffect(() => { loadExpenses(); loadIncomes(); }, [loadExpenses, loadIncomes]);
   useEffect(() => { loadWallet(); }, [loadWallet]);
+
+  useEffect(() => {
+    if (!expShopId) { setExpShopCategories([]); return; }
+    getExpenseCategories(expShopId).then(setExpShopCategories).catch(() => setExpShopCategories([]));
+  }, [expShopId]);
 
   async function handleRefresh(e: CustomEvent) {
     await Promise.all([loadExpenses(), loadIncomes(), loadWallet()]);
@@ -278,7 +296,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
   // filtered down to one specific shop, even though they're physically stored under one.
   const scopedExpenses = shopFilter === "all"
     ? expenses
-    : expenses.filter((e) => e.shopId === shopFilter && e.category === "shop");
+    : expenses.filter((e) => e.shopId === shopFilter && isShopScopedExpenseCategory(e.category));
   const scopedIncomes = shopFilter === "all" ? incomes : incomes.filter((i) => i.shopId === shopFilter);
   const scopedShopIds = shopFilter === "all" ? shops.map((s) => s.id) : [shopFilter];
   const cashBalance = scopedShopIds.reduce((s, id) => s + (walletByShop[id]?.cashBalance ?? 0), 0);
@@ -426,7 +444,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                         {item.description}
                       </p>
                       <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
-                        {dateStr} · {timeStr} · {item.category === "shop" ? `🏪 ${item.shopName}` : "🤝 ສ່ວນກາງ"}
+                        {dateStr} · {timeStr} · {isShopScopedExpenseCategory(item.category) ? `🏪 ${item.shopName}` : "🤝 ສ່ວນກາງ"}
                         {item.createdByName && ` · 👤 ${item.createdByName}`}
                       </p>
                     </div>
@@ -435,9 +453,9 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                       <div style={{ display: "flex", gap: 4 }}>
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, color: "#fff",
-                          background: EXPENSE_CATEGORY_STYLE[(item.category as ExpenseCategory) ?? "shop"].color,
+                          background: expCategoryBadge(item.category ?? "shop").color,
                         }}>
-                          {EXPENSE_CATEGORY_STYLE[(item.category as ExpenseCategory) ?? "shop"].label}
+                          {expCategoryBadge(item.category ?? "shop").label}
                         </span>
                         <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", background: "var(--app-surface-alt)", borderRadius: 20, color: "var(--app-text-secondary)" }}>
                           {(item.paymentType ?? "cash") === "cash" ? "💵 ສົດ" : "📱 ໂອນ"}
@@ -516,7 +534,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
         </IonHeader>
         <IonContent>
           <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
-            {expCategory === "shop" && (
+            {isShopScopedExpenseCategory(expCategory) && (
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ຮ້ານ</p>
                 {expEditTarget ? (
@@ -538,7 +556,7 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                 )}
               </div>
             )}
-            {expCategory !== "shop" && (
+            {!isShopScopedExpenseCategory(expCategory) && (
               <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f5f3ff", color: "#7c3aed", fontSize: "0.8rem", fontWeight: 600 }}>
                 🤝 ລາຍຈ່າຍນີ້ຈະຖືກນັບເປັນສ່ວນກາງ ບໍ່ຜູກກັບຮ້ານໃດຮ້ານໜຶ່ງ
               </div>
@@ -564,20 +582,17 @@ export default function CombinedLedger({ shops, onBack }: Props) {
                 fontWeight: 700, outline: "none", background: "var(--app-surface-alt)", color: "var(--ion-text-color)", boxSizing: "border-box",
               }} />
             </div>
-            <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ປະເພດລາຍຈ່າຍ</p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["shop", "capital", "general"] as const).map((v) => (
-                  <button key={v} onClick={() => setExpCategory(v)} style={{
-                    flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                    background: expCategory === v ? EXPENSE_CATEGORY_STYLE[v].color : "var(--app-surface-alt)",
-                    color: expCategory === v ? "#fff" : "var(--app-text-secondary)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", transition: "all 0.15s",
-                  }}>
-                    {EXPENSE_CATEGORY_STYLE[v].chipLabel}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <ExpenseCategoryPicker
+              shopId={expShopId}
+              isOwner={role === "customer"}
+              value={expCategory}
+              onChange={setExpCategory}
+              defaultOrder={DEFAULT_EXPENSE_CATEGORIES}
+              categoryStyle={EXPENSE_CATEGORY_STYLE}
+              categories={expShopCategories}
+              onCategoriesChanged={setExpShopCategories}
+              onRenamed={loadExpenses}
+            />
             <div>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ປະເພດການຈ່າຍ</p>
               <PaymentToggle value={expPayment} onChange={setExpPayment} options={EXPENSE_PAYMENT_OPTIONS} />

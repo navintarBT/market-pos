@@ -15,7 +15,7 @@ import {
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { businessOutline, closeOutline, createOutline, mailOutline, saveOutline } from "ionicons/icons";
+import { alertCircleOutline, businessOutline, checkmarkCircleOutline, closeOutline, createOutline, mailOutline, ribbonOutline, saveOutline } from "ionicons/icons";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import ImagePicker from "../components/ImagePicker";
 import { useAuth } from "../context/AuthContext";
@@ -25,10 +25,10 @@ import { getShopProfile, updateShopProfile, updateOwnerEmail } from "../data/sho
 import type { ShopProfile } from "../data/types";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  active:    { label: "ໃຊ້ງານ",    color: "#16a34a", bg: "#f0fdf4" },
-  trial:     { label: "ທົດລອງໃຊ້", color: "#d97706", bg: "#fffbeb" },
-  suspended: { label: "ລະງັບ",     color: "#dc2626", bg: "#fef2f2" },
-  cancelled: { label: "ຍົກເລີກ",   color: "#6b7280", bg: "#f3f4f6" },
+  active:    { label: "ໃຊ້ງານ",    color: "var(--app-success)", bg: "var(--app-success-surface)" },
+  trial:     { label: "ທົດລອງໃຊ້", color: "#d97706", bg: "var(--app-warning-surface)" },
+  suspended: { label: "ລະງັບ",     color: "var(--app-danger)", bg: "var(--app-danger-surface)" },
+  cancelled: { label: "ຍົກເລີກ",   color: "var(--app-text-muted)", bg: "var(--app-surface-alt)" },
 };
 function PlanBadge({ status }: { status: string }) {
   const cfg = STATUS_LABELS[status] ?? STATUS_LABELS.cancelled;
@@ -39,8 +39,38 @@ function PlanBadge({ status }: { status: string }) {
   );
 }
 
+function SectionHeading({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+        background: "var(--app-accent-surface)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <IonIcon icon={icon} style={{ fontSize: 14, color: "var(--ion-color-primary)" }} />
+      </div>
+      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>{label}</span>
+    </div>
+  );
+}
+
+function AlertBanner({ kind, children }: { kind: "success" | "error"; children: React.ReactNode }) {
+  const success = kind === "success";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      background: success ? "var(--app-success-surface)" : "var(--app-danger-surface)",
+      border: `1px solid ${success ? "var(--app-success)" : "var(--app-danger)"}`,
+      borderRadius: 14, padding: "12px 14px", marginBottom: 14,
+    }}>
+      <IonIcon icon={success ? checkmarkCircleOutline : alertCircleOutline} style={{ fontSize: 20, color: success ? "var(--app-success)" : "var(--app-danger)", flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: "0.85rem", color: success ? "var(--app-success)" : "var(--app-danger)" }}>{children}</span>
+    </div>
+  );
+}
+
 const cardStyle: React.CSSProperties = {
-  background: "#ffffff",
+  background: "var(--app-surface)",
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
@@ -96,7 +126,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
     }
   }, [shopId]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
 
   function handleEdit() {
     setName(shop?.name ?? "");
@@ -216,7 +246,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
             </div>
           ) : !isOwner ? (
             <div style={{ ...cardStyle, textAlign: "center", padding: "42px 24px" }}>
-              <IonIcon icon={businessOutline} style={{ fontSize: 48, color: "#e07b39" }} />
+              <IonIcon icon={businessOutline} style={{ fontSize: 48, color: "var(--ion-color-primary)" }} />
               <h2 style={{ margin: "12px 0 6px", fontSize: "1.2rem" }}>ສຳລັບເຈົ້າຂອງຮ້ານ</h2>
               <IonText color="medium">
                 <p style={{ margin: 0 }}>staff ບໍ່ສາມາດແກ້ໄຂໂປຣໄຟລ໌ຮ້ານໄດ້</p>
@@ -229,32 +259,57 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                 ...cardStyle,
                 padding: 0,
                 overflow: "hidden",
-                background: "linear-gradient(135deg, #fff7ed, #ffffff)",
+                background: "linear-gradient(135deg, var(--app-accent-surface), var(--app-surface))",
               }}>
                 <div style={{
                   height: 118,
+                  position: "relative",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   background: `
-                    radial-gradient(circle, rgba(255,255,255,0.13) 1px, transparent 1px),
-                    linear-gradient(135deg, #c25e1e 0%, #e07b39 55%, #f59e0b 100%)
+                    linear-gradient(120deg, transparent 32%, rgba(255,255,255,0.38) 47%, rgba(255,255,255,0.08) 53%, transparent 68%),
+                    radial-gradient(ellipse at 50% 130%, rgba(0,0,0,0.16) 0%, transparent 62%),
+                    linear-gradient(135deg, #d2540f 0%, #e2650f 26%, #f2882c 52%, #ffc266 74%, #ea7420 100%)
                   `,
-                  backgroundSize: "22px 22px, 100% 100%",
-                }} />
-                <div style={{ padding: "0 16px 16px", marginTop: -42 }}>
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -14px 26px -14px rgba(0,0,0,0.18)",
+                }}>
+                  {/* Fixed black/white split, not theme (var(--ion-*)) colors on
+                      purpose — this banner's orange gradient is a brand color that
+                      stays the same in light and dark mode (see --ion-color-primary
+                      in theme/variables.css, defined once, no dark override), so
+                      black/white keep the same contrast against it either way. */}
+                  <span style={{
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "2.3rem",
+                    lineHeight: 1,
+                    letterSpacing: "0.5px",
+                    whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}>
+                    <span style={{ color: "#0a0a0a", textShadow: "0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.25)" }}>Minny</span>
+                    <span style={{ color: "#ffffff", textShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>One</span>
+                  </span>
+                </div>
+                <div style={{ padding: "16px 16px 16px" }}>
                   <div style={{
                     width: 84, height: 84, borderRadius: 18,
-                    background: "#ffffff", border: "4px solid #ffffff",
+                    background: "var(--app-surface)", border: "4px solid var(--app-surface)",
                     overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {displayUrl ? (
-                      <img src={displayUrl} alt={shop?.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={displayUrl} alt={shop?.name} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
-                      <IonIcon icon={businessOutline} style={{ fontSize: 42, color: "#e07b39" }} />
+                      <IonIcon icon={businessOutline} style={{ fontSize: 42, color: "var(--ion-color-primary)" }} />
                     )}
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: 12 }}>
                     <div>
-                      <h1 style={{ margin: "0 0 4px", fontSize: "1.45rem", color: "#1c1917" }}>
+                      <h1 style={{ margin: "0 0 4px", fontSize: "1.45rem", color: "var(--ion-text-color)" }}>
                         {shop?.name ?? "Minny ONE"}
                       </h1>
                     </div>
@@ -276,13 +331,13 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
               {tenant && (
                 <div style={{ ...cardStyle, padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>ແພັກເກດ</span>
+                    <SectionHeading icon={ribbonOutline} label="ແພັກເກດ" />
                     <PlanBadge status={tenant.status} />
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#78716c" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     <span>{{ trial: "ທົດລອງໃຊ້ 30 ວັນ", monthly: "ລາຍເດືອນ", yearly: "ລາຍປີ", unlimited: "♾ ບໍ່ຈຳກັດ" }[tenant.plan]}</span>
                     {tenant.expiresAt && (
-                      <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "#dc2626" : "#78716c" }}>
+                      <span style={{ color: (tenant.daysLeft ?? 0) <= 7 ? "var(--app-danger)" : "var(--app-text-secondary)" }}>
                         {(tenant.daysLeft ?? 0) <= 0
                           ? "ໝົດອາຍຸແລ້ວ"
                           : `ເຫຼືອ ${tenant.daysLeft} ວັນ (ໝົດ ${tenant.expiresAt.toLocaleDateString("en-GB")})`}
@@ -296,8 +351,8 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
               <section style={cardStyle}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: emailEditing ? 14 : 0 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>ອີເມວເຂົ້າສູ່ລະບົບ</div>
-                    <div style={{ fontSize: "0.82rem", color: "#78716c", marginTop: 2 }}>{user?.email}</div>
+                    <SectionHeading icon={mailOutline} label="ອີເມວເຂົ້າສູ່ລະບົບ" />
+                    <div style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)", marginTop: 6, marginLeft: 34 }}>{user?.email}</div>
                   </div>
                   {!emailEditing && (
                     <IonButton
@@ -315,7 +370,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                 {emailEditing && (
                   <>
                     <div style={{ marginBottom: 12 }}>
-                      <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e" }}>
+                      <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)" }}>
                         ອີເມວໃໝ່
                       </IonLabel>
                       <IonInput
@@ -328,7 +383,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                       />
                     </div>
                     <div style={{ marginBottom: 6 }}>
-                      <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e" }}>
+                      <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)" }}>
                         ລະຫັດຜ່ານປັດຈຸບັນ
                       </IonLabel>
                       <IonInput
@@ -340,12 +395,12 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                         style={{ "--border-radius": "12px" }}
                       />
                     </div>
-                    <div style={{ fontSize: "0.76rem", color: "#a8a29e", marginBottom: 14 }}>
+                    <div style={{ fontSize: "0.76rem", color: "var(--app-text-muted)", marginBottom: 14 }}>
                       ຫຼັງປ່ຽນ ຈະຖືກ logout ອອກ ແລະຕ້ອງກວດອີເມວໃໝ່ເພື່ອຕັ້ງລະຫັດຜ່ານກ່ອນເຂົ້າສູ່ລະບົບຄັ້ງຕໍ່ໄປ
                     </div>
 
                     {emailError && (
-                      <div style={{ marginBottom: 12, color: "#991b1b", fontWeight: 700, fontSize: "0.82rem" }}>
+                      <div style={{ marginBottom: 12, color: "var(--app-danger)", fontWeight: 700, fontSize: "0.82rem" }}>
                         {emailError}
                       </div>
                     )}
@@ -375,34 +430,18 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                 )}
               </section>
 
-              {emailMessage && (
-                <div style={{
-                  ...cardStyle,
-                  borderLeft: "4px solid #16a34a",
-                  color: "#166534",
-                  fontWeight: 700,
-                }}>
-                  {emailMessage}
-                </div>
-              )}
+              {emailMessage && <AlertBanner kind="success">{emailMessage}</AlertBanner>}
 
               {/* Alert — auto-dismisses after 3 s */}
               {(message || error) && (
-                <div style={{
-                  ...cardStyle,
-                  borderLeft: `4px solid ${error ? "#dc2626" : "#16a34a"}`,
-                  color: error ? "#991b1b" : "#166534",
-                  fontWeight: 700,
-                }}>
-                  {error ?? message}
-                </div>
+                <AlertBanner kind={error ? "error" : "success"}>{error ?? message}</AlertBanner>
               )}
 
               {/* Edit form — shown only when isEditing */}
               {isEditing && (
                 <section style={cardStyle}>
                   <div style={{ marginBottom: 14 }}>
-                    <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e" }}>
+                    <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)" }}>
                       ຊື່ຮ້ານ
                     </IonLabel>
                     <IonInput

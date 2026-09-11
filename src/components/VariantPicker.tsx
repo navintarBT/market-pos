@@ -80,9 +80,9 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
       <IonContent>
         <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
-            ₭{fmtK(product.price)} / ຊິ້ນ
+            {fmtK(product.price)} ກີບ / ຊິ້ນ
           </span>
-          <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
+          <span style={{ fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
             ເລືອກໄດ້ຫຼາຍ variant
           </span>
         </div>
@@ -93,6 +93,10 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
             const qty = qtys[key] ?? 0;
             const outOfStock = v.stock === 0;
             const selected = qty > 0;
+            // Live remaining after what's currently dialed in on the +/- stepper
+            // or typed into the qty box — not just the raw stock number — so
+            // the seller can see at a glance how much is left as they select.
+            const remaining = v.stock - qty;
 
             return (
               <div
@@ -104,31 +108,31 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                   padding: "12px 14px",
                   marginBottom: 8,
                   borderRadius: 14,
-                  border: `2px solid ${selected ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
-                  background: selected ? "rgba(224,123,57,0.06)" : outOfStock ? "var(--ion-color-step-50, #fafaf9)" : "var(--ion-item-background, #ffffff)",
+                  border: `2px solid ${selected ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
+                  background: selected ? "rgba(224,123,57,0.06)" : outOfStock ? "var(--ion-color-step-50, var(--app-surface-alt))" : "var(--ion-item-background, #ffffff)",
                   opacity: outOfStock ? 0.5 : 1,
                   transition: "border-color 0.15s, background 0.15s",
                 }}
               >
                 {/* Left: variant info */}
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, #1c1917)" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color, var(--ion-text-color))" }}>
                     {v.size} / {v.color}
                   </div>
                   <div style={{
                     display: "inline-block", marginTop: 4,
                     fontSize: "0.72rem", fontWeight: 600,
                     padding: "2px 8px", borderRadius: 20,
-                    background: outOfStock ? "rgba(220,38,38,0.12)" : v.stock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                    color: outOfStock ? "#dc2626" : v.stock <= 3 ? "#92400e" : "#166534",
+                    background: outOfStock ? "rgba(220,38,38,0.12)" : remaining <= (v.minStock ?? 5) ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
+                    color: outOfStock ? "var(--app-danger)" : remaining <= (v.minStock ?? 5) ? "var(--app-warning)" : "var(--app-success)",
                   }}>
-                    {outOfStock ? "ໝົດ" : `ເຫຼືອ ${v.stock} ຊິ້ນ`}
+                    {outOfStock ? "ໝົດ" : `ເຫຼືອ ${remaining} ຊິ້ນ`}
                   </div>
                 </div>
 
                 {/* Right: stepper */}
                 {outOfStock ? (
-                  <span style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>ໝົດ</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--app-danger)", fontWeight: 600 }}>ໝົດ</span>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <button
@@ -136,11 +140,11 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       disabled={qty === 0}
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
+                        border: "1.5px solid var(--ion-color-step-150, var(--app-border))",
                         background: qty === 0 ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: qty === 0 ? "not-allowed" : "pointer",
-                        color: qty === 0 ? "var(--ion-color-step-300, #d4d4d0)" : "var(--ion-text-color, #1c1917)",
+                        color: qty === 0 ? "var(--ion-color-step-300, #d4d4d0)" : "var(--ion-text-color, var(--ion-text-color))",
                       }}
                     >
                       <IonIcon icon={removeOutline} style={{ fontSize: 18 }} />
@@ -162,8 +166,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       style={{
                         width: 52, height: 36, textAlign: "center",
                         fontSize: "1.1rem", fontWeight: 700,
-                        color: qty > 0 ? "var(--ion-color-primary)" : "var(--ion-color-medium, #a8a29e)",
-                        border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", borderRadius: 10,
+                        color: qty > 0 ? "var(--ion-color-primary)" : "var(--ion-color-medium, var(--app-text-muted))",
+                        border: "1.5px solid var(--ion-color-step-150, var(--app-border))", borderRadius: 10,
                         outline: "none", background: "var(--ion-item-background, #fff)",
                       }}
                     />
@@ -173,7 +177,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
                       disabled={qty >= v.stock}
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        border: `1.5px solid ${qty >= v.stock ? "var(--ion-color-step-150, #e5e7eb)" : "var(--ion-color-primary)"}`,
+                        border: `1.5px solid ${qty >= v.stock ? "var(--ion-color-step-150, var(--app-border))" : "var(--ion-color-primary)"}`,
                         background: qty >= v.stock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-color-primary)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: qty >= v.stock ? "not-allowed" : "pointer",
@@ -191,15 +195,15 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
       </IonContent>
 
       <IonFooter>
-        <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+        <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
           {totalQty > 0 && (
             <div style={{
               display: "flex", justifyContent: "space-between",
               marginBottom: 10, fontSize: "0.9rem", fontWeight: 600,
             }}>
-              <span style={{ color: "var(--ion-text-color, #57534e)" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
+              <span style={{ color: "var(--ion-text-color, var(--app-text-secondary))" }}>ທັງໝົດ {totalQty} ຊິ້ນ</span>
               <span style={{ color: "var(--ion-color-primary)", fontWeight: 800 }}>
-                ₭{fmtK(totalPrice)}
+                {fmtK(totalPrice)} ກີບ
               </span>
             </div>
           )}

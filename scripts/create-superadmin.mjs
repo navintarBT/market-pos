@@ -1,7 +1,3 @@
-/**
- * Create the first superadmin account for the Control Panel.
- * Run once:  node scripts/create-superadmin.mjs
- */
 import { initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
@@ -36,12 +32,10 @@ async function run() {
   console.log(`  ✓ Firestore users/${user.uid} → { role: "superadmin" }`);
 
   console.log(`
-✅ Done!
-
-Login credentials for Control Panel (http://localhost:5175):
+  ✅ Done!
+  Login credentials for Control Panel (http://localhost:5175):
   Email:    ${EMAIL}
   Password: ${PASSWORD}
-
 ⚠️  เปลี่ยน password หลัง login ครั้งแรกด้วยนะครับ
 `);
 }

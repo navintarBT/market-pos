@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   IonBadge,
   IonContent,
@@ -11,6 +11,7 @@ import {
   IonMenuToggle,
   IonModal,
   IonRouterOutlet,
+  IonSpinner,
   IonTabBar,
   IonTabButton,
   IonTabs,
@@ -25,6 +26,7 @@ import {
   warningOutline,
   logOutOutline,
   peopleOutline,
+  personCircleOutline,
   walletOutline,
   shirtOutline,
   timeOutline,
@@ -33,22 +35,35 @@ import {
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
-import { getShopProfile } from "../data/shopRepository";
-import type { ShopProfile } from "../data/types";
-import Sell from "./Sell";
-import Products from "./Products";
-import Summary from "./Summary";
-import Finance from "./Finance";
-import SalesHistory from "./SalesHistory";
-import ShopProfileSettings from "./ShopProfileSettings";
-import StaffSettings from "./StaffSettings";
+import MyProfileModal from "../components/MyProfileModal";
+
+const Sell = lazy(() => import("./Sell"));
+const Products = lazy(() => import("./Products"));
+const Summary = lazy(() => import("./Summary"));
+const Finance = lazy(() => import("./Finance"));
+const SalesHistory = lazy(() => import("./SalesHistory"));
+const ShopProfileSettings = lazy(() => import("./ShopProfileSettings"));
+const StaffSettings = lazy(() => import("./StaffSettings"));
+
+function RouteFallback() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", paddingTop: 80 }}>
+      <IonSpinner name="crescent" color="primary" />
+    </div>
+  );
+}
 
 function useStockAlertCount(shopId: string | null) {
   const [count, setCount] = useState(0);
+  // Guards against a slower, older request's response landing after a newer one's,
+  // which would otherwise setCount() a stale value for the wrong shop/moment.
+  const requestIdRef = useRef(0);
 
   async function refresh() {
     if (!shopId) return;
+    const requestId = ++requestIdRef.current;
     const products = await getProducts(shopId);
+    if (requestId !== requestIdRef.current) return; // superseded by a newer refresh
     const n = products.filter((p) =>
       p.variants.some((v) => v.stock <= (v.minStock ?? 5))
     ).length;
@@ -61,10 +76,11 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
-  const { shopId, role, signOut, features, tenant, availableShops, showShopPicker } = useAuth();
+  const { shopId, role, permissions, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile, myProfileUrl } = useAuth();
+  const canViewFinance = role === "customer" || permissions.canViewFinance;
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
-  const [shop, setShop] = useState<ShopProfile | null>(null);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+  const [myProfileOpen, setMyProfileOpen] = useState(false);
 
   useEffect(() => {
     if (tenant && !tenant.isExpired && tenant.daysLeft !== null && tenant.daysLeft <= 7) {
@@ -72,13 +88,22 @@ const MainTabs: React.FC = () => {
     }
   }, [tenant]);
 
+  // Warm every tab's lazy-loaded chunk up front, right after the tab bar
+  // mounts. Otherwise the FIRST switch to a given tab crosses a real async
+  // gap (fetch the chunk → show the Suspense spinner → mount) — a timing
+  // window where a fast tap can catch the tab bar mid-transition and briefly
+  // render the wrong tab's content. Pre-fetching means every tab's code is
+  // already cached by the time the user actually taps it, so switching is a
+  // synchronous mount with no gap for that to happen in.
   useEffect(() => {
-    if (!shopId) {
-      setShop(null);
-      return;
-    }
-    getShopProfile(shopId).then(setShop).catch(() => setShop(null));
-  }, [shopId]);
+    import("./Sell");
+    import("./Products");
+    import("./Summary");
+    import("./Finance");
+    import("./SalesHistory");
+    import("./ShopProfileSettings");
+    import("./StaffSettings");
+  }, []);
 
   return (
     <CartProvider>
@@ -89,66 +114,111 @@ const MainTabs: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
-          <div style={{ padding: "18px 16px 12px", background: "linear-gradient(135deg, #fff7ed, #ffffff)" }}>
+          <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+            {/* ── Profile header ── */}
             <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              background: "#ffedd5",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 10,
+              padding: "24px 18px 20px",
+              textAlign: "center",
+              background: `
+                radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px),
+                linear-gradient(135deg, var(--app-accent-surface), var(--app-surface))
+              `,
+              backgroundSize: "18px 18px, 100% 100%",
+              borderBottom: "1px solid var(--app-border)",
             }}>
-              {shop?.profileUrl ? (
-                <img src={shop.profileUrl} alt={shop.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <IonIcon icon={businessOutline} style={{ fontSize: 34, color: "#e07b39" }} />
-              )}
+              <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "var(--app-surface)",
+                border: "3px solid var(--ion-color-primary)",
+                boxShadow: "0 4px 14px rgba(224,123,57,0.28)",
+                overflow: "hidden",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 12px",
+              }}>
+                {myProfileUrl || shopProfile?.profileUrl ? (
+                  <img src={myProfileUrl ?? shopProfile?.profileUrl} alt={shopProfile?.name ?? "profile"} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <IonIcon icon={businessOutline} style={{ fontSize: 32, color: "var(--ion-color-primary)" }} />
+                )}
+              </div>
+              <h2 style={{
+                margin: 0, color: "var(--ion-text-color)", fontSize: "1.1rem", fontWeight: 800,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {shopProfile?.name ?? "Minny ONE"}
+              </h2>
+              <span style={{
+                display: "inline-block", marginTop: 8, padding: "3px 12px", borderRadius: 20,
+                background: role === "customer" ? "var(--ion-color-primary)" : "#0f766e",
+                color: "#fff", fontSize: "0.7rem", fontWeight: 700,
+              }}>
+                {role === "customer" ? "ເຈົ້າຂອງຮ້ານ" : "ພະນັກງານ"}
+              </span>
             </div>
-            <h2 style={{ margin: 0, color: "#1c1917", fontSize: "1.05rem", fontWeight: 800 }}>
-              {shop?.name ?? "Minny ONE"}
-            </h2>
-            <p style={{ margin: "3px 0 0", color: "#78716c", fontSize: "0.78rem", fontWeight: 600 }}>
-              {role === "customer" ? "Owner" : "Staff"}
-            </p>
-          </div>
 
-          <IonList lines="none" style={{ paddingTop: 8 }}>
-            {role === "customer" && (
-              <>
+            {/* ── Menu sections ── */}
+            <div style={{ flex: 1, padding: "8px 0" }}>
+              {role === "customer" && (
+                <>
+                  <div style={{ padding: "12px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
+                    ຈັດການຮ້ານ
+                  </div>
+                  <IonList lines="none">
+                    <IonMenuToggle autoHide={false}>
+                      <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                        <IonIcon slot="start" icon={businessOutline} color="primary" />
+                        <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                      </IonItem>
+                    </IonMenuToggle>
+                    <IonMenuToggle autoHide={false}>
+                      <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "rgba(15,118,110,0.1)" }}>
+                        <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
+                        <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
+                      </IonItem>
+                    </IonMenuToggle>
+                  </IonList>
+                </>
+              )}
+
+              <div style={{ padding: "14px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
+                ບັນຊີ
+              </div>
+              <IonList lines="none">
                 <IonMenuToggle autoHide={false}>
-                  <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "#fff7ed" }}>
-                    <IonIcon slot="start" icon={businessOutline} color="primary" />
-                    <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                  <IonItem button detail={false} onClick={() => setMyProfileOpen(true)} style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                    <IonIcon slot="start" icon={personCircleOutline} color="primary" />
+                    <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຂ້ອຍ</IonLabel>
                   </IonItem>
                 </IonMenuToggle>
+                {availableShops.length > 1 && (
+                  <IonMenuToggle autoHide={false}>
+                    <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                      <IonIcon slot="start" icon={swapHorizontalOutline} color="primary" />
+                      <IonLabel style={{ fontWeight: 600, color: "var(--ion-color-primary)" }}>ສຳຮ້ານ</IonLabel>
+                    </IonItem>
+                  </IonMenuToggle>
+                )}
                 <IonMenuToggle autoHide={false}>
-                  <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "#f0fdfa" }}>
-                    <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
-                    <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
+                  <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "rgba(220,38,38,0.1)" }}>
+                    <IonIcon slot="start" icon={logOutOutline} color="danger" />
+                    <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
                   </IonItem>
                 </IonMenuToggle>
-              </>
-            )}
-            {availableShops.length > 1 && (
-              <IonMenuToggle autoHide={false}>
-                <IonItem button detail={false} onClick={showShopPicker} style={{ "--background-hover": "#fff7ed", marginTop: 8 }}>
-                  <IonIcon slot="start" icon={swapHorizontalOutline} style={{ color: "#e07b39" }} />
-                  <IonLabel style={{ fontWeight: 600, color: "#c2410c" }}>ສຳຮ້ານ</IonLabel>
-                </IonItem>
-              </IonMenuToggle>
-            )}
-            <IonMenuToggle autoHide={false}>
-              <IonItem button detail={false} onClick={signOut} style={{ "--background-hover": "#fee2e2", marginTop: 4 }}>
-                <IonIcon slot="start" icon={logOutOutline} color="danger" />
-                <IonLabel color="danger" style={{ fontWeight: 600 }}>ອອກຈາກລະບົບ</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-          </IonList>
+              </IonList>
+            </div>
+
+            {/* ── Brand footer ── */}
+            <div style={{ padding: "16px 18px", textAlign: "center", borderTop: "1px solid var(--app-border)" }}>
+              <div style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: "1rem", lineHeight: 1 }}>
+                <span style={{ color: "var(--ion-text-color)" }}>Minny</span><span style={{ color: "var(--ion-color-primary)" }}>One</span>
+              </div>
+              <p style={{ margin: "4px 0 0", fontSize: "0.68rem", color: "var(--app-text-muted)" }}>ລະບົບຂາຍສິນຄ້າ</p>
+            </div>
+          </div>
         </IonContent>
       </IonMenu>
+
+      <MyProfileModal isOpen={myProfileOpen} onDismiss={() => setMyProfileOpen(false)} />
 
       <IonModal
         isOpen={showExpiryAlert}
@@ -161,16 +231,16 @@ const MainTabs: React.FC = () => {
           {/* Icon */}
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+            background: "var(--app-warning-surface)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 20px",
             boxShadow: "0 4px 16px rgba(217,119,6,0.25)",
           }}>
-            <IonIcon icon={warningOutline} style={{ fontSize: 36, color: "#d97706" }} />
+            <IonIcon icon={warningOutline} style={{ fontSize: 36, color: "var(--app-warning)" }} />
           </div>
 
           {/* Title */}
-          <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem", fontWeight: 800, color: "#92400e" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem", fontWeight: 800, color: "var(--app-warning)" }}>
             ແພັກເກດໃກ້ໝົດອາຍຸ
           </h2>
 
@@ -178,8 +248,8 @@ const MainTabs: React.FC = () => {
           <div style={{
             display: "inline-block",
             background: (tenant?.daysLeft ?? 0) <= 3
-              ? "linear-gradient(135deg, #dc2626, #b91c1c)"
-              : "linear-gradient(135deg, #d97706, #b45309)",
+              ? "linear-gradient(135deg, var(--app-danger), #b91c1c)"
+              : "linear-gradient(135deg, var(--app-warning), #b45309)",
             color: "#fff", borderRadius: 20,
             padding: "4px 16px", marginBottom: 16,
             fontSize: "0.9rem", fontWeight: 700,
@@ -188,7 +258,7 @@ const MainTabs: React.FC = () => {
           </div>
 
           {/* Message */}
-          <p style={{ margin: "0 0 28px", fontSize: "0.88rem", color: "#78716c", lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 28px", fontSize: "0.88rem", color: "var(--app-text-secondary)", lineHeight: 1.6 }}>
             ກະລຸນາຕິດຕໍ່ຜູ້ໃຫ້ບໍລິການ<br />ເພື່ອຕໍ່ subscription ຂອງທ່ານ
           </p>
 
@@ -197,7 +267,7 @@ const MainTabs: React.FC = () => {
             onClick={() => setShowExpiryAlert(false)}
             style={{
               width: "100%", padding: "13px",
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               border: "none", borderRadius: 12,
               color: "#fff", fontSize: "0.95rem", fontWeight: 700,
               cursor: "pointer",
@@ -211,13 +281,27 @@ const MainTabs: React.FC = () => {
 
       <IonTabs>
         <IonRouterOutlet id="main-content">
-          <Route exact path="/tabs/sell"><Sell /></Route>
-          <Route exact path="/tabs/products"><Products onStockChanged={refreshAlerts} /></Route>
-          <Route exact path="/tabs/summary"><Summary /></Route>
-          <Route exact path="/tabs/finance"><Finance /></Route>
-          <Route exact path="/tabs/history"><SalesHistory /></Route>
-          <Route exact path="/tabs/shop-profile"><ShopProfileSettings onShopUpdated={setShop} /></Route>
-          <Route exact path="/tabs/staff"><StaffSettings /></Route>
+          <Route exact path="/tabs/sell">
+            <Suspense fallback={<RouteFallback />}><Sell /></Suspense>
+          </Route>
+          <Route exact path="/tabs/products">
+            <Suspense fallback={<RouteFallback />}><Products onStockChanged={refreshAlerts} /></Suspense>
+          </Route>
+          <Route exact path="/tabs/summary">
+            <Suspense fallback={<RouteFallback />}><Summary /></Suspense>
+          </Route>
+          <Route exact path="/tabs/finance">
+            <Suspense fallback={<RouteFallback />}><Finance /></Suspense>
+          </Route>
+          <Route exact path="/tabs/history">
+            <Suspense fallback={<RouteFallback />}><SalesHistory /></Suspense>
+          </Route>
+          <Route exact path="/tabs/shop-profile">
+            <Suspense fallback={<RouteFallback />}><ShopProfileSettings onShopUpdated={setShopProfile} /></Suspense>
+          </Route>
+          <Route exact path="/tabs/staff">
+            <Suspense fallback={<RouteFallback />}><StaffSettings /></Suspense>
+          </Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>
 
@@ -231,15 +315,15 @@ const MainTabs: React.FC = () => {
             <IonLabel>ສິນຄ້າ</IonLabel>
             {alertCount > 0 && <IonBadge color="danger">{alertCount}</IonBadge>}
           </IonTabButton>
-          <IonTabButton tab="finance" href="/tabs/finance">
-            <IonIcon icon={walletOutline} />
-            <IonLabel>ການເງິນ</IonLabel>
-          </IonTabButton>
           <IonTabButton tab="history" href="/tabs/history">
             <IonIcon icon={timeOutline} />
             <IonLabel>ປະຫວັດການຂາຍ</IonLabel>
           </IonTabButton>
-          {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && (
+          <IonTabButton tab="finance" href="/tabs/finance">
+            <IonIcon icon={walletOutline} />
+            <IonLabel>ການເງິນ</IonLabel>
+          </IonTabButton>
+          {(features.returnSummaryEnabled || features.monthlySummaryEnabled) && canViewFinance && (
             <IonTabButton tab="summary" href="/tabs/summary">
               <IonIcon icon={barChartOutline} />
               <IonLabel>ສະຫຼຸບ</IonLabel>

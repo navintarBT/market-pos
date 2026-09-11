@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -14,13 +14,12 @@ import {
   IonButton,
   IonIcon,
   IonSpinner,
-  IonText,
   IonModal,
   IonFooter,
   IonButtons,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { cartOutline, checkmarkOutline } from "ionicons/icons";
+import { cartOutline, checkmarkOutline, addOutline, removeOutline } from "ionicons/icons";
 import { IonMenuButton } from "@ionic/react";
 import { fmtK } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
@@ -30,11 +29,14 @@ import { getBundles } from "../data/bundleRepository";
 import VariantPicker from "../components/VariantPicker";
 import CartSheet from "../components/CartSheet";
 import CheckoutModal from "../components/CheckoutModal";
+import ShopHeaderTag from "../components/ShopHeaderTag";
+import EmptyState from "../components/EmptyState";
+import { reservedKey, computeReserved } from "../utils/stock";
 import type { Bundle, BundleItem, Product, ProductVariant } from "../data/types";
 
 const Sell: React.FC = () => {
   const { shopId } = useAuth();
-  const { count, total, addItem } = useCart();
+  const { items, count, total, addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,7 @@ const Sell: React.FC = () => {
   const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
   const [bundlePickerTarget, setBundlePickerTarget] = useState<Bundle | null>(null);
   const [chosenVariants, setChosenVariants] = useState<Record<number, ProductVariant>>({});
+  const [bundleQty, setBundleQty] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
@@ -61,7 +64,7 @@ const Sell: React.FC = () => {
     }
   }, [shopId]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {
@@ -69,10 +72,23 @@ const Sell: React.FC = () => {
     (e.target as HTMLIonRefresherElement).complete();
   }
 
+  // Stock already sitting in the cart (as a plain item or inside a bundle)
+  // isn't sold yet, but it's spoken for — subtract it from what's shown as
+  // available so selling several bundles/products in one visit doesn't let
+  // the seller add more than what's actually left.
+  const reserved = computeReserved(items);
+  const productsEffective = products.map((p) => ({
+    ...p,
+    variants: p.variants.map((v) => {
+      const inCart = reserved.get(reservedKey(p.id, v.size, v.color)) ?? 0;
+      return inCart > 0 ? { ...v, stock: Math.max(0, v.stock - inCart) } : v;
+    }),
+  }));
+
   const categories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
   const filtered = activeCategory === "all"
-    ? products
-    : products.filter((p) => p.category === activeCategory);
+    ? productsEffective
+    : productsEffective.filter((p) => p.category === activeCategory);
 
   function handleAddToCart(items: { variant: ProductVariant; quantity: number }[]) {
     if (!pickerProduct) return;
@@ -92,22 +108,29 @@ const Sell: React.FC = () => {
   function openBundlePicker(bundle: Bundle) {
     setBundlePickerTarget(bundle);
     setChosenVariants({});
+    setBundleQty(1);
   }
 
   function confirmBundleToCart() {
     if (!bundlePickerTarget) return;
     const bundleItemsWithVariants: BundleItem[] = bundlePickerTarget.items.map((item, idx) => {
-      const p = products.find((x) => x.id === item.productId);
+      const p = productsEffective.find((x) => x.id === item.productId);
       const auto = p?.variants.length === 1 ? p.variants[0] : null;
       const chosen = auto ?? chosenVariants[idx];
       return { ...item, variantSize: chosen?.size ?? "", variantColor: chosen?.color ?? "" };
     });
     const costPrice = bundleItemsWithVariants.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
+    // Fingerprint the chosen sub-variants into the cart's itemKey so two adds of the
+    // same bundle with DIFFERENT variant picks (e.g. size S then size L) get separate
+    // cart lines instead of merging into one quantity and silently dropping a pick.
+    const variantFingerprint = bundleItemsWithVariants
+      .map((bi) => `${bi.productId}:${bi.variantSize ?? ""}:${bi.variantColor ?? ""}`)
+      .join("|");
     addItem({
       productId: bundlePickerTarget.id,
       productName: bundlePickerTarget.name,
-      variant: { size: "__bundle__", color: "", stock: 99 },
-      quantity: 1,
+      variant: { size: "__bundle__", color: variantFingerprint, stock: 99 },
+      quantity: bundleQty,
       originalPrice: bundlePickerTarget.price,
       unitPrice: bundlePickerTarget.price,
       costPrice: costPrice > 0 ? costPrice : undefined,
@@ -119,7 +142,7 @@ const Sell: React.FC = () => {
 
   function isBundleAvailable(bundle: Bundle): boolean {
     for (const bi of bundle.items) {
-      const p = products.find((x) => x.id === bi.productId);
+      const p = productsEffective.find((x) => x.id === bi.productId);
       if (!p) return false;
       const hasStock = p.variants.some((v) => v.stock >= bi.quantity);
       if (!hasStock) return false;
@@ -129,28 +152,64 @@ const Sell: React.FC = () => {
 
   const allVariantsChosen = bundlePickerTarget !== null &&
     bundlePickerTarget.items.every((item, idx) => {
-      const p = products.find((x) => x.id === item.productId);
+      const p = productsEffective.find((x) => x.id === item.productId);
       if (!p) return false;
       if (p.variants.length === 1) return true;
       return !!chosenVariants[idx];
     });
+
+  // Most units of this bundle configuration buildable from what's left in
+  // stock right now (after subtracting what's already reserved in the cart).
+  function computeMaxBundleQty(): number {
+    if (!bundlePickerTarget) return 0;
+    let max = Infinity;
+    bundlePickerTarget.items.forEach((item, idx) => {
+      const p = productsEffective.find((x) => x.id === item.productId);
+      const autoVariant = p?.variants.length === 1 ? p.variants[0] : null;
+      const chosen = autoVariant ?? chosenVariants[idx] ?? null;
+      const stock = chosen?.stock ?? 0;
+      max = Math.min(max, Math.floor(stock / item.quantity));
+    });
+    return Number.isFinite(max) ? Math.max(0, max) : 0;
+  }
+  const maxBundleQty = computeMaxBundleQty();
+
+  useEffect(() => {
+    setBundleQty((q) => Math.min(Math.max(q, 1), Math.max(maxBundleQty, 1)));
+  }, [maxBundleQty]);
 
   function openCheckout() {
     setCartOpen(false);
     setTimeout(() => setCheckoutOpen(true), 300);
   }
 
+  // The bundle picker's "ເພີ່ມໃສ່ກະຕ່າ" confirm button sits in the modal's
+  // footer, right at the bottom of the screen — the same screen position the
+  // floating cart bar slides into the instant the item lands (count 0→1).
+  // If the tap that confirms the add is followed by any stray/duplicate
+  // touch event while the modal is still mid-close-animation, it can land on
+  // the bar underneath and pop the cart open before its own re-render has
+  // settled, which looked like "an empty cart flashes up". Give the bar a
+  // brief grace period after it first appears before it's actually tappable.
+  const [cartBarReady, setCartBarReady] = useState(true);
+  const prevCountRef = useRef(count);
+  useEffect(() => {
+    if (count > 0 && prevCountRef.current === 0) {
+      setCartBarReady(false);
+      const t = setTimeout(() => setCartBarReady(true), 400);
+      prevCountRef.current = count;
+      return () => clearTimeout(t);
+    }
+    prevCountRef.current = count;
+  }, [count]);
+
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
+          <div slot="start"><ShopHeaderTag /></div>
           <IonTitle style={{ fontWeight: 700 }}>ຂາຍ</IonTitle>
           <div slot="end" style={{ paddingRight: 8, display: "flex", alignItems: "center", gap: 4 }}>
-            {count > 0 && (
-              <span style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 700, background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px" }}>
-                ₭{fmtK(total)}
-              </span>
-            )}
             <IonButton fill="clear" onClick={() => setCartOpen(true)}
               style={{ minHeight: 44, minWidth: 44, "--color": "#ffffff", position: "relative" }}>
               <IonIcon slot="icon-only" icon={cartOutline} style={{ fontSize: 26 }} />
@@ -183,7 +242,7 @@ const Sell: React.FC = () => {
             zIndex: 10,
             transform: count > 0 ? "translateY(0)" : "translateY(140%)",
             opacity: count > 0 ? 1 : 0,
-            pointerEvents: count > 0 ? "auto" : "none",
+            pointerEvents: count > 0 && cartBarReady ? "auto" : "none",
             transition: "transform 0.25s ease, opacity 0.2s ease",
           }}
         >
@@ -194,7 +253,7 @@ const Sell: React.FC = () => {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "10px 14px 10px 10px",
               borderRadius: 18, border: "none",
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               boxShadow: "0 8px 24px rgba(194, 94, 30, 0.42)",
               cursor: "pointer", fontFamily: "inherit",
             }}
@@ -210,7 +269,7 @@ const Sell: React.FC = () => {
                 <IonIcon icon={cartOutline} style={{ fontSize: 19, color: "#fff" }} />
                 <span style={{
                   position: "absolute", top: -6, right: -6,
-                  background: "#fff", color: "#c2410c",
+                  background: "var(--app-surface)", color: "#c2410c",
                   fontSize: "0.68rem", fontWeight: 800,
                   minWidth: 18, height: 18, borderRadius: 9, padding: "0 4px",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -220,7 +279,7 @@ const Sell: React.FC = () => {
                 </span>
               </div>
               <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.98rem" }}>
-                ₭{fmtK(total)}
+                {fmtK(total)} ກີບ
               </span>
             </div>
             <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.88rem" }}>
@@ -240,9 +299,9 @@ const Sell: React.FC = () => {
                 style={{
                   padding: "7px 22px", borderRadius: 24, fontWeight: 700, fontSize: "0.85rem",
                   cursor: "pointer", transition: "all 0.15s",
-                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                  border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                   background: active ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                  color: active ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                  color: active ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                   boxShadow: active ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                 }}
               >
@@ -257,6 +316,8 @@ const Sell: React.FC = () => {
           <div style={{
             display: "flex", gap: 8, overflowX: "auto", padding: "4px 12px 6px",
             scrollbarWidth: "none",
+            position: "sticky", top: 0, zIndex: 5,
+            background: "var(--ion-background-color)",
           }}>
             {["all", ...categories].map((cat) => {
               const isActive = activeCategory === cat;
@@ -267,9 +328,9 @@ const Sell: React.FC = () => {
                   style={{
                     flexShrink: 0,
                     padding: "7px 18px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                     background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                     fontSize: "0.85rem", fontWeight: 700,
                     cursor: "pointer",
                     boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
@@ -293,16 +354,10 @@ const Sell: React.FC = () => {
         {activeTab === "products" && (
           <>
             {!loading && products.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>🛍️</div>
-                <IonText color="medium"><p>ຍັງບໍ່ມີສິນຄ້າ</p></IonText>
-              </div>
+              <EmptyState icon="🛍️" title="ຍັງບໍ່ມີສິນຄ້າ" />
             )}
             {!loading && products.length > 0 && filtered.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-                <IonText color="medium"><p>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p></IonText>
-              </div>
+              <EmptyState icon="🔍" title="ບໍ່ມີສິນຄ້າໃນໝວດນີ້" />
             )}
             {!loading && filtered.length > 0 && (
               <IonGrid style={{ padding: "12px 8px" }}>
@@ -327,21 +382,21 @@ const Sell: React.FC = () => {
                         >
                           <div style={{ fontSize: 38, marginBottom: 6, lineHeight: 1 }}>
                             {p.photoUrl
-                              ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                              ? <img src={p.photoUrl} alt={p.name} loading="lazy" decoding="async" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
                               : "👕"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, var(--ion-text-color))", marginBottom: 3, lineHeight: 1.3 }}>
                             {p.name}
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
-                            ₭{fmtK(p.price)}
+                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ion-color-primary)", marginBottom: 4 }}>
+                            {fmtK(p.price)} ກີບ
                           </div>
                           <div style={{
                             display: "inline-block", fontSize: "0.72rem", fontWeight: 600,
                             padding: "2px 8px", borderRadius: 20,
                             background: outOfStock ? "rgba(220,38,38,0.12)" : totalStock <= 3 ? "rgba(217,119,6,0.12)" : "rgba(22,163,74,0.12)",
-                            color: outOfStock ? "#dc2626" : totalStock <= 3 ? "#92400e" : "#166534",
+                            color: outOfStock ? "var(--app-danger)" : totalStock <= 3 ? "var(--app-warning)" : "var(--app-success)",
                           }}>
                             {outOfStock ? "ໝົດ" : `${totalStock} ຊິ້ນ`}
                           </div>
@@ -359,10 +414,7 @@ const Sell: React.FC = () => {
         {activeTab === "bundles" && (
           <>
             {!loading && bundles.length === 0 && (
-              <div style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-                <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ສ້າງໄດ້ທີ່ໜ້າສິນຄ້າ</p></IonText>
-              </div>
+              <EmptyState icon="🎁" title="ຍັງບໍ່ມີຊຸດ — ສ້າງໄດ້ທີ່ໜ້າສິນຄ້າ" />
             )}
             {!loading && bundles.length > 0 && (
               <IonGrid style={{ padding: "12px 8px" }}>
@@ -386,17 +438,17 @@ const Sell: React.FC = () => {
                         >
                           <div style={{ fontSize: 34, marginBottom: 6, lineHeight: 1 }}>
                             {b.photoUrl
-                              ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                              ? <img src={b.photoUrl} alt={b.name} loading="lazy" decoding="async" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
                               : "🎁"
                             }
                           </div>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, #1c1917)", marginBottom: 3, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color, var(--ion-text-color))", marginBottom: 3, lineHeight: 1.3 }}>
                             {b.name}
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "#e07b39", marginBottom: 4 }}>
-                            ₭{fmtK(b.price)}
+                          <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ion-color-primary)", marginBottom: 4 }}>
+                            {fmtK(b.price)} ກີບ
                           </div>
-                          <div style={{ fontSize: "0.68rem", color: "#78716c", lineHeight: 1.4 }}>
+                          <div style={{ fontSize: "0.68rem", color: "var(--app-text-secondary)", lineHeight: 1.4 }}>
                             {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" + ")}
                           </div>
                           {!available && (
@@ -404,7 +456,7 @@ const Sell: React.FC = () => {
                               display: "inline-block", marginTop: 4,
                               fontSize: "0.68rem", fontWeight: 700,
                               padding: "2px 8px", borderRadius: 20,
-                              background: "#fee2e2", color: "#dc2626",
+                              background: "var(--app-danger-surface)", color: "var(--app-danger)",
                             }}>
                               ສິນຄ້າໝົດ
                             </div>
@@ -422,7 +474,7 @@ const Sell: React.FC = () => {
 
       <VariantPicker product={pickerProduct} isOpen={!!pickerProduct}
         onAdd={handleAddToCart} onDismiss={() => setPickerProduct(null)} />
-      <CartSheet isOpen={cartOpen} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
+      <CartSheet isOpen={cartOpen} products={products} onCheckout={openCheckout} onDismiss={() => setCartOpen(false)} />
       <CheckoutModal isOpen={checkoutOpen} onDismiss={() => setCheckoutOpen(false)}
         onSuccess={(soldItems) => {
           setCheckoutOpen(false);
@@ -469,17 +521,17 @@ const Sell: React.FC = () => {
 
         <IonContent>
           <div style={{ padding: "8px 16px 24px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: "0.78rem", color: "#78716c" }}>
+            <p style={{ margin: "0 0 16px", fontSize: "0.78rem", color: "var(--app-text-secondary)" }}>
               ເລືອກ variant ໃຫ້ແຕ່ລະສິນຄ້າໃນຊຸດ
             </p>
             {bundlePickerTarget?.items.map((item, idx) => {
-              const p = products.find((x) => x.id === item.productId);
+              const p = productsEffective.find((x) => x.id === item.productId);
               const autoVariant = p?.variants.length === 1 ? p.variants[0] : null;
               const chosen = autoVariant ?? chosenVariants[idx] ?? null;
               return (
                 <div key={idx} style={{ marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                       {item.productName} ×{item.quantity}
                     </span>
                     {chosen && (
@@ -490,8 +542,8 @@ const Sell: React.FC = () => {
                   </div>
                   {autoVariant ? (
                     <div style={{
-                      fontSize: "0.78rem", color: "#78716c", padding: "8px 12px",
-                      background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0",
+                      fontSize: "0.78rem", color: "var(--app-text-secondary)", padding: "8px 12px",
+                      background: "var(--app-success-surface)", borderRadius: 8, border: "1px solid #bbf7d0",
                     }}>
                       ✓ {autoVariant.size}{autoVariant.color ? ` / ${autoVariant.color}` : ""} (ອັດຕະໂນມັດ)
                     </div>
@@ -499,7 +551,7 @@ const Sell: React.FC = () => {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {p?.variants.map((v, vi) => {
                         const isChosen = chosenVariants[idx]?.size === v.size && chosenVariants[idx]?.color === v.color;
-                        const outOfStock = v.stock < item.quantity;
+                        const outOfStock = v.stock < item.quantity * bundleQty;
                         return (
                           <button
                             key={vi}
@@ -508,9 +560,9 @@ const Sell: React.FC = () => {
                             style={{
                               padding: "7px 14px", borderRadius: 20,
                               cursor: outOfStock ? "not-allowed" : "pointer",
-                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                              border: `1.5px solid ${isChosen ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                               background: isChosen ? "var(--ion-color-primary)" : outOfStock ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
-                              color: isChosen ? "#fff" : outOfStock ? "var(--ion-color-medium, #a8a29e)" : "var(--ion-text-color, #1c1917)",
+                              color: isChosen ? "#fff" : outOfStock ? "var(--ion-color-medium, var(--app-text-muted))" : "var(--ion-text-color, var(--ion-text-color))",
                               fontWeight: 600, fontSize: "0.85rem",
                               display: "flex", alignItems: "center", gap: 4,
                             }}
@@ -532,14 +584,54 @@ const Sell: React.FC = () => {
         </IonContent>
 
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
+            {allVariantsChosen && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ion-text-color)" }}>
+                  ຈຳນວນຊຸດ {maxBundleQty > 0 && <span style={{ color: "var(--app-text-secondary)", fontWeight: 400 }}>(ເຫຼືອເຮັດໄດ້ {maxBundleQty} ຊຸດ)</span>}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={() => setBundleQty((q) => Math.max(1, q - 1))}
+                    disabled={bundleQty <= 1}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      border: "1.5px solid var(--ion-color-step-150, var(--app-border))",
+                      background: bundleQty <= 1 ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-item-background, #fff)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: bundleQty <= 1 ? "not-allowed" : "pointer",
+                      color: bundleQty <= 1 ? "var(--ion-color-step-300, #d4d4d0)" : "var(--ion-text-color)",
+                    }}
+                  >
+                    <IonIcon icon={removeOutline} style={{ fontSize: 18 }} />
+                  </button>
+                  <span style={{ minWidth: 28, textAlign: "center", fontSize: "1.1rem", fontWeight: 700, color: "var(--ion-color-primary)" }}>
+                    {bundleQty}
+                  </span>
+                  <button
+                    onClick={() => setBundleQty((q) => Math.min(maxBundleQty, q + 1))}
+                    disabled={bundleQty >= maxBundleQty}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      border: `1.5px solid ${bundleQty >= maxBundleQty ? "var(--ion-color-step-150, var(--app-border))" : "var(--ion-color-primary)"}`,
+                      background: bundleQty >= maxBundleQty ? "var(--ion-color-step-50, #f5f5f4)" : "var(--ion-color-primary)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: bundleQty >= maxBundleQty ? "not-allowed" : "pointer",
+                      color: bundleQty >= maxBundleQty ? "#d4d4d0" : "#fff",
+                    }}
+                  >
+                    <IonIcon icon={addOutline} style={{ fontSize: 18 }} />
+                  </button>
+                </div>
+              </div>
+            )}
             <IonButton
               expand="block"
-              disabled={!allVariantsChosen}
+              disabled={!allVariantsChosen || bundleQty < 1}
               onClick={confirmBundleToCart}
               style={{ minHeight: 52, "--border-radius": "14px" }}
             >
-              ເພີ່ມໃສ່ກະຕ່າ · ₭{fmtK(bundlePickerTarget?.price ?? 0)}
+              ເພີ່ມໃສ່ກະຕ່າ {bundleQty > 1 ? `${bundleQty} ຊຸດ · ` : "· "}{fmtK((bundlePickerTarget?.price ?? 0) * bundleQty)} ກີບ
             </IonButton>
           </div>
         </IonFooter>

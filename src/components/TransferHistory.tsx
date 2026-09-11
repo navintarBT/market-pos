@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
-  IonContent, IonIcon, IonSpinner,
+  IonContent, IonIcon, IonSpinner, IonAlert,
 } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
-import { fmtK } from "../utils/format";
-import { getTransfersByDateRange } from "../data/transferRepository";
+import { closeOutline, trashOutline } from "ionicons/icons";
+import { fmtK, fmtDate, fmtTime } from "../utils/format";
+import { getTransfersByDateRange, deleteTransfer } from "../data/transferRepository";
 import type { TransferRecord } from "../data/transferRepository";
+import DateRangeFilter, { todayStr, monthStartStr } from "./DateRangeFilter";
+import EmptyState from "./EmptyState";
 
 interface Props {
   isOpen: boolean;
@@ -14,20 +16,14 @@ interface Props {
   onDismiss: () => void;
 }
 
-function toDateInputValue(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-const todayStr = toDateInputValue(new Date());
-
 const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
-  const [fromDate, setFromDate] = useState(todayStr);
-  const [toDate, setToDate] = useState(todayStr);
+  const [fromDate, setFromDate] = useState(monthStartStr());
+  const [toDate, setToDate] = useState(todayStr());
   const [records, setRecords] = useState<TransferRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TransferRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,6 +32,21 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
       .then(setRecords)
       .finally(() => setLoading(false));
   }, [isOpen, fromDate, toDate, shopId]);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setDeletingId(target.id);
+    try {
+      await deleteTransfer(shopId, target);
+      setRecords((prev) => prev.filter((r) => r.id !== target.id));
+    } catch {
+      setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const totalQty = records.reduce((s, r) => s + r.quantity, 0);
   const totalCost = records.reduce((s, r) => s + r.costPrice * r.quantity, 0);
@@ -55,31 +66,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
 
       <IonContent>
         {/* Date range filter */}
-        <div style={{
-          background: "#fff", borderRadius: 12, padding: "10px 14px", margin: "12px 16px 8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          display: "flex", alignItems: "center", gap: 8,
-        }}>
-          <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
-          <input
-            type="date" value={fromDate} max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={{
-              flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-            }}
-          />
-          <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
-          <input
-            type="date" value={toDate} min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={{
-              flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-            }}
-          />
+        <div style={{ margin: "12px 16px 0" }}>
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} />
         </div>
 
         {loading && (
@@ -93,7 +81,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             {/* Summary card */}
             <div style={{
               margin: "8px 16px 12px",
-              background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              background: "linear-gradient(135deg, var(--app-info), #1d4ed8)",
               borderRadius: 16, padding: "16px 20px",
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
               gap: 8,
@@ -101,7 +89,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
               {[
                 { label: "ລາຍການ", value: String(records.length) },
                 { label: "ຈຳນວນລວມ", value: `${totalQty} ຊິ້ນ` },
-                { label: "ຕົ້ນທຶນລວມ", value: `₭${fmtK(totalCost)}` },
+                { label: "ຕົ້ນທຶນລວມ", value: `${fmtK(totalCost)} ກີບ` },
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: "0.68rem", color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{label}</p>
@@ -111,46 +99,57 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
             </div>
 
             {records.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 32px", color: "#a8a29e" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📤</div>
-                <p style={{ margin: 0 }}>ບໍ່ມີລາຍການຍ້າຍໃນຊ່ວງເວລານີ້</p>
-              </div>
+              <EmptyState icon="📤" title="ບໍ່ມີລາຍການຍ້າຍໃນຊ່ວງເວລານີ້" />
             )}
 
             <div style={{ padding: "0 16px 32px" }}>
               {records.map((r) => {
                 const cost = r.costPrice * r.quantity;
-                const timeStr = r.createdAt.toLocaleTimeString("lo-LA", { hour: "2-digit", minute: "2-digit" });
-                const dateStr = r.createdAt.toLocaleDateString("lo-LA", { day: "numeric", month: "short" });
+                const timeStr = fmtTime(r.createdAt);
+                const dateStr = fmtDate(r.createdAt);
                 return (
                   <div key={r.id} style={{
-                    background: "#fff", borderRadius: 14, padding: "14px 16px",
+                    background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px",
                     marginBottom: 10, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)" }}>
                           {r.productName}
                         </p>
-                        <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                        <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                           {r.variantSize}{r.variantColor ? ` / ${r.variantColor}` : ""}
                           {" · "}{dateStr} {timeStr}
                         </p>
                         {r.note && (
-                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "#3b82f6", fontWeight: 600 }}>
+                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-info)", fontWeight: 600 }}>
                             📌 {r.note}
                           </p>
                         )}
                       </div>
-                      <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-                        <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "#dc2626" }}>
-                          -{r.quantity} ຊິ້ນ
-                        </p>
-                        {r.costPrice > 0 && (
-                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
-                            ₭{fmtK(cost)}
+                      <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
+                        <div style={{ textAlign: "right" }}>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "var(--app-danger)" }}>
+                            -{r.quantity} ຊິ້ນ
                           </p>
-                        )}
+                          {r.costPrice > 0 && (
+                            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
+                              {fmtK(cost)} ກີບ
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setDeleteTarget(r)}
+                          disabled={deletingId === r.id}
+                          style={{
+                            background: "none", border: "none", padding: "6px 4px", marginLeft: 4,
+                            cursor: deletingId === r.id ? "default" : "pointer", color: "#d1d5db", lineHeight: 0, flexShrink: 0,
+                          }}
+                        >
+                          {deletingId === r.id
+                            ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                            : <IonIcon icon={trashOutline} style={{ fontSize: 17, display: "block" }} />}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -160,6 +159,24 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
           </>
         )}
       </IonContent>
+
+      <IonAlert
+        isOpen={!!deleteTarget}
+        header="ລຶບລາຍການຍ້າຍ"
+        message={deleteTarget ? `ຕ້ອງການລຶບ "${deleteTarget.productName}" ແມ່ນບໍ່? stock ຈະຖືກຄືນ` : ""}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
+          { text: "ລຶບ", role: "destructive", handler: handleDelete },
+        ]}
+        onDidDismiss={() => setDeleteTarget(null)}
+      />
+      <IonAlert
+        isOpen={!!deleteError}
+        header="ຂໍ້ຜິດພາດ"
+        message={deleteError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setDeleteError(null)}
+      />
     </IonModal>
   );
 };

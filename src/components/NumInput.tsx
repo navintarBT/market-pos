@@ -38,6 +38,7 @@ const NumInput: React.FC<Props> = ({ value, onChange, placeholder, style, disabl
       inputMode="numeric"
       value={display}
       onChange={handleChange}
+      onFocus={(e) => e.target.select()}
       placeholder={placeholder ?? "0"}
       style={style}
       disabled={disabled}

@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter,
   IonButtons, IonButton, IonIcon, IonSpinner, IonAlert, IonInput, IonLabel,
-  IonText,
+  IonText, IonFab, IonFabButton,
 } from "@ionic/react";
 import {
-  addOutline, closeOutline, trashOutline, createOutline,
+  addOutline, trashOutline, createOutline,
   chevronBackOutline, checkmarkOutline, imageOutline,
 } from "ionicons/icons";
 import { fmtK } from "../utils/format";
@@ -14,21 +14,20 @@ import { getBundles, addBundle, updateBundle, deleteBundle } from "../data/bundl
 
 import { uploadProductImage } from "../data/imageRepository";
 import ImagePicker from "./ImagePicker";
+import EmptyState from "./EmptyState";
 import type { Bundle, BundleItem, Product } from "../data/types";
 
 interface Props {
-  isOpen: boolean;
   products: Product[];
   shopId: string;
   isOwner?: boolean;
-  onDismiss: () => void;
 }
 
-const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = false, onDismiss }) => {
+const BundleManager: React.FC<Props> = ({ products, shopId, isOwner = false }) => {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -54,7 +53,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
     finally { setLoading(false); }
   }, [shopId]);
 
-  useEffect(() => { if (isOpen) load(); }, [isOpen, load]);
+  useEffect(() => { load(); }, [load]);
 
   function openCreate() {
     setEditingId(null);
@@ -97,8 +96,8 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
         setBundles((prev) => [...prev, { id, ...data }]);
       }
       setFormOpen(false);
-    } catch {
-      setSaveError(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "ບັນທຶກບໍ່ສຳເລັດ");
     } finally {
       setSaving(false);
       setUploading(false);
@@ -137,88 +136,74 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
   return (
     <>
-      {/* ── Bundle list ── */}
-      <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle style={{ fontWeight: 700 }}>ຊຸດຂາຍ</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={openCreate}>
-                <IonIcon slot="icon-only" icon={addOutline} />
-              </IonButton>
-              <IonButton onClick={onDismiss}>
-                <IonIcon slot="icon-only" icon={closeOutline} />
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          {loading && (
-            <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-              <IonSpinner name="crescent" color="primary" />
-            </div>
-          )}
-          {!loading && bundles.length === 0 && (
-            <div style={{ textAlign: "center", padding: "64px 32px" }}>
-              <div style={{ fontSize: 56, marginBottom: 12 }}>🎁</div>
-              <IonText color="medium"><p>ຍັງບໍ່ມີຊຸດ — ກົດ + ດ້ານເທິງເພື່ອສ້າງ</p></IonText>
-            </div>
-          )}
-          <div style={{ padding: "12px 16px 24px" }}>
-            {bundles.map((b) => {
-              const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
-              return (
-                <div key={b.id} style={{
-                  background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-                  display: "flex", alignItems: "center", gap: 12,
-                }}>
-                  {/* Photo */}
-                  <div style={{
-                    width: 54, height: 54, borderRadius: 10, flexShrink: 0,
-                    background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center",
-                    overflow: "hidden",
-                  }}>
-                    {b.photoUrl
-                      ? <img src={b.photoUrl} alt={b.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "#e07b39" }} />
-                    }
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#1c1917" }}>{b.name}</p>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
-                      <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "#e07b39" }}>
-                        ₭{fmtK(b.price)}
-                      </span>
-                      {cost > 0 && (
-                        <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
-                          ກຳໄລ ₭{fmtK(b.price - cost)}
-                        </span>
-                      )}
-                    </div>
-                    <p style={{
-                      margin: "4px 0 0", fontSize: "0.72rem", color: "#78716c",
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" · ")}
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                    <IonButton fill="clear" size="small" onClick={() => openEdit(b)}>
-                      <IonIcon slot="icon-only" icon={createOutline} />
-                    </IonButton>
-                    {isOwner && (
-                      <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
-                        <IonIcon slot="icon-only" icon={trashOutline} />
-                      </IonButton>
-                    )}
-                  </div>
+      {/* ── Bundle list (inline — rendered as the "ສິນຄ້າເປັນຊຸດ" tab of the Products page) ── */}
+      {loading && (
+        <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+          <IonSpinner name="crescent" color="primary" />
+        </div>
+      )}
+      {!loading && bundles.length === 0 && (
+        <EmptyState icon="🎁" title="ກົດ + ເພື່ອສ້າງຊຸດທຳອິດ" />
+      )}
+      <div style={{ padding: "12px 16px 24px" }}>
+        {bundles.map((b) => {
+          const cost = b.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
+          return (
+            <div key={b.id} style={{
+              background: "var(--app-surface)", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
+              {/* Photo */}
+              <div style={{
+                width: 54, height: 54, borderRadius: 10, flexShrink: 0,
+                background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
+              }}>
+                {b.photoUrl
+                  ? <img src={b.photoUrl} alt={b.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <IonIcon icon={imageOutline} style={{ fontSize: 24, color: "var(--ion-color-primary)" }} />
+                }
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>{b.name}</p>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 2 }}>
+                  <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ion-color-primary)" }}>
+                    {fmtK(b.price)} ກີບ
+                  </span>
+                  {cost > 0 && (
+                    <span style={{ fontSize: "0.72rem", color: "var(--app-success)", fontWeight: 600 }}>
+                      ກຳໄລ {fmtK(b.price - cost)} ກີບ
+                    </span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </IonContent>
-      </IonModal>
+                <p style={{
+                  margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {b.items.map((i) => `${i.productName} ×${i.quantity}`).join(" · ")}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                <IonButton fill="clear" size="small" onClick={() => openEdit(b)}>
+                  <IonIcon slot="icon-only" icon={createOutline} />
+                </IonButton>
+                {isOwner && (
+                  <IonButton fill="clear" size="small" color="danger" onClick={() => setDeleteTarget(b)}>
+                    <IonIcon slot="icon-only" icon={trashOutline} />
+                  </IonButton>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <IonFab vertical="bottom" horizontal="end" slot="fixed">
+        <IonFabButton onClick={openCreate}>
+          <IonIcon icon={addOutline} />
+        </IonFabButton>
+      </IonFab>
 
       {/* ── Bundle form ── */}
       <IonModal isOpen={formOpen} onDidDismiss={() => setFormOpen(false)}>
@@ -239,7 +224,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Photo */}
             <div style={{ marginBottom: 18 }}>
-              <IonLabel style={{ display: "block", marginBottom: 8, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ display: "block", marginBottom: 8, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ຮູບຊຸດ
               </IonLabel>
               <ImagePicker
@@ -252,7 +237,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Name */}
             <div style={{ marginBottom: 14 }}>
-              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ຊື່ຊຸດ *
               </IonLabel>
               <IonInput
@@ -266,9 +251,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Items */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <IonLabel style={{ fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
+              <IonLabel style={{ fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
                 ສິນຄ້າໃນຊຸດ{formItems.length > 0 ? ` (${formItems.length})` : ""}
-                <span style={{ color: "#a8a29e", fontWeight: 400, fontSize: "0.75rem", marginLeft: 6 }}>
+                <span style={{ color: "var(--app-text-muted)", fontWeight: 400, fontSize: "0.75rem", marginLeft: 6 }}>
                   ຢ່າງໜ້ອຍ 2 ລາຍການ
                 </span>
               </IonLabel>
@@ -280,7 +265,7 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             </div>
 
             {formItems.length === 0 && (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "#a8a29e", fontSize: "0.82rem" }}>
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--app-text-muted)", fontSize: "0.82rem" }}>
                 ຍັງບໍ່ມີສິນຄ້າ
               </div>
             )}
@@ -288,16 +273,16 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             {formItems.map((item, idx) => (
               <div key={idx} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: "#fff7ed", borderRadius: 12, padding: "10px 14px", marginBottom: 8,
-                border: "1.5px solid #fed7aa",
+                background: "var(--app-accent-surface)", borderRadius: 12, padding: "10px 14px", marginBottom: 8,
+                border: "1.5px solid var(--app-accent-border)",
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#1c1917" }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "var(--ion-text-color)" }}>
                     {item.productName}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#78716c" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
                     {item.variantSize}{item.variantColor ? ` / ${item.variantColor}` : ""} · ×{item.quantity}
-                    {item.costPrice ? ` · ₭${fmtK(item.costPrice * item.quantity)}` : ""}
+                    {item.costPrice ? ` · ${fmtK(item.costPrice * item.quantity)} ກີບ` : ""}
                   </p>
                 </div>
                 <IonButton fill="clear" size="small" color="danger"
@@ -311,20 +296,20 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
             {formItems.length > 0 && (
               <div style={{
                 marginTop: 4, marginBottom: 18,
-                padding: "12px 16px", background: "#fef3c7",
-                borderRadius: 12, border: "1px solid #fde68a",
+                padding: "12px 16px", background: "var(--app-cost-surface)",
+                borderRadius: 12, border: "1px solid var(--app-cost)",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 600 }}>ຕົ້ນທຶນລວມ</span>
-                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "#92400e" }}>
-                    ₭{fmtK(bundleCost)}
+                  <span style={{ fontSize: "0.82rem", color: "var(--app-cost)", fontWeight: 600 }}>ຕົ້ນທຶນລວມ</span>
+                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--app-cost)" }}>
+                    {fmtK(bundleCost)} ກີບ
                   </span>
                 </div>
                 {sellPrice > 0 && !priceBelowCost && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                    <span style={{ fontSize: "0.82rem", color: "#16a34a", fontWeight: 600 }}>ກຳໄລ</span>
-                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#16a34a" }}>
-                      ₭{fmtK(profit)}
+                    <span style={{ fontSize: "0.82rem", color: "var(--app-success)", fontWeight: 600 }}>ກຳໄລ</span>
+                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--app-success)" }}>
+                      {fmtK(profit)} ກີບ
                     </span>
                   </div>
                 )}
@@ -333,8 +318,8 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
             {/* Selling price */}
             <div style={{ marginBottom: 4 }}>
-              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "#57534e", fontSize: "0.85rem" }}>
-                ລາຄາຂາຍ (₭) *
+              <IonLabel style={{ display: "block", marginBottom: 6, fontWeight: 700, color: "var(--app-text-secondary)", fontSize: "0.85rem" }}>
+                ລາຄາຂາຍ (ກີບ) *
               </IonLabel>
               <NumInput
                 value={formPrice}
@@ -342,23 +327,23 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                 placeholder={bundleCost > 0 ? `ຕ່ຳສຸດ ${fmtK(bundleCost)}` : "0"}
                 style={{
                   width: "100%", padding: "12px 14px", fontSize: "1rem",
-                  border: `1.5px solid ${priceBelowCost ? "#dc2626" : "#c8c8c8"}`,
-                  borderRadius: 12, outline: "none", background: "#fff",
-                  color: "#1c1917",
+                  border: `1.5px solid ${priceBelowCost ? "var(--app-danger)" : "var(--app-border)"}`,
+                  borderRadius: 12, outline: "none", background: "var(--app-surface)",
+                  color: "var(--ion-text-color)",
                 }}
               />
               {priceBelowCost && (
-                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#dc2626", fontWeight: 600 }}>
-                  ⚠ ລາຄາຂາຍຕ່ຳກວ່າຕົ້ນທຶນ (₭{fmtK(bundleCost)})
+                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "var(--app-danger)", fontWeight: 600 }}>
+                  ⚠ ລາຄາຂາຍຕ່ຳກວ່າຕົ້ນທຶນ ({fmtK(bundleCost)} ກີບ)
                 </p>
               )}
             </div>
           </div>
         </IonContent>
         <IonFooter>
-          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, #e5e7eb)" }}>
+          <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
             {formItems.length < 2 && formItems.length > 0 && (
-              <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: "0.8rem", color: "#a8a29e" }}>
+              <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: "0.8rem", color: "var(--app-text-muted)" }}>
                 ຕ້ອງມີສິນຄ້າຢ່າງໜ້ອຍ 2 ລາຍການ
               </p>
             )}
@@ -401,9 +386,9 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                     style={{
                       flexShrink: 0, padding: "6px 16px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
                       cursor: "pointer", transition: "all 0.15s",
-                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                      border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                       background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #fff)",
-                      color: isActive ? "#fff" : "var(--ion-text-color, #57534e)",
+                      color: isActive ? "#fff" : "var(--ion-text-color, var(--app-text-secondary))",
                       boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                     }}
                   >
@@ -415,10 +400,10 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
           )}
           <div style={{ padding: "8px 16px 24px" }}>
             {products.length === 0 && (
-              <p style={{ textAlign: "center", color: "#a8a29e", padding: 32 }}>ບໍ່ມີສິນຄ້າ</p>
+              <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: 32 }}>ບໍ່ມີສິນຄ້າ</p>
             )}
             {pickerCat !== "all" && pickerProducts.length === 0 && (
-              <p style={{ textAlign: "center", color: "#a8a29e", padding: "16px 0", fontSize: "0.85rem" }}>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p>
+              <p style={{ textAlign: "center", color: "var(--app-text-muted)", padding: "16px 0", fontSize: "0.85rem" }}>ບໍ່ມີສິນຄ້າໃນໝວດນີ້</p>
             )}
             {pickerProducts.map((p) => {
               const selected = formItems.some((i) => i.productId === p.id);
@@ -428,25 +413,25 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                   onClick={() => toggleProductInBundle(p)}
                   style={{
                     width: "100%", textAlign: "left", cursor: "pointer",
-                    background: selected ? "#f0fdf4" : "#fff",
+                    background: selected ? "var(--app-success-surface)" : "var(--app-surface)",
                     borderRadius: 12, padding: "12px 16px", marginBottom: 8,
-                    border: `1.5px solid ${selected ? "#86efac" : "#e5e7eb"}`,
+                    border: `1.5px solid ${selected ? "#86efac" : "var(--app-border)"}`,
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     {p.photoUrl
-                      ? <img src={p.photoUrl} alt={p.name} loading="lazy" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
-                      : <div style={{ width: 38, height: 38, borderRadius: 8, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      ? <img src={p.photoUrl} alt={p.name} loading="lazy" decoding="async" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+                      : <div style={{ width: 38, height: 38, borderRadius: 8, background: "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 20 }}>👕</span>
                         </div>
                     }
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "#16a34a" : "#1c1917" }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: selected ? "var(--app-success)" : "var(--ion-text-color)" }}>
                         {p.name}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
-                        {p.costPrice ? `ຕົ້ນທຶນ ₭${fmtK(p.costPrice)}` : "ບໍ່ມີຕົ້ນທຶນ"}
+                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
+                        {p.costPrice ? `ຕົ້ນທຶນ ${fmtK(p.costPrice)} ກີບ` : "ບໍ່ມີຕົ້ນທຶນ"}
                         {" · "}{p.variants.length} variant
                       </p>
                     </div>
@@ -454,12 +439,12 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
                   <div style={{
                     width: 28, height: 28, borderRadius: 14, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    background: selected ? "#16a34a" : "#f5f5f4",
+                    background: selected ? "var(--app-success)" : "#f5f5f4",
                     transition: "background 0.15s",
                   }}>
                     <IonIcon
                       icon={selected ? checkmarkOutline : addOutline}
-                      style={{ fontSize: 16, color: selected ? "#fff" : "#a8a29e" }}
+                      style={{ fontSize: 16, color: selected ? "#fff" : "var(--app-text-muted)" }}
                     />
                   </div>
                 </button>
@@ -492,11 +477,11 @@ const BundleManager: React.FC<Props> = ({ isOpen, products, shopId, isOwner = fa
 
       {/* ── Save error ── */}
       <IonAlert
-        isOpen={saveError}
+        isOpen={!!saveError}
         header="ບັນທຶກບໍ່ສຳເລັດ"
-        message="ກວດສອບການເຊື່ອມຕໍ່ internet ຫຼື ສິດທິ Firestore ແລ້ວລອງໃໝ່"
-        buttons={[{ text: "ຕົກລົງ", handler: () => setSaveError(false) }]}
-        onDidDismiss={() => setSaveError(false)}
+        message={saveError ?? ""}
+        buttons={[{ text: "ຕົກລົງ", handler: () => setSaveError(null) }]}
+        onDidDismiss={() => setSaveError(null)}
       />
     </>
   );

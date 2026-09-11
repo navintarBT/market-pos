@@ -2,41 +2,39 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonGrid, IonRow, IonCol,
-  IonRefresher, IonRefresherContent, IonSpinner, IonText, IonAlert,
+  IonRefresher, IonRefresherContent, IonSpinner, IonAlert,
   IonButtons, IonMenuButton, IonModal, IonButton, IonIcon,
   IonSegment, IonSegmentButton, useIonViewWillEnter,
 } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline } from "ionicons/icons";
+import { chevronBackOutline, chevronForwardOutline, personOutline, trashOutline, chevronDownOutline, chevronUpOutline, returnUpBackOutline, createOutline, closeOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import { getSalesByDateRange, deleteSale, removeItemFromSale } from "../data/saleRepository";
+import { getSalesByDateRange, deleteSale, removeItemFromSale, updateItemPrice, splitItemPrice } from "../data/saleRepository";
 import { getShopUsers } from "../data/shopRepository";
-import { getExpensesByDateRange } from "../data/expenseRepository";
-import type { Sale, ShopUser, Expense } from "../data/types";
-import { fmtK } from "../utils/format";
+import type { Sale, ShopUser } from "../data/types";
+import { fmtK, fmtVariant, fmtDate, fmtTime, fmtDateTime } from "../utils/format";
+import ShopHeaderTag from "../components/ShopHeaderTag";
+import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
+import NumInput from "../components/NumInput";
+import EmptyState from "../components/EmptyState";
 
-function toDateInputValue(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+function saleItemLabel(item: Sale["items"][number]): string {
+  if (item.isBundle) return item.productName;
+  const v = fmtVariant(item.variant.size, item.variant.color);
+  return v ? `${item.productName} (${v})` : item.productName;
 }
 
-function formatDateTime(date: Date) {
-  const d = String(date.getDate()).padStart(2, "0");
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const y = date.getFullYear();
-  const h = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${d}/${m}/${y} ${h}:${min}`;
+// Mirrors CartContext's itemKey (minus the gift suffix) so a gift's
+// giftForKey can be matched back to its parent line within a saved sale.
+function saleLineKey(item: Sale["items"][number]): string {
+  const base = `${item.productId}__${item.variant.size}__${item.variant.color}`;
+  return item.splitId ? `${base}__${item.splitId}` : base;
 }
 
-function formatTime(date: Date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatShortDate(date: Date) {
-  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
+const PAYMENT_BADGE: Record<Sale["paymentType"], { label: string; bg: string; color: string }> = {
+  cash: { label: "💵 ສົດ", bg: "var(--app-success-surface)", color: "var(--app-success)" },
+  qr: { label: "📱 ໂອນ", bg: "var(--app-info-surface)", color: "var(--app-info)" },
+  cod: { label: "📦 COD", bg: "var(--app-warning-surface)", color: "var(--app-warning)" },
+};
 
 interface StatCardProps {
   label: string;
@@ -52,12 +50,10 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, bg, color }) =>
     boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
   }}>
     <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-    <p style={{ margin: 0, fontSize: "0.7rem", color: "#78716c", fontWeight: 600 }}>{label}</p>
+    <p style={{ margin: 0, fontSize: "0.7rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>{label}</p>
     <p style={{ margin: "3px 0 0", fontSize: "1.1rem", fontWeight: 800, color }}>{value}</p>
   </div>
 );
-
-const today = new Date();
 
 const SalesHistory: React.FC = () => {
   const { shopId, role, permissions } = useAuth();
@@ -66,36 +62,40 @@ const SalesHistory: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [users, setUsers] = useState<ShopUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fromDate, setFromDate] = useState(toDateInputValue(today));
-  const [toDate, setToDate] = useState(toDateInputValue(today));
+  const [fromDate, setFromDate] = useState(monthStartStr());
+  const [toDate, setToDate] = useState(todayStr());
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
+  const [deleteRestoreStock, setDeleteRestoreStock] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null);
+  const [itemRestoreStock, setItemRestoreStock] = useState(true);
   const [removingItem, setRemovingItem] = useState(false);
   const [expandedItemIdx, setExpandedItemIdx] = useState<number | null>(null);
+  const [editPriceIdx, setEditPriceIdx] = useState<number | null>(null);
+  const [editPriceMode, setEditPriceMode] = useState<"whole" | "split">("whole");
+  const [editPriceValue, setEditPriceValue] = useState(0);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [editPriceError, setEditPriceError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
     try {
-      const [s, u, exp] = await Promise.all([
+      const [s, u] = await Promise.all([
         getSalesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
         getShopUsers(shopId),
-        getExpensesByDateRange(shopId, new Date(fromDate), new Date(toDate)),
       ]);
       setSales(s);
       setUsers(u);
-      setExpenses(exp);
     } finally {
       setLoading(false);
     }
   }, [shopId, fromDate, toDate]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {
@@ -103,13 +103,13 @@ const SalesHistory: React.FC = () => {
     (e.target as HTMLIonRefresherElement).complete();
   }
 
-  async function handleRemoveItem(idx: number, qty: number) {
+  async function handleRemoveItem(idx: number, qty: number, restoreStock: boolean) {
     if (!shopId || !selectedSale) return;
     setRemoveItemIdx(null);
     setRemovingItem(true);
     const origQty = selectedSale.items[idx]?.quantity ?? 0;
     try {
-      const updated = await removeItemFromSale(shopId, selectedSale, idx, qty);
+      const updated = await removeItemFromSale(shopId, selectedSale, idx, qty, restoreStock);
       if (updated === null) {
         setSales((prev) => prev.filter((s) => s.id !== selectedSale.id));
         setSelectedSale(null);
@@ -126,13 +126,45 @@ const SalesHistory: React.FC = () => {
     }
   }
 
-  async function handleDeleteSale() {
+  function openEditPrice(idx: number, mode: "whole" | "split") {
+    if (!selectedSale) return;
+    setEditPriceValue(selectedSale.items[idx].unitPrice);
+    setEditPriceMode(mode);
+    setEditPriceIdx(idx);
+  }
+
+  function dismissEditPrice() {
+    setEditPriceIdx(null);
+    setEditPriceValue(0);
+  }
+
+  async function handleEditPrice() {
+    if (!shopId || !selectedSale || editPriceIdx === null) return;
+    const idx = editPriceIdx;
+    setEditingPrice(true);
+    try {
+      const updated = editPriceMode === "split"
+        ? await splitItemPrice(shopId, selectedSale, idx, editPriceValue)
+        : await updateItemPrice(shopId, selectedSale, idx, editPriceValue);
+      if (updated) {
+        setSales((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        setSelectedSale(updated);
+      }
+      dismissEditPrice();
+    } catch {
+      setEditPriceError("ບັນທຶກບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
+    } finally {
+      setEditingPrice(false);
+    }
+  }
+
+  async function handleDeleteSale(restoreStock: boolean) {
     if (!shopId || !deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
     setDeletingId(target.id);
     try {
-      await deleteSale(shopId, target);
+      await deleteSale(shopId, target, restoreStock);
       setSales(prev => prev.filter(s => s.id !== target.id));
     } catch {
       setDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
@@ -141,30 +173,23 @@ const SalesHistory: React.FC = () => {
     }
   }
 
-  function handleFromChange(val: string) {
-    setFromDate(val);
-  }
-
-  function handleToChange(val: string) {
-    setToDate(val);
-  }
-
   const totalRevenue = sales.reduce((s, t) => s + t.total, 0);
   const cashTotal = sales.filter((s) => s.paymentType === "cash").reduce((s, t) => s + t.total, 0);
   const qrTotal = sales.filter((s) => s.paymentType === "qr").reduce((s, t) => s + t.total, 0);
+  const codTotal = sales.filter((s) => s.paymentType === "cod").reduce((s, t) => s + t.total, 0);
   const itemCount = sales.reduce((s, sale) => s + sale.items.reduce((is, i) => is + i.quantity, 0), 0);
   const totalDiscount = sales.reduce((s, sale) =>
-    s + sale.items.reduce((is, item) =>
-      is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity, 0), 0);
+    s + sale.items.reduce((is, item) => {
+      if (item.isGift) return is;
+      return is + ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
+    }, 0), 0);
   const totalCost = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => is + ((item.costPrice ?? 0) * item.quantity), 0), 0);
   const grossProfit = totalRevenue - totalCost;
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = grossProfit - totalExpenses;
-  const hasCostData = sales.some((sale) => sale.items.some((item) => item.costPrice));
+  const hasCostData = (isOwner || permissions.canViewFinance) && sales.some((sale) => sale.items.some((item) => item.costPrice));
   const lossTotal = sales.reduce((s, sale) =>
     s + sale.items.reduce((is, item) => {
-      if (item.costPrice != null && item.unitPrice < item.costPrice) {
+      if (!item.isGift && item.costPrice != null && item.unitPrice < item.costPrice) {
         return is + (item.costPrice - item.unitPrice) * item.quantity;
       }
       return is;
@@ -187,7 +212,8 @@ const SalesHistory: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
+          <div slot="start"><ShopHeaderTag /></div>
           <IonTitle style={{ fontWeight: 700 }}>ປະຫວັດການຂາຍ</IonTitle>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
@@ -213,35 +239,8 @@ const SalesHistory: React.FC = () => {
             </IonSegment>
           )}
 
-          {/* Date range filter — compact single row */}
-          <div style={{
-            background: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 14,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: "1rem", flexShrink: 0 }}>📅</span>
-            <input
-              type="date" value={fromDate} max={toDate}
-              disabled={loading}
-              onChange={(e) => handleFromChange(e.target.value)}
-              style={{
-                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-                border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-                background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-              }}
-            />
-            <span style={{ fontSize: "0.75rem", color: "#a8a29e", fontWeight: 700, flexShrink: 0 }}>—</span>
-            <input
-              type="date" value={toDate} min={fromDate}
-              disabled={loading}
-              onChange={(e) => handleToChange(e.target.value)}
-              style={{
-                flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8,
-                border: "1.5px solid var(--ion-color-step-150, #e5e7eb)", fontSize: "0.82rem",
-                background: "var(--ion-color-step-50, #fafaf9)", outline: "none", color: "var(--ion-text-color, #1c1917)",
-              }}
-            />
-          </div>
+          {/* Date range filter */}
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} disabled={loading} />
 
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
@@ -257,18 +256,18 @@ const SalesHistory: React.FC = () => {
                       display: "flex", alignItems: "center", gap: 8, marginBottom: 14, cursor: "pointer",
                     }}
                   >
-                    <IonIcon icon={chevronBackOutline} style={{ color: "#78716c" }} />
-                    <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1c1917" }}>{selectedStaff.name}</span>
+                    <IonIcon icon={chevronBackOutline} style={{ color: "var(--app-text-secondary)" }} />
+                    <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--ion-text-color)" }}>{selectedStaff.name}</span>
                   </div>
 
                   <div style={{
-                    background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                    background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                     borderRadius: 20, padding: "18px 20px", marginBottom: 16,
                     boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
                   }}>
                     <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
                     <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                      ₭{fmtK(selectedStaff.total)}
+                      {fmtK(selectedStaff.total)} ກີບ
                     </p>
                     <p style={{ margin: "3px 0 0", fontSize: "0.78rem", opacity: 0.8 }}>
                       {selectedStaff.count} ລາຍການ
@@ -276,35 +275,32 @@ const SalesHistory: React.FC = () => {
                   </div>
 
                   {selectedStaff.sales.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "32px 0" }}>
-                      <div style={{ fontSize: 48, marginBottom: 8 }}>📋</div>
-                      <IonText color="medium"><p>ບໍ່ມີການຂາຍໃນຊ່ວງວັນທີນີ້</p></IonText>
-                    </div>
+                    <EmptyState icon="📋" title="ບໍ່ມີການຂາຍໃນຊ່ວງວັນທີນີ້" />
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                       {selectedStaff.sales.map((sale) => {
                         const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
-                        const isCash = sale.paymentType === "cash";
-                        const names = sale.items.map((i) => i.productName).join(", ");
+                        const badge = PAYMENT_BADGE[sale.paymentType];
+                        const names = sale.items.map(saleItemLabel).join(", ");
                         return (
                           <div
                             key={sale.id}
                             onClick={() => setSelectedSale(sale)}
                             style={{
-                              background: "#fff", borderRadius: 12, padding: "10px 12px",
+                              background: "var(--app-surface)", borderRadius: 12, padding: "10px 12px",
                               boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
                               display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
                             }}
                           >
-                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
-                                {formatTime(sale.createdAt)}
+                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--ion-text-color)", lineHeight: 1.1 }}>
+                                {fmtTime(sale.createdAt)}
                               </div>
-                              <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
-                                {formatShortDate(sale.createdAt)}
+                              <div style={{ fontSize: "0.6rem", color: "var(--app-text-muted)", fontWeight: 600, marginTop: 1 }}>
+                                {fmtDate(sale.createdAt)}
                               </div>
                             </div>
-                            <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
+                            <div style={{ width: 1, height: 34, background: "var(--app-surface-alt)", flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: "0.8rem", color: "#44403c", fontWeight: 600,
@@ -312,19 +308,19 @@ const SalesHistory: React.FC = () => {
                               }}>
                                 {names}
                               </div>
-                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊິ້ນ</span>
+                              <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>{qty} ຊິ້ນ</span>
                             </div>
                             <div style={{ textAlign: "right" }}>
-                              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
-                                ₭{fmtK(sale.total)}
+                              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-text-color)" }}>
+                                {fmtK(sale.total)} ກີບ
                               </div>
                               <div style={{
                                 fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
-                                color: isCash ? "#166534" : "#1d4ed8",
-                                background: isCash ? "#dcfce7" : "#eff6ff",
+                                color: badge.color,
+                                background: badge.bg,
                                 padding: "1px 6px", borderRadius: 4, display: "inline-block",
                               }}>
-                                {isCash ? "💵 ສົດ" : "📱 QR"}
+                                {badge.label}
                               </div>
                             </div>
                           </div>
@@ -334,10 +330,7 @@ const SalesHistory: React.FC = () => {
                   )}
                 </>
               ) : staffRows.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0" }}>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>👤</div>
-                  <IonText color="medium"><p>ຍັງບໍ່ມີຜູ້ໃຊ້ໃນຮ້ານ</p></IonText>
-                </div>
+                <EmptyState icon="👤" title="ຍັງບໍ່ມີຜູ້ໃຊ້ໃນຮ້ານ" />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {staffRows.map((row) => (
@@ -345,28 +338,28 @@ const SalesHistory: React.FC = () => {
                       key={row.uid}
                       onClick={() => setSelectedUid(row.uid)}
                       style={{
-                        background: "#fff", borderRadius: 14, padding: "12px 14px",
+                        background: "var(--app-surface)", borderRadius: 14, padding: "12px 14px",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
                       }}
                     >
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                        background: row.isOwner ? "#ffedd5" : "#ccfbf1",
+                        background: row.isOwner ? "var(--app-accent-surface)" : "#ccfbf1",
                         color: row.isOwner ? "#c2410c" : "#0f766e",
                         display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800,
                       }}>
                         {row.name.slice(0, 1).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c1917" }}>{row.name}</div>
-                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ion-text-color)" }}>{row.name}</div>
+                        <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>
                           {row.isOwner ? "owner" : "staff"} · {row.count} ລາຍການ
                         </div>
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#e07b39" }}>
-                          ₭{fmtK(row.total)}
+                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-color-primary)" }}>
+                          {fmtK(row.total)} ກີບ
                         </div>
                       </div>
                       <IonIcon icon={chevronForwardOutline} style={{ color: "#d6d3d1", flexShrink: 0 }} />
@@ -375,24 +368,24 @@ const SalesHistory: React.FC = () => {
 
                   {unattributed.length > 0 && (
                     <div style={{
-                      background: "#fafaf9", borderRadius: 14, padding: "12px 14px",
+                      background: "var(--app-surface-alt)", borderRadius: 14, padding: "12px 14px",
                       display: "flex", alignItems: "center", gap: 12,
                     }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                        background: "#e7e5e4", color: "#78716c",
+                        background: "#e7e5e4", color: "var(--app-text-secondary)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
                         <IonIcon icon={personOutline} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#57534e" }}>ບໍ່ລະບຸ</div>
-                        <div style={{ fontSize: "0.72rem", color: "#a8a29e" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ບໍ່ລະບຸ</div>
+                        <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>
                           ຂາຍກ່ອນມີການບັນທຶກຄົນຂາຍ · {unattributed.length} ລາຍການ
                         </div>
                       </div>
-                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#78716c" }}>
-                        ₭{fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))}
+                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--app-text-secondary)" }}>
+                        {fmtK(unattributed.reduce((s, sale) => s + sale.total, 0))} ກີບ
                       </div>
                     </div>
                   )}
@@ -403,13 +396,13 @@ const SalesHistory: React.FC = () => {
             <>
               {/* Summary cards */}
               <div style={{
-                background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+                background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
                 borderRadius: 20, padding: "18px 20px", marginBottom: 12,
                 boxShadow: "0 6px 20px rgba(224,123,57,0.35)", color: "#fff",
               }}>
                 <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.85 }}>ຍອດຂາຍລວມ</p>
                 <p style={{ margin: "4px 0 0", fontSize: "2rem", fontWeight: 800, letterSpacing: "-1px" }}>
-                  ₭{fmtK(totalRevenue)}
+                  {fmtK(totalRevenue)} ກີບ
                 </p>
                 <p style={{ margin: "3px 0 0", fontSize: "0.78rem", opacity: 0.8 }}>
                   {sales.length} ລາຍການ · {itemCount} ຊິ້ນ
@@ -418,13 +411,17 @@ const SalesHistory: React.FC = () => {
 
               <IonGrid style={{ padding: 0, marginBottom: 12 }}>
                 <IonRow>
-                  <IonCol style={{ paddingLeft: 0, paddingRight: 6 }}>
-                    <StatCard label="ເງິນສົດ" value={`₭${fmtK(cashTotal)}`}
-                      icon="💵" bg="#f0fdf4" color="#16a34a" />
+                  <IonCol style={{ paddingLeft: 0, paddingRight: 4 }}>
+                    <StatCard label="ເງິນສົດ" value={`${fmtK(cashTotal)} ກີບ`}
+                      icon="💵" bg="var(--app-success-surface)" color="var(--app-success)" />
                   </IonCol>
-                  <IonCol style={{ paddingRight: 0, paddingLeft: 6 }}>
-                    <StatCard label="QR ໂອນ" value={`₭${fmtK(qrTotal)}`}
-                      icon="📱" bg="#eff6ff" color="#2563eb" />
+                  <IonCol style={{ paddingRight: 4, paddingLeft: 4 }}>
+                    <StatCard label="ໂອນ" value={`${fmtK(qrTotal)} ກີບ`}
+                      icon="📱" bg="var(--app-info-surface)" color="var(--app-info)" />
+                  </IonCol>
+                  <IonCol style={{ paddingRight: 0, paddingLeft: 4 }}>
+                    <StatCard label="COD" value={`${fmtK(codTotal)} ກີບ`}
+                      icon="📦" bg="var(--app-warning-surface)" color="var(--app-warning)" />
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -436,13 +433,13 @@ const SalesHistory: React.FC = () => {
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                 }}>
                   <div>
-                    <p style={{ margin: 0, fontSize: "0.72rem", color: "#78716c", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
+                    <p style={{ margin: 0, fontSize: "0.72rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>🏷️ ສ່ວນຫຼຸດທີ່ໃຫ້</p>
                     <p style={{ margin: "4px 0 0", fontSize: "1.1rem", fontWeight: 800, color: "#9333ea" }}>
-                      −₭{fmtK(totalDiscount)}
+                      −{fmtK(totalDiscount)} ກີບ
                     </p>
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#a78bfa", textAlign: "right" }}>
-                    <div>ກ່ອນລົດ ₭{(fmtK(totalRevenue + totalDiscount))}</div>
+                    <div>ກ່ອນລົດ {(fmtK(totalRevenue + totalDiscount))} ກີບ</div>
                   </div>
                 </div>
               )}
@@ -453,68 +450,58 @@ const SalesHistory: React.FC = () => {
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      background: "#fef3c7", borderRadius: 12, padding: "11px 16px",
+                      background: "var(--app-cost-surface)", borderRadius: 12, padding: "11px 16px",
                     }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນລວມ</span>
-                      <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#92400e" }}>₭{fmtK(totalCost)}</span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-cost)" }}>🏷️ ຕົ້ນທຶນລວມ</span>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--app-cost)" }}>{fmtK(totalCost)} ກີບ</span>
                     </div>
 
                     {lossTotal > 0 ? (
                       <>
                         <div style={{
                           display: "flex", justifyContent: "space-between", alignItems: "center",
-                          background: "#f0fdf4", borderRadius: 12, padding: "11px 16px",
+                          background: "var(--app-success-surface)", borderRadius: 12, padding: "11px 16px",
                         }}>
-                          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>📊 ກຳໄລ (ກ່ອນຫັກຂາດທຶນ)</span>
-                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#16a34a" }}>₭{fmtK(grossProfit + lossTotal)}</span>
+                          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-success)" }}>📊 ກຳໄລ (ກ່ອນຫັກຂາດທຶນ)</span>
+                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--app-success)" }}>{fmtK(grossProfit + lossTotal)} ກີບ</span>
                         </div>
                         <div style={{
                           display: "flex", justifyContent: "space-between", alignItems: "center",
-                          background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
+                          background: "var(--app-danger-surface)", borderRadius: 12, padding: "11px 16px",
                         }}>
-                          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>📉 ຂາດທຶນຈາກການຂາຍ</span>
-                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−₭{fmtK(lossTotal)}</span>
+                          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-danger)" }}>📉 ຂາດທຶນຈາກການຂາຍ</span>
+                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--app-danger)" }}>−{fmtK(lossTotal)} ກີບ</span>
                         </div>
                       </>
                     ) : (
                       <div style={{
                         display: "flex", justifyContent: "space-between", alignItems: "center",
-                        background: grossProfit >= 0 ? "#f0fdf4" : "#fef2f2",
+                        background: grossProfit >= 0 ? "var(--app-success-surface)" : "var(--app-danger-surface)",
                         borderRadius: 12, padding: "11px 16px",
                       }}>
-                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: grossProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: grossProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                           📊 ກຳໄລຂັ້ນຕົ້ນ
                         </span>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: grossProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                          ₭{fmtK(grossProfit)}
+                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: grossProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
+                          {fmtK(grossProfit)} ກີບ
                         </span>
-                      </div>
-                    )}
-
-                    {totalExpenses > 0 && (
-                      <div style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        background: "#fef2f2", borderRadius: 12, padding: "11px 16px",
-                      }}>
-                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>💸 ຫັກລາຍຈ່າຍ</span>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#dc2626" }}>−₭{fmtK(totalExpenses)}</span>
                       </div>
                     )}
 
                     <div style={{
-                      background: netProfit >= 0
-                        ? "linear-gradient(135deg, #16a34a, #15803d)"
-                        : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      background: grossProfit >= 0
+                        ? "linear-gradient(135deg, var(--app-success), #15803d)"
+                        : "linear-gradient(135deg, var(--app-danger), #b91c1c)",
                       borderRadius: 14, padding: "14px 20px", color: "#fff",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
                       <div>
-                        <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລສຸດທິ</p>
+                        <p style={{ margin: 0, fontSize: "0.78rem", opacity: 0.85 }}>ກຳໄລ</p>
                         <p style={{ margin: "3px 0 0", fontSize: "1.4rem", fontWeight: 800 }}>
-                          ₭{fmtK(netProfit)}
+                          {fmtK(grossProfit)} ກີບ
                         </p>
                       </div>
-                      <span style={{ fontSize: 32 }}>{netProfit >= 0 ? "📈" : "📉"}</span>
+                      <span style={{ fontSize: 32 }}>{grossProfit >= 0 ? "📈" : "📉"}</span>
                     </div>
                   </div>
                 </div>
@@ -522,32 +509,29 @@ const SalesHistory: React.FC = () => {
 
               {/* Sales list */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "#57534e" }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.88rem", color: "var(--app-text-secondary)" }}>
                   ລາຍການທັງໝົດ
                 </p>
-                <span style={{ fontSize: "0.75rem", color: "#a8a29e" }}>{sales.length} ລາຍການ</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--app-text-muted)" }}>{sales.length} ລາຍການ</span>
               </div>
 
               {sales.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0" }}>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>📋</div>
-                  <IonText color="medium"><p>ບໍ່ມີລາຍການຂາຍໃນຊ່ວງວັນທີນີ້</p></IonText>
-                </div>
+                <EmptyState icon="📋" title="ບໍ່ມີລາຍການຂາຍໃນຊ່ວງວັນທີນີ້" />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {sales.map((sale) => {
                     const qty = sale.items.reduce((s, i) => s + i.quantity, 0);
-                    const isCash = sale.paymentType === "cash";
+                    const badge = PAYMENT_BADGE[sale.paymentType];
                     const hasLoss = sale.items.some(
-                      (i) => i.costPrice != null && i.unitPrice < i.costPrice
+                      (i) => !i.isGift && i.costPrice != null && i.unitPrice < i.costPrice
                     );
-                    const names = sale.items.map((i) => i.productName).join(", ");
+                    const names = sale.items.map(saleItemLabel).join(", ");
                     return (
                       <div
                         key={sale.id}
                         onClick={() => setSelectedSale(sale)}
                         style={{
-                          background: "#fff",
+                          background: "var(--app-surface)",
                           borderRadius: 12,
                           padding: "10px 12px",
                           boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
@@ -559,17 +543,17 @@ const SalesHistory: React.FC = () => {
                         }}
                       >
                         {/* Time column */}
-                        <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
-                          <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1c1917", lineHeight: 1.1 }}>
-                            {formatTime(sale.createdAt)}
+                        <div style={{ flexShrink: 0, textAlign: "center", minWidth: 50 }}>
+                          <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--ion-text-color)", lineHeight: 1.1 }}>
+                            {fmtTime(sale.createdAt)}
                           </div>
-                          <div style={{ fontSize: "0.6rem", color: "#a8a29e", fontWeight: 600, marginTop: 1 }}>
-                            {formatShortDate(sale.createdAt)}
+                          <div style={{ fontSize: "0.6rem", color: "var(--app-text-muted)", fontWeight: 600, marginTop: 1 }}>
+                            {fmtDate(sale.createdAt)}
                           </div>
                         </div>
 
                         {/* Divider */}
-                        <div style={{ width: 1, height: 34, background: "#f3f4f6", flexShrink: 0 }} />
+                        <div style={{ width: 1, height: 34, background: "var(--app-surface-alt)", flexShrink: 0 }} />
 
                         {/* Product info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -580,15 +564,15 @@ const SalesHistory: React.FC = () => {
                             {names}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                            <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>{qty} ຊ
+                            <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>{qty} ຊ
                             </span>
                             {sale.sellerName && (
-                              <span style={{ fontSize: "0.68rem", color: "#a8a29e" }}>· 👤 {sale.sellerName}</span>
+                              <span style={{ fontSize: "0.68rem", color: "var(--app-text-muted)" }}>· 👤 {sale.sellerName}</span>
                             )}
                             {hasLoss && (
                               <span style={{
                                 fontSize: "0.6rem", fontWeight: 700,
-                                background: "#fef2f2", color: "#dc2626",
+                                background: "var(--app-danger-surface)", color: "var(--app-danger)",
                                 padding: "1px 5px", borderRadius: 4,
                               }}>
                                 📉 ຂາດທຶນ
@@ -600,32 +584,45 @@ const SalesHistory: React.FC = () => {
                         {/* Amount + payment + delete */}
                         <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
                           <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1c1917" }}>
-                              ₭{fmtK(sale.total)}
+                            <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ion-text-color)" }}>
+                              {fmtK(sale.total)} ກີບ
                             </div>
                             <div style={{
                               fontSize: "0.62rem", fontWeight: 700, marginTop: 2,
-                              color: isCash ? "#166534" : "#1d4ed8",
-                              background: isCash ? "#dcfce7" : "#eff6ff",
+                              color: badge.color,
+                              background: badge.bg,
                               padding: "1px 6px", borderRadius: 4, display: "inline-block",
                             }}>
-                              {isCash ? "💵 ສົດ" : "📱 QR"}
+                              {badge.label}
                             </div>
                           </div>
                           {permissions.canDeleteSales && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(sale); }}
-                              disabled={deletingId === sale.id}
-                              style={{
-                                background: "none", border: "none", padding: "6px 4px",
-                                cursor: deletingId === sale.id ? "default" : "pointer",
-                                lineHeight: 0, color: "#d1d5db", borderRadius: 6,
-                              }}
-                            >
-                              {deletingId === sale.id
-                                ? <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
-                                : <IonIcon icon={trashOutline} style={{ fontSize: 16, display: "block" }} />}
-                            </button>
+                            deletingId === sale.id ? (
+                              <IonSpinner name="dots" style={{ width: 16, height: 16 }} />
+                            ) : (
+                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteRestoreStock(true); setDeleteTarget(sale); }}
+                                  title="ຍົກເລີກການຂາຍ (ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "6px 4px",
+                                    cursor: "pointer", lineHeight: 0, color: "var(--app-info)", borderRadius: 6,
+                                  }}
+                                >
+                                  <IonIcon icon={returnUpBackOutline} style={{ fontSize: 18, display: "block" }} />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteRestoreStock(false); setDeleteTarget(sale); }}
+                                  title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "6px 4px",
+                                    cursor: "pointer", lineHeight: 0, color: "#d1d5db", borderRadius: 6,
+                                  }}
+                                >
+                                  <IonIcon icon={trashOutline} style={{ fontSize: 18, display: "block" }} />
+                                </button>
+                              </div>
+                            )
                           )}
                         </div>
                       </div>
@@ -657,51 +654,75 @@ const SalesHistory: React.FC = () => {
           <IonContent className="ion-padding">
             {/* Meta */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: "0.82rem", color: "#78716c" }}>
-                📅 {formatDateTime(selectedSale.createdAt)}
+              <span style={{ fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
+                📅 {fmtDateTime(selectedSale.createdAt)}
               </span>
               <span style={{
-                background: selectedSale.paymentType === "cash" ? "#dcfce7" : "#eff6ff",
-                color: selectedSale.paymentType === "cash" ? "#166534" : "#1d4ed8",
+                background: PAYMENT_BADGE[selectedSale.paymentType].bg,
+                color: PAYMENT_BADGE[selectedSale.paymentType].color,
                 borderRadius: 8, padding: "4px 12px", fontWeight: 700, fontSize: "0.85rem",
               }}>
-                {selectedSale.paymentType === "cash" ? "💵 ເງິນສົດ" : "📱 QR ໂອນ"}
+                {selectedSale.paymentType === "cash" ? "💵 ເງິນສົດ"
+                  : selectedSale.paymentType === "qr" ? "📱 ໂອນ"
+                  : "📦 COD"}
               </span>
             </div>
 
             {selectedSale.sellerName && (
-              <div style={{ marginBottom: 16, fontSize: "0.82rem", color: "#78716c" }}>
-                👤 ຜູ້ຂາຍ: <span style={{ fontWeight: 700, color: "#1c1917" }}>{selectedSale.sellerName}</span>
+              <div style={{ marginBottom: 16, fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
+                👤 ຜູ້ຂາຍ: <span style={{ fontWeight: 700, color: "var(--ion-text-color)" }}>{selectedSale.sellerName}</span>
               </div>
             )}
 
             {/* Items */}
-            <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "#78716c" }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "0.85rem", color: "var(--app-text-secondary)" }}>
               ລາຍການສິນຄ້າ
             </p>
-            <div style={{ borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
-              {selectedSale.items.flatMap((item, idx) => {
-                const discount = ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
+            <div style={{ borderRadius: 12, overflow: "hidden", background: "var(--app-surface)", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", marginBottom: 16 }}>
+              {(() => {
+                const giftsByParentKey = new Map<string, Sale["items"][number][]>();
+                for (const it of selectedSale.items) {
+                  if (!it.isGift || !it.giftForKey) continue;
+                  const arr = giftsByParentKey.get(it.giftForKey) ?? [];
+                  arr.push(it);
+                  giftsByParentKey.set(it.giftForKey, arr);
+                }
+                return selectedSale.items.flatMap((item, idx) => {
+                const discount = item.isGift ? 0 : ((item.originalPrice ?? item.unitPrice) - item.unitPrice) * item.quantity;
                 const subtotal = item.unitPrice * item.quantity;
-                const isLoss = item.costPrice != null && item.unitPrice < item.costPrice;
+                const isLoss = !item.isGift && item.costPrice != null && item.unitPrice < item.costPrice;
                 const isExpanded = expandedItemIdx === idx;
                 const canExpand = item.quantity > 1;
                 const isLast = idx === selectedSale.items.length - 1;
+                const myGifts = item.isGift ? [] : (giftsByParentKey.get(saleLineKey(item)) ?? []);
+                const giftCostTotal = myGifts.reduce((s, g) => s + (g.costPrice ?? 0) * g.quantity, 0);
+                const itemProfit = (item.unitPrice - (item.costPrice ?? 0)) * item.quantity - giftCostTotal;
 
                 const mainRow = (
                   <div key={`item-${idx}`} style={{
                     padding: "12px 16px",
                     borderBottom: !isExpanded && !isLast ? "1px solid #f5f5f4" : "none",
-                    background: isLoss ? "#fff9f9" : "#ffffff",
+                    background: isLoss ? "#fff9f9" : "var(--app-surface)",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: 700, color: "#1c1917", fontSize: "0.95rem" }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem" }}>
                           {item.productName}
+                          {item.isGift && (
+                            <span style={{
+                              marginLeft: 7,
+                              background: "var(--app-accent-surface)", color: "var(--ion-color-primary)",
+                              fontSize: "0.6rem", fontWeight: 700,
+                              padding: "1px 6px", borderRadius: 5,
+                              verticalAlign: "middle",
+                            }}>
+                              🎁 ຂອງແຖມ
+                            </span>
+                          )}
                           {isLoss && (
                             <span style={{
                               marginLeft: 7,
-                              background: "#fef2f2", color: "#dc2626",
+                              background: "var(--app-danger-surface)", color: "var(--app-danger)",
                               fontSize: "0.6rem", fontWeight: 700,
                               padding: "1px 6px", borderRadius: 5,
                               verticalAlign: "middle",
@@ -710,16 +731,25 @@ const SalesHistory: React.FC = () => {
                             </span>
                           )}
                         </p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#a8a29e" }}>
-                          {item.variant.size} · {item.variant.color}
-                        </p>
-                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#78716c", display: "flex", alignItems: "center", gap: 4 }}>
+                        {item.isBundle ? (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--app-text-muted)" }}>
+                            {(item.bundleItems ?? []).map((bi) => {
+                              const v = fmtVariant(bi.variantSize, bi.variantColor);
+                              return `${bi.productName}${v ? ` (${v})` : ""} ×${bi.quantity}`;
+                            }).join(" + ")}
+                          </p>
+                        ) : fmtVariant(item.variant.size, item.variant.color) && (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--app-text-muted)" }}>
+                            {fmtVariant(item.variant.size, item.variant.color)}
+                          </p>
+                        )}
+                        <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "var(--app-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
                           {canExpand ? (
                             <button
                               onClick={() => setExpandedItemIdx(isExpanded ? null : idx)}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 3,
-                                background: "var(--ion-color-step-100, #f5f0eb)",
+                                background: "var(--ion-color-step-100, var(--app-surface-alt))",
                                 border: "none", borderRadius: 6, padding: "2px 7px",
                                 fontWeight: 700, fontSize: "0.82rem",
                                 color: "var(--ion-text-color, #44403c)", cursor: "pointer",
@@ -731,30 +761,68 @@ const SalesHistory: React.FC = () => {
                           ) : (
                             <span>{item.quantity}</span>
                           )}
-                          <span>× ₭{fmtK(item.unitPrice)}</span>
+                          <span>× {fmtK(item.unitPrice)} ກີບ</span>
                         </p>
                         {discount > 0 && (
                           <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#9333ea" }}>
-                            ສ່ວນຫຼຸດ −₭{fmtK(discount)}
+                            ສ່ວນຫຼຸດ −{fmtK(discount)} ກີບ
+                          </p>
+                        )}
+                        {myGifts.length > 0 && item.costPrice != null && (
+                          <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--ion-color-primary)", fontWeight: 600 }}>
+                            🎁 ຫັກຕົ້ນທຶນຂອງແຖມ −{fmtK(giftCostTotal)} ກີບ → ກຳໄລ {fmtK(itemProfit)} ກີບ
                           </p>
                         )}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "#dc2626" : "#e07b39", fontSize: "1rem", whiteSpace: "nowrap" }}>
-                          ₭{fmtK(subtotal)}
+                        <p style={{ margin: 0, fontWeight: 800, color: isLoss ? "var(--app-danger)" : "var(--ion-color-primary)", fontSize: "1rem", whiteSpace: "nowrap" }}>
+                          {fmtK(subtotal)} ກີບ
                         </p>
-                        {!isExpanded && permissions.canDeleteSales && (
-                          <button
-                            onClick={() => setRemoveItemIdx(idx)}
-                            disabled={removingItem}
-                            style={{
-                              background: "none", border: "none", padding: "2px 4px",
-                              cursor: removingItem ? "default" : "pointer",
-                              color: "#d1d5db", lineHeight: 0,
-                            }}
-                          >
-                            <IonIcon icon={trashOutline} style={{ fontSize: 15, display: "block" }} />
-                          </button>
+                        {!isExpanded && (permissions.canEditCartPrice || permissions.canDeleteSales) && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            {permissions.canEditCartPrice && (
+                              <button
+                                onClick={() => openEditPrice(idx, "whole")}
+                                disabled={editingPrice}
+                                title="ແກ້ໄຂລາຄາ"
+                                style={{
+                                  background: "none", border: "none", padding: "2px 4px",
+                                  cursor: editingPrice ? "default" : "pointer",
+                                  color: "var(--app-text-secondary)", lineHeight: 0,
+                                }}
+                              >
+                                <IonIcon icon={createOutline} style={{ fontSize: 18, display: "block" }} />
+                              </button>
+                            )}
+                            {permissions.canDeleteSales && (
+                              <>
+                                <button
+                                  onClick={() => { setItemRestoreStock(true); setRemoveItemIdx(idx); }}
+                                  disabled={removingItem}
+                                  title="ຍົກເລີກ (ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "2px 4px",
+                                    cursor: removingItem ? "default" : "pointer",
+                                    color: "var(--app-info)", lineHeight: 0,
+                                  }}
+                                >
+                                  <IonIcon icon={returnUpBackOutline} style={{ fontSize: 18, display: "block" }} />
+                                </button>
+                                <button
+                                  onClick={() => { setItemRestoreStock(false); setRemoveItemIdx(idx); }}
+                                  disabled={removingItem}
+                                  title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                                  style={{
+                                    background: "none", border: "none", padding: "2px 4px",
+                                    cursor: removingItem ? "default" : "pointer",
+                                    color: "#d1d5db", lineHeight: 0,
+                                  }}
+                                >
+                                  <IonIcon icon={trashOutline} style={{ fontSize: 18, display: "block" }} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -768,33 +836,67 @@ const SalesHistory: React.FC = () => {
                     key={`item-${idx}-sub-${i}`}
                     style={{
                       padding: "8px 16px 8px 28px",
-                      background: "var(--ion-color-step-50, #fafaf9)",
+                      background: "var(--ion-color-step-50, var(--app-surface-alt))",
                       borderBottom: i < item.quantity - 1 ? "1px solid #f0f0ef"
                         : !isLast ? "1px solid #f5f5f4" : "none",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}
                   >
-                    <span style={{ fontSize: "0.8rem", color: "#78716c" }}>
-                      ລາຍ {i + 1} · ₭{fmtK(item.unitPrice)}
+                    <span style={{ fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
+                      ລາຍ {i + 1} · {fmtK(item.unitPrice)} ກີບ
                     </span>
-                    {permissions.canDeleteSales && (
-                      <button
-                        onClick={() => handleRemoveItem(idx, 1)}
-                        disabled={removingItem}
-                        style={{
-                          background: "none", border: "none", padding: "6px 4px",
-                          cursor: removingItem ? "default" : "pointer",
-                          color: "#d1d5db", lineHeight: 0,
-                        }}
-                      >
-                        <IonIcon icon={trashOutline} style={{ fontSize: 14, display: "block" }} />
-                      </button>
+                    {(permissions.canEditCartPrice || permissions.canDeleteSales) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        {permissions.canEditCartPrice && (
+                          <button
+                            onClick={() => openEditPrice(idx, "split")}
+                            disabled={editingPrice}
+                            title="ແກ້ໄຂລາຄາ (ແຍກຊິ້ນນີ້)"
+                            style={{
+                              background: "none", border: "none", padding: "6px 4px",
+                              cursor: editingPrice ? "default" : "pointer",
+                              color: "var(--app-text-secondary)", lineHeight: 0,
+                            }}
+                          >
+                            <IonIcon icon={createOutline} style={{ fontSize: 18, display: "block" }} />
+                          </button>
+                        )}
+                        {permissions.canDeleteSales && (
+                          <>
+                            <button
+                              onClick={() => handleRemoveItem(idx, 1, true)}
+                              disabled={removingItem}
+                              title="ຍົກເລີກ (ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "6px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "var(--app-info)", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={returnUpBackOutline} style={{ fontSize: 18, display: "block" }} />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveItem(idx, 1, false)}
+                              disabled={removingItem}
+                              title="ລຶບປະຫວັດ (ບໍ່ຄືນສະຕັອກ)"
+                              style={{
+                                background: "none", border: "none", padding: "6px 4px",
+                                cursor: removingItem ? "default" : "pointer",
+                                color: "#d1d5db", lineHeight: 0,
+                              }}
+                            >
+                              <IonIcon icon={trashOutline} style={{ fontSize: 18, display: "block" }} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 ));
 
                 return [mainRow, ...subRows];
-              })}
+                });
+              })()}
             </div>
 
             {/* Cost / Profit / Loss summary */}
@@ -802,10 +904,10 @@ const SalesHistory: React.FC = () => {
               const saleCost = selectedSale.items.reduce(
                 (s, i) => s + (i.costPrice != null ? i.costPrice * i.quantity : 0), 0
               );
-              const hasCostData = selectedSale.items.some((i) => i.costPrice != null);
+              const hasCostData = (isOwner || permissions.canViewFinance) && selectedSale.items.some((i) => i.costPrice != null);
               const saleProfit = selectedSale.total - saleCost;
               const lossItems = selectedSale.items.filter(
-                (i) => i.costPrice != null && i.unitPrice < i.costPrice
+                (i) => !i.isGift && i.costPrice != null && i.unitPrice < i.costPrice
               );
               const totalLoss = lossItems.reduce(
                 (s, i) => s + (i.costPrice! - i.unitPrice) * i.quantity, 0
@@ -813,22 +915,22 @@ const SalesHistory: React.FC = () => {
               if (!hasCostData) return null;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#fef3c7", borderRadius: 10 }}>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#92400e" }}>🏷️ ຕົ້ນທຶນ</span>
-                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#92400e" }}>₭{fmtK(saleCost)}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--app-cost-surface)", borderRadius: 10 }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-cost)" }}>🏷️ ຕົ້ນທຶນ</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--app-cost)" }}>{fmtK(saleCost)} ກີບ</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: saleProfit >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 10 }}>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: saleProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: saleProfit >= 0 ? "var(--app-success-surface)" : "var(--app-danger-surface)", borderRadius: 10 }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: saleProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
                       {saleProfit >= 0 ? "📈 ກຳໄລ" : "📉 ຂາດທຶນ"}
                     </span>
-                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: saleProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                      ₭{fmtK(Math.abs(saleProfit))}
+                    <span style={{ fontSize: "0.88rem", fontWeight: 800, color: saleProfit >= 0 ? "var(--app-success)" : "var(--app-danger)" }}>
+                      {fmtK(Math.abs(saleProfit))} ກີບ
                     </span>
                   </div>
                   {totalLoss > 0 && saleProfit >= 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#fef2f2", borderRadius: 10 }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#dc2626" }}>⚠ ຂາດທຶນຈາກບາງລາຍການ</span>
-                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "#dc2626" }}>₭{fmtK(totalLoss)}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--app-danger-surface)", borderRadius: 10 }}>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--app-danger)" }}>⚠ ຂາດທຶນຈາກບາງລາຍການ</span>
+                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--app-danger)" }}>{fmtK(totalLoss)} ກີບ</span>
                     </div>
                   )}
                 </div>
@@ -837,12 +939,12 @@ const SalesHistory: React.FC = () => {
 
             {/* Total */}
             <div style={{
-              background: "linear-gradient(135deg, #e07b39, #c25e1e)",
+              background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
               borderRadius: 16, padding: "16px 20px", color: "#fff",
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <span style={{ fontWeight: 700, fontSize: "1rem" }}>ຍອດລວມທັງໝົດ</span>
-              <span style={{ fontWeight: 800, fontSize: "1.4rem" }}>₭{fmtK(selectedSale.total)}</span>
+              <span style={{ fontWeight: 800, fontSize: "1.4rem" }}>{fmtK(selectedSale.total)} ກີບ</span>
             </div>
           </IonContent>
         )}
@@ -858,21 +960,29 @@ const SalesHistory: React.FC = () => {
 
       <IonAlert
         isOpen={!!deleteTarget}
-        header="ລຶບລາຍການຂາຍ"
-        message={deleteTarget ? `ຕ້ອງການລຶບລາຍການ ₭${fmtK(deleteTarget.total)} ແມ່ນບໍ?` : ""}
+        header={deleteRestoreStock ? "ຍົກເລີກການຂາຍ" : "ລຶບປະຫວັດ"}
+        message={
+          deleteTarget
+            ? `ລາຍການ ${fmtK(deleteTarget.total)} ກີບ — ${deleteRestoreStock ? "ສິນຄ້າຈະຄືນສູ່ສະຕັອກ" : "ຈະບໍ່ຄືນສະຕັອກ, ລຶບຖາວອນ"}`
+            : ""
+        }
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
-          { text: "ລຶບ", role: "destructive", handler: handleDeleteSale },
+          {
+            text: deleteRestoreStock ? "ຍົກເລີກການຂາຍ" : "ລຶບ",
+            role: "destructive",
+            handler: () => handleDeleteSale(deleteRestoreStock),
+          },
         ]}
         onDidDismiss={() => setDeleteTarget(null)}
       />
 
       <IonAlert
         isOpen={removeItemIdx !== null}
-        header="ລຶບລາຍການ"
+        header={itemRestoreStock ? "ຍົກເລີກລາຍການ" : "ລຶບປະຫວັດລາຍການ"}
         message={
           removeItemIdx !== null && selectedSale
-            ? `${selectedSale.items[removeItemIdx].productName} ×${selectedSale.items[removeItemIdx].quantity}`
+            ? `${selectedSale.items[removeItemIdx].productName} ×${selectedSale.items[removeItemIdx].quantity} — ${itemRestoreStock ? "ສິນຄ້າຈະຄືນສູ່ສະຕັອກ" : "ຈະບໍ່ຄືນສະຕັອກ, ລຶບຖາວອນ"}`
             : ""
         }
         buttons={
@@ -880,17 +990,86 @@ const SalesHistory: React.FC = () => {
             ? [
                 { text: "ຍົກເລີກ", role: "cancel" as const },
                 ...(selectedSale.items[removeItemIdx].quantity > 1
-                  ? [{ text: "ຫຼຸດ 1 ຊິ້ນ", handler: () => handleRemoveItem(removeItemIdx!, 1) }]
+                  ? [{ text: "ຫຼຸດ 1 ຊິ້ນ", handler: () => handleRemoveItem(removeItemIdx!, 1, itemRestoreStock) }]
                   : []),
                 {
-                  text: selectedSale.items[removeItemIdx].quantity > 1 ? "ລຶບທັງໝົດ" : "ລຶບ",
-                  cssClass: "alert-button-confirm",
-                  handler: () => handleRemoveItem(removeItemIdx!, selectedSale!.items[removeItemIdx!].quantity),
+                  text: selectedSale.items[removeItemIdx].quantity > 1 ? "ທັງໝົດ" : "ຢືນຢັນ",
+                  role: "destructive" as const,
+                  handler: () => handleRemoveItem(removeItemIdx!, selectedSale!.items[removeItemIdx!].quantity, itemRestoreStock),
                 },
               ]
             : []
         }
         onDidDismiss={() => setRemoveItemIdx(null)}
+      />
+
+      <IonModal
+        isOpen={editPriceIdx !== null}
+        onDidDismiss={dismissEditPrice}
+        initialBreakpoint={0.4}
+        breakpoints={[0, 0.4]}
+        canDismiss={async () => !editingPrice}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonButton onClick={dismissEditPrice} disabled={editingPrice}>
+                <IonIcon slot="icon-only" icon={closeOutline} />
+              </IonButton>
+            </IonButtons>
+            <IonTitle style={{ fontWeight: 700 }}>
+              {editPriceMode === "split" ? "ແກ້ໄຂລາຄາ (ແຍກຊິ້ນນີ້)" : "ແກ້ໄຂລາຄາ"}
+            </IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: "16px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {editPriceIdx !== null && selectedSale && (
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: "var(--ion-text-color)", fontSize: "0.95rem" }}>
+                  {selectedSale.items[editPriceIdx].productName}
+                </p>
+                {editPriceMode === "split" && selectedSale.items[editPriceIdx].quantity > 1 && (
+                  <p style={{ margin: "3px 0 0", fontSize: "0.78rem", color: "#9333ea" }}>
+                    ຈະແຍກ 1 ຊິ້ນອອກມາໃສ່ລາຄາໃໝ່ ອີກ {selectedSale.items[editPriceIdx].quantity - 1} ຊິ້ນລາຄາເກົ່າຄືເດີມ
+                  </p>
+                )}
+              </div>
+            )}
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>ລາຄາ (ກີບ)</p>
+              <NumInput
+                value={editPriceValue}
+                onChange={setEditPriceValue}
+                placeholder="0"
+                style={{
+                  width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--app-border)",
+                  fontSize: "1.1rem", fontWeight: 700, outline: "none", background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)", boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <button
+              onClick={handleEditPrice}
+              disabled={editingPrice}
+              style={{
+                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                background: editingPrice ? "var(--app-border)" : "var(--ion-color-primary)",
+                color: editingPrice ? "var(--app-text-muted)" : "#fff",
+                fontSize: "1rem", fontWeight: 800, cursor: "pointer", marginTop: 4,
+              }}
+            >
+              {editingPrice ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກ"}
+            </button>
+          </div>
+        </IonContent>
+      </IonModal>
+      <IonAlert
+        isOpen={!!editPriceError}
+        header="ຂໍ້ຜິດພາດ"
+        message={editPriceError ?? ""}
+        buttons={["ຕົກລົງ"]}
+        onDidDismiss={() => setEditPriceError(null)}
       />
     </IonPage>
   );

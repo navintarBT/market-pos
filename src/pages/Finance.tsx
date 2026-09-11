@@ -6,34 +6,53 @@ import {
   IonButton, IonMenuButton,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { addOutline, closeOutline, createOutline, trashOutline } from "ionicons/icons";
+import { addOutline, closeOutline, createOutline, trashOutline, chevronBackOutline, chevronForwardOutline, storefrontOutline, walletOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getExpensesByDateRange, addExpense, updateExpense, deleteExpense } from "../data/expenseRepository";
 import { getIncomesByDateRange, addIncome, updateIncome, deleteIncome } from "../data/incomeRepository";
-import { fmtK } from "../utils/format";
-import type { Expense, Income, ExpenseCategory } from "../data/types";
+import { getWalletBalances } from "../data/walletRepository";
+import { getExpenseCategories, DEFAULT_EXPENSE_CATEGORIES, isShopScopedExpenseCategory } from "../data/expenseCategoryRepository";
+import { fmtK, fmtDate, fmtTime, dateInputStr, dateFromInputStr } from "../utils/format";
+import type { Expense, Income, ExpenseCategory, Category } from "../data/types";
 import NumInput from "../components/NumInput";
+import ShopHeaderTag from "../components/ShopHeaderTag";
+import WalletCard from "../components/WalletCard";
+import DateRangeFilter, { todayStr, monthStartStr } from "../components/DateRangeFilter";
+import EmptyState from "../components/EmptyState";
+import ExpenseCategoryPicker from "../components/ExpenseCategoryPicker";
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+type PaymentKind = "cash" | "transfer" | "cod";
+
+const PAYMENT_TOGGLE_STYLE: Record<PaymentKind, { label: string; color: string }> = {
+  cash: { label: "💵 ເງິນສົດ", color: "var(--app-success)" },
+  transfer: { label: "📱 ໂອນ", color: "var(--app-info)" },
+  cod: { label: "📦 COD", color: "var(--app-warning)" },
+};
+
+const EXPENSE_CATEGORY_STYLE: Record<ExpenseCategory, { label: string; chipLabel: string; color: string }> = {
+  shop: { label: "ລາຍຈ່າຍຮ້ານ", chipLabel: "🏪 ລາຍຈ່າຍຮ້ານ", color: "var(--app-info)" },
+  capital: { label: "ທຶນທຸລະກິດ", chipLabel: "💼 ທຶນທຸລະກິດ", color: "#7c3aed" },
+  general: { label: "ສ່ວນຕົວ", chipLabel: "👤 ສ່ວນຕົວ", color: "#c2410c" },
+};
+
+// Falls back to a generic tag style for custom categories, which have no
+// entry in EXPENSE_CATEGORY_STYLE (that map only covers the 3 defaults).
+function expCategoryBadge(category: ExpenseCategory): { label: string; color: string } {
+  return EXPENSE_CATEGORY_STYLE[category] ?? { label: `🏷️ ${category}`, color: "#6b7280" };
 }
 
-function PaymentToggle({
+function PaymentToggle<T extends PaymentKind>({
   value,
   onChange,
+  options,
 }: {
-  value: "cash" | "transfer";
-  onChange: (v: "cash" | "transfer") => void;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly T[];
 }) {
   return (
     <div style={{ display: "flex", gap: 8 }}>
-      {(
-        [
-          { v: "cash" as const, label: "💵 ເງິນສົດ" },
-          { v: "transfer" as const, label: "📱 ໂອນ" },
-        ] as const
-      ).map(({ v, label }) => (
+      {options.map((v) => (
         <button
           key={v}
           onClick={() => onChange(v)}
@@ -42,26 +61,31 @@ function PaymentToggle({
             padding: "10px 0",
             borderRadius: 10,
             border: "none",
-            background: value === v ? (v === "cash" ? "#16a34a" : "#2563eb") : "#f5f0eb",
-            color: value === v ? "#fff" : "#57534e",
+            background: value === v ? PAYMENT_TOGGLE_STYLE[v].color : "var(--app-surface-alt)",
+            color: value === v ? "#fff" : "var(--app-text-secondary)",
             fontWeight: 700,
             fontSize: "0.88rem",
             cursor: "pointer",
             transition: "all 0.15s",
           }}
         >
-          {label}
+          {PAYMENT_TOGGLE_STYLE[v].label}
         </button>
       ))}
     </div>
   );
 }
 
-const Finance: React.FC = () => {
-  const { shopId, permissions } = useAuth();
+const EXPENSE_PAYMENT_OPTIONS = ["cash", "transfer"] as const;
+const INCOME_PAYMENT_OPTIONS = ["cash", "transfer", "cod"] as const;
 
+const Finance: React.FC = () => {
+  const { shopId, role, permissions, features, user, displayName } = useAuth();
+  const canViewFinance = role === "customer" || permissions.canViewFinance;
+
+  const [section, setSection] = useState<"menu" | "shopExpense" | "ledger">("menu");
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
-  const [fromDate, setFromDate] = useState(todayStr());
+  const [fromDate, setFromDate] = useState(monthStartStr());
   const [toDate, setToDate] = useState(todayStr());
 
   // Expense state
@@ -73,11 +97,13 @@ const Finance: React.FC = () => {
   const [expDeleteError, setExpDeleteError] = useState<string | null>(null);
   const [expDesc, setExpDesc] = useState("");
   const [expAmount, setExpAmount] = useState(0);
-  const [expCategory, setExpCategory] = useState<ExpenseCategory>("capital");
+  const [expDate, setExpDate] = useState(todayStr());
+  const [expCategory, setExpCategory] = useState<ExpenseCategory>("shop");
   const [expPayment, setExpPayment] = useState<"cash" | "transfer">("cash");
   const [expBusy, setExpBusy] = useState(false);
   const [expDeleting, setExpDeleting] = useState(false);
   const [expCatFilter, setExpCatFilter] = useState<ExpenseCategory | "all">("all");
+  const [expCategories, setExpCategories] = useState<Category[]>([]);
 
   // Income state
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -88,9 +114,28 @@ const Finance: React.FC = () => {
   const [incDeleteError, setIncDeleteError] = useState<string | null>(null);
   const [incDesc, setIncDesc] = useState("");
   const [incAmount, setIncAmount] = useState(0);
-  const [incPayment, setIncPayment] = useState<"cash" | "transfer">("cash");
+  const [incPayment, setIncPayment] = useState<Income["paymentType"]>("cash");
   const [incBusy, setIncBusy] = useState(false);
   const [incDeleting, setIncDeleting] = useState(false);
+
+  // Wallet state — all-time balances, independent of the date filter above
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [cashBalance, setCashBalance] = useState(0);
+  const [transferBalance, setTransferBalance] = useState(0);
+  const [codOutstanding, setCodOutstanding] = useState(0);
+
+  const loadWallet = useCallback(async () => {
+    if (!shopId) return;
+    setWalletLoading(true);
+    try {
+      const balances = await getWalletBalances(shopId);
+      setCashBalance(balances.cashBalance);
+      setTransferBalance(balances.transferBalance);
+      setCodOutstanding(balances.codOutstanding);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [shopId]);
 
   const loadExpenses = useCallback(async () => {
     if (!shopId) return;
@@ -112,18 +157,37 @@ const Finance: React.FC = () => {
     }
   }, [shopId, fromDate, toDate]);
 
+  const loadExpenseCategories = useCallback(async () => {
+    if (!shopId) return;
+    try {
+      setExpCategories(await getExpenseCategories(shopId));
+    } catch {
+      // non-fatal — the 3 defaults still work fine without custom categories loaded
+    }
+  }, [shopId]);
+
   useIonViewWillEnter(() => {
     loadExpenses();
     loadIncomes();
-  });
+    loadWallet();
+    loadExpenseCategories();
+  }, [loadExpenses, loadIncomes, loadWallet, loadExpenseCategories]);
 
   useEffect(() => {
     loadExpenses();
     loadIncomes();
   }, [loadExpenses, loadIncomes]);
 
+  useEffect(() => {
+    loadExpenseCategories();
+  }, [loadExpenseCategories]);
+
+  useEffect(() => {
+    loadWallet();
+  }, [loadWallet]);
+
   async function handleRefresh(e: CustomEvent) {
-    await Promise.all([loadExpenses(), loadIncomes()]);
+    await Promise.all([loadExpenses(), loadIncomes(), loadWallet()]);
     (e.target as HTMLIonRefresherElement).complete();
   }
 
@@ -134,7 +198,8 @@ const Finance: React.FC = () => {
     setExpEditTarget(null);
     setExpDesc("");
     setExpAmount(0);
-    setExpCategory("capital");
+    setExpDate(todayStr());
+    setExpCategory("shop");
     setExpPayment("cash");
   }
 
@@ -142,7 +207,8 @@ const Finance: React.FC = () => {
     setExpEditTarget(e);
     setExpDesc(e.description);
     setExpAmount(e.amount);
-    setExpCategory((e.category as ExpenseCategory) ?? "capital");
+    setExpDate(dateInputStr(e.createdAt));
+    setExpCategory((e.category as ExpenseCategory) ?? "shop");
     setExpPayment(e.paymentType ?? "cash");
     setExpModalOpen(true);
   }
@@ -151,28 +217,20 @@ const Finance: React.FC = () => {
     if (!shopId || !expDesc.trim() || expAmount <= 0) return;
     setExpBusy(true);
     try {
+      const pickedDate = dateFromInputStr(expDate);
       if (expEditTarget) {
-        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment);
-        setExpenses((prev) =>
-          prev.map((e) =>
-            e.id === expEditTarget.id
-              ? { ...e, description: expDesc.trim(), amount: expAmount, paymentType: expPayment }
-              : e
-          )
-        );
+        await updateExpense(shopId, expEditTarget.id, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate);
       } else {
-        const id = await addExpense(shopId, expDesc.trim(), expAmount, expCategory, expPayment);
-        const newItem: Expense = {
-          id,
-          description: expDesc.trim(),
-          amount: expAmount,
-          paymentType: expPayment,
-          category: expCategory,
-          createdAt: new Date(),
-        };
-        setExpenses((prev) => [newItem, ...prev]);
+        await addExpense(shopId, expDesc.trim(), expAmount, expCategory, expPayment, pickedDate,
+          user ? { uid: user.uid, name: displayName || user.email || "" } : undefined);
       }
+      // Re-fetch rather than patch local state — a backdated entry can land
+      // outside the currently-filtered date range, or need re-sorting among
+      // same-range entries, either of which a manual splice/prepend would get
+      // wrong.
       dismissExpModal();
+      loadExpenses();
+      loadWallet();
     } finally {
       setExpBusy(false);
     }
@@ -186,6 +244,7 @@ const Finance: React.FC = () => {
     try {
       await deleteExpense(shopId, id);
       setExpenses((prev) => prev.filter((e) => e.id !== id));
+      loadWallet();
     } catch {
       setExpDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
@@ -236,6 +295,7 @@ const Finance: React.FC = () => {
         setIncomes((prev) => [newItem, ...prev]);
       }
       dismissIncModal();
+      loadWallet();
     } finally {
       setIncBusy(false);
     }
@@ -249,6 +309,7 @@ const Finance: React.FC = () => {
     try {
       await deleteIncome(shopId, id);
       setIncomes((prev) => prev.filter((i) => i.id !== id));
+      loadWallet();
     } catch {
       setIncDeleteError("ລຶບບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່");
     } finally {
@@ -258,11 +319,21 @@ const Finance: React.FC = () => {
 
   // ── Computed totals ──────────────────────────────────────────────────────
 
-  const expTotal = expenses.reduce((s, e) => s + e.amount, 0);
-  const expCash = expenses
+  const shopOnlyExpenses = expenses.filter((e) => isShopScopedExpenseCategory(e.category));
+  // Matches `visibleExpenses` below exactly, so the summary card total always
+  // reflects whichever category chip (ທັງໝົດ/ຮ້ານ/ທຶນ/ສ່ວນຕົວ) is selected,
+  // instead of always summing every category regardless of the filter.
+  const expenseBase = section === "shopExpense"
+    ? shopOnlyExpenses
+    : expCatFilter === "all"
+      ? expenses
+      : expenses.filter((e) => e.category === expCatFilter);
+
+  const expTotal = expenseBase.reduce((s, e) => s + e.amount, 0);
+  const expCash = expenseBase
     .filter((e) => (e.paymentType ?? "cash") === "cash")
     .reduce((s, e) => s + e.amount, 0);
-  const expTransfer = expenses
+  const expTransfer = expenseBase
     .filter((e) => e.paymentType === "transfer")
     .reduce((s, e) => s + e.amount, 0);
 
@@ -273,18 +344,34 @@ const Finance: React.FC = () => {
   const incTransfer = incomes
     .filter((i) => i.paymentType === "transfer")
     .reduce((s, i) => s + i.amount, 0);
+  const incCod = incomes
+    .filter((i) => i.paymentType === "cod")
+    .reduce((s, i) => s + i.amount, 0);
 
-  const isExpTab = activeTab === "expense";
+  const isExpTab = section === "shopExpense" ? true : activeTab === "expense";
   const loading = isExpTab ? expLoading : incLoading;
-  const visibleExpenses = expCatFilter === "all"
-    ? expenses
-    : expenses.filter((e) => e.category === expCatFilter);
+  const visibleExpenses = expenseBase;
 
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
-          <IonTitle style={{ fontWeight: 700 }}>ການເງິນ</IonTitle>
+        <IonToolbar className={section === "menu" ? "has-shop-tag" : undefined}>
+          {section === "menu" ? (
+            <div slot="start"><ShopHeaderTag /></div>
+          ) : (
+            <IonButtons slot="start">
+              <IonButton onClick={() => setSection("menu")}>
+                <IonIcon slot="icon-only" icon={chevronBackOutline} />
+              </IonButton>
+            </IonButtons>
+          )}
+          <IonTitle style={{ fontWeight: 700 }}>
+            {section === "menu"
+              ? "ການເງິນ"
+              : section === "shopExpense"
+                ? "ລາຍຈ່າຍຮ້ານ"
+                : "ບັນຊີລາຍຮັບລາຍຈ່າຍ"}
+          </IonTitle>
           <IonButtons slot="end">
             <IonMenuButton autoHide={false} />
           </IonButtons>
@@ -296,14 +383,85 @@ const Finance: React.FC = () => {
           <IonRefresherContent />
         </IonRefresher>
 
+        {section === "menu" && (
+          <div style={{ padding: "20px 16px 100px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <button
+              onClick={() => setSection("shopExpense")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "20px 18px",
+                borderRadius: 18,
+                border: "none",
+                background: "linear-gradient(135deg, var(--app-danger), #b91c1c)",
+                boxShadow: "0 6px 20px rgba(239,68,68,0.3)",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontSize: 30 }}><IonIcon icon={storefrontOutline} style={{ color: "#fff" }} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1.05rem" }}>ລາຍຈ່າຍຮ້ານ</p>
+                <p style={{ margin: "3px 0 0", color: "rgba(255,255,255,0.85)", fontSize: "0.78rem" }}>
+                  ຄ່າໃຊ້ຈ່າຍທຸລະກິດຂອງຮ້ານ
+                </p>
+              </div>
+              <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
+            </button>
+
+            {features.ledgerEnabled && canViewFinance && (
+              <button
+                onClick={() => setSection("ledger")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "20px 18px",
+                  borderRadius: 18,
+                  border: "none",
+                  background: "linear-gradient(135deg, var(--ion-color-primary), #c25e1e)",
+                  boxShadow: "0 6px 20px rgba(224,123,57,0.3)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontSize: 30 }}><IonIcon icon={walletOutline} style={{ color: "#fff" }} /></div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1.05rem" }}>ບັນຊີລາຍຮັບລາຍຈ່າຍ</p>
+                  <p style={{ margin: "3px 0 0", color: "rgba(255,255,255,0.85)", fontSize: "0.78rem" }}>
+                    ລາຍຮັບ, ລາຍຈ່າຍ ແລະ ກະເປົາເງິນທັງໝົດ
+                  </p>
+                </div>
+                <IonIcon icon={chevronForwardOutline} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20 }} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {section !== "menu" && (
+        <>
+        {/* Wallet — all-time balances, independent of the date filter below */}
+        {section === "ledger" && (
+        <div style={{ margin: "12px 16px 0" }}>
+          <WalletCard
+            loading={walletLoading}
+            cashBalance={cashBalance}
+            transferBalance={transferBalance}
+            codOutstanding={codOutstanding}
+          />
+        </div>
+        )}
+
         {/* Tab switcher */}
+        {section === "ledger" && (
         <div
           style={{
             display: "flex",
             gap: 0,
             margin: "12px 16px 0",
             borderRadius: 12,
-            background: "var(--ion-color-step-50, #f5f0eb)",
+            background: "var(--ion-color-step-50, var(--app-surface-alt))",
             padding: 4,
           }}
         >
@@ -317,7 +475,7 @@ const Finance: React.FC = () => {
                 borderRadius: 9,
                 border: "none",
                 background: activeTab === tab ? "var(--ion-item-background, #ffffff)" : "transparent",
-                color: activeTab === tab ? "var(--ion-text-color, #1c1917)" : "var(--ion-color-medium, #78716c)",
+                color: activeTab === tab ? "var(--ion-text-color, var(--ion-text-color))" : "var(--ion-color-medium, var(--app-text-secondary))",
                 fontWeight: activeTab === tab ? 700 : 600,
                 fontSize: "0.9rem",
                 cursor: "pointer",
@@ -329,42 +487,11 @@ const Finance: React.FC = () => {
             </button>
           ))}
         </div>
+        )}
 
         {/* Date filter */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px 0" }}>
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-              fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)",
-              color: "var(--ion-text-color, #1c1917)",
-              outline: "none",
-            }}
-          />
-          <span style={{ color: "#a8a29e", fontWeight: 700, fontSize: "0.75rem" }}>—</span>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1.5px solid var(--ion-color-step-150, #e5e7eb)",
-              fontSize: "0.82rem",
-              background: "var(--ion-color-step-50, #fafaf9)",
-              color: "var(--ion-text-color, #1c1917)",
-              outline: "none",
-            }}
-          />
+        <div style={{ padding: "10px 16px 0" }}>
+          <DateRangeFilter from={fromDate} to={toDate} setFrom={setFromDate} setTo={setToDate} style={{ marginBottom: 0 }} />
         </div>
 
         <div style={{ padding: "12px 16px 100px" }}>
@@ -372,8 +499,8 @@ const Finance: React.FC = () => {
           <div
             style={{
               background: isExpTab
-                ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                : "linear-gradient(135deg, #22c55e, #16a34a)",
+                ? "linear-gradient(135deg, var(--app-danger), #b91c1c)"
+                : "linear-gradient(135deg, var(--app-success), #15803d)",
               borderRadius: 20,
               padding: "18px 20px",
               marginBottom: 16,
@@ -387,6 +514,7 @@ const Finance: React.FC = () => {
                 { label: "ທັງໝົດ", value: isExpTab ? expTotal : incTotal },
                 { label: "💵 ເງິນສົດ", value: isExpTab ? expCash : incCash },
                 { label: "📱 ໂອນ", value: isExpTab ? expTransfer : incTransfer },
+                ...(isExpTab ? [] : [{ label: "📦 COD", value: incCod }]),
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <p
@@ -407,28 +535,28 @@ const Finance: React.FC = () => {
                       color: "#fff",
                     }}
                   >
-                    ₭{fmtK(value)}
+                    {fmtK(value)} ກີບ
                   </p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Category filter chips — expense tab only */}
-          {isExpTab && (
+          {/* Category filter chips — expense tab only, ledger view only */}
+          {isExpTab && section === "ledger" && (
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "nowrap", overflowX: "auto", paddingBottom: 2 }}>
-              {([
-                { v: "all" as const, label: "ທັງໝົດ" },
-                { v: "capital" as const, label: "🏪 ທຸລະກິດ" },
-                { v: "general" as const, label: "👤 ສ່ວນຕົວ" },
-              ] as const).map(({ v, label }) => (
+              {[
+                { v: "all", label: "ທັງໝົດ" },
+                ...DEFAULT_EXPENSE_CATEGORIES.map((v) => ({ v, label: EXPENSE_CATEGORY_STYLE[v].chipLabel })),
+                ...expCategories.map((c) => ({ v: c.name, label: `🏷️ ${c.name}` })),
+              ].map(({ v, label }) => (
                 <button
                   key={v}
                   onClick={() => setExpCatFilter(v)}
                   style={{
                     flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "none",
-                    background: expCatFilter === v ? "var(--ion-color-primary, #3880ff)" : "var(--ion-color-step-100, #f5f0eb)",
-                    color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, #78716c)",
+                    background: expCatFilter === v ? "var(--ion-color-primary)" : "var(--ion-color-step-100, var(--app-surface-alt))",
+                    color: expCatFilter === v ? "#fff" : "var(--ion-color-medium, var(--app-text-secondary))",
                     fontWeight: 600, fontSize: "0.82rem", cursor: "pointer",
                   }}
                 >
@@ -445,25 +573,16 @@ const Finance: React.FC = () => {
             </div>
           ) : isExpTab ? (
             visibleExpenses.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>🧾</div>
-                <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
-              </div>
+              <EmptyState icon="🧾" title="ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້" />
             ) : (
               visibleExpenses.map((item) => {
-                const timeStr = item.createdAt.toLocaleTimeString("lo-LA", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                const dateStr = item.createdAt.toLocaleDateString("lo-LA", {
-                  day: "numeric",
-                  month: "short",
-                });
+                const timeStr = fmtTime(item.createdAt);
+                const dateStr = fmtDate(item.createdAt);
                 return (
                   <div
                     key={item.id}
                     style={{
-                      background: "#fff",
+                      background: "var(--app-surface)",
                       borderRadius: 14,
                       padding: "14px 16px",
                       marginBottom: 8,
@@ -478,7 +597,7 @@ const Finance: React.FC = () => {
                         style={{
                           margin: 0,
                           fontWeight: 700,
-                          color: "#1c1917",
+                          color: "var(--ion-text-color)",
                           fontSize: "0.95rem",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -487,8 +606,9 @@ const Finance: React.FC = () => {
                       >
                         {item.description}
                       </p>
-                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                      <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                         {dateStr} · {timeStr}
+                        {item.createdByName && ` · 👤 ${item.createdByName}`}
                       </p>
                     </div>
                     <div
@@ -501,21 +621,21 @@ const Finance: React.FC = () => {
                       }}
                     >
                       <span
-                        style={{ fontWeight: 800, color: "#ef4444", fontSize: "1rem" }}
+                        style={{ fontWeight: 800, color: "var(--app-danger)", fontSize: "1rem" }}
                       >
-                        ₭{fmtK(item.amount)}
+                        {fmtK(item.amount)} ກີບ
                       </span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
                           borderRadius: 20, color: "#fff",
-                          background: item.category === "capital" ? "#1d4ed8" : "#c2410c",
+                          background: expCategoryBadge(item.category ?? "shop").color,
                         }}>
-                          {item.category === "capital" ? "ທຸລະກິດ" : "ສ່ວນຕົວ"}
+                          {expCategoryBadge(item.category ?? "shop").label}
                         </span>
                         <span style={{
                           fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px",
-                          background: "#f5f0eb", borderRadius: 20, color: "#78716c",
+                          background: "var(--app-surface-alt)", borderRadius: 20, color: "var(--app-text-secondary)",
                         }}>
                           {(item.paymentType ?? "cash") === "cash" ? "💵 ສົດ" : "📱 ໂອນ"}
                         </span>
@@ -532,7 +652,7 @@ const Finance: React.FC = () => {
                             border: "none",
                             padding: "6px",
                             cursor: "pointer",
-                            color: "#78716c",
+                            color: "var(--app-text-secondary)",
                             display: "flex",
                             alignItems: "center",
                           }}
@@ -547,7 +667,7 @@ const Finance: React.FC = () => {
                             border: "none",
                             padding: "6px",
                             cursor: "pointer",
-                            color: "#ef4444",
+                            color: "var(--app-danger)",
                             display: "flex",
                             alignItems: "center",
                           }}
@@ -561,25 +681,16 @@ const Finance: React.FC = () => {
               })
             )
           ) : incomes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <div style={{ fontSize: 48, marginBottom: 8 }}>💰</div>
-              <p style={{ color: "#78716c", margin: 0 }}>ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້</p>
-            </div>
+            <EmptyState icon="💰" title="ບໍ່ມີລາຍການໃນຊ່ວງເວລານີ້" />
           ) : (
             incomes.map((item) => {
-              const timeStr = item.createdAt.toLocaleTimeString("lo-LA", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-              const dateStr = item.createdAt.toLocaleDateString("lo-LA", {
-                day: "numeric",
-                month: "short",
-              });
+              const timeStr = fmtTime(item.createdAt);
+              const dateStr = fmtDate(item.createdAt);
               return (
                 <div
                   key={item.id}
                   style={{
-                    background: "#fff",
+                    background: "var(--app-surface)",
                     borderRadius: 14,
                     padding: "14px 16px",
                     marginBottom: 8,
@@ -594,7 +705,7 @@ const Finance: React.FC = () => {
                       style={{
                         margin: 0,
                         fontWeight: 700,
-                        color: "#1c1917",
+                        color: "var(--ion-text-color)",
                         fontSize: "0.95rem",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -603,7 +714,7 @@ const Finance: React.FC = () => {
                     >
                       {item.description}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "#78716c" }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)" }}>
                       {dateStr} · {timeStr}
                     </p>
                   </div>
@@ -617,21 +728,21 @@ const Finance: React.FC = () => {
                     }}
                   >
                     <span
-                      style={{ fontWeight: 800, color: "#22c55e", fontSize: "1rem" }}
+                      style={{ fontWeight: 800, color: "var(--app-success)", fontSize: "1rem" }}
                     >
-                      ₭{fmtK(item.amount)}
+                      {fmtK(item.amount)} ກີບ
                     </span>
                     <span
                       style={{
                         fontSize: "0.68rem",
                         fontWeight: 700,
                         padding: "2px 8px",
-                        background: "#f5f0eb",
+                        background: "var(--app-surface-alt)",
                         borderRadius: 20,
-                        color: "#78716c",
+                        color: "var(--app-text-secondary)",
                       }}
                     >
-                      {item.paymentType === "cash" ? "💵 ເງິນສົດ" : "📱 ໂອນ"}
+                      {PAYMENT_TOGGLE_STYLE[item.paymentType].label}
                     </span>
                   </div>
                   {permissions.canAddExpenses && (
@@ -645,7 +756,7 @@ const Finance: React.FC = () => {
                           border: "none",
                           padding: "6px",
                           cursor: "pointer",
-                          color: "#78716c",
+                          color: "var(--app-text-secondary)",
                           display: "flex",
                           alignItems: "center",
                         }}
@@ -660,7 +771,7 @@ const Finance: React.FC = () => {
                           border: "none",
                           padding: "6px",
                           cursor: "pointer",
-                          color: "#ef4444",
+                          color: "var(--app-danger)",
                           display: "flex",
                           alignItems: "center",
                         }}
@@ -678,11 +789,22 @@ const Finance: React.FC = () => {
         {permissions.canAddExpenses && (
           <IonFab vertical="bottom" horizontal="end" slot="fixed">
             <IonFabButton
-              onClick={() => (isExpTab ? setExpModalOpen(true) : setIncModalOpen(true))}
+              onClick={() => {
+                if (section === "shopExpense") {
+                  setExpCategory("shop");
+                  setExpModalOpen(true);
+                } else if (isExpTab) {
+                  setExpModalOpen(true);
+                } else {
+                  setIncModalOpen(true);
+                }
+              }}
             >
               <IonIcon icon={addOutline} />
             </IonFabButton>
           </IonFab>
+        )}
+        </>
         )}
       </IonContent>
 
@@ -717,7 +839,7 @@ const Finance: React.FC = () => {
           >
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ຄຳອະທິບາຍ
               </p>
@@ -730,18 +852,40 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "0.95rem",
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
-                ຈຳນວນ (₭)
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
+                ວັນທີ
+              </p>
+              <input
+                type="date"
+                value={expDate}
+                max={todayStr()}
+                onChange={(e) => setExpDate(e.target.value || todayStr())}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1.5px solid var(--app-border)",
+                  fontSize: "0.95rem",
+                  outline: "none",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
+                ຈຳນວນ (ກີບ)
               </p>
               <NumInput
                 value={expAmount}
@@ -751,46 +895,34 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "1.1rem",
                   fontWeight: 700,
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
+            {section !== "shopExpense" && (
+              <ExpenseCategoryPicker
+                shopId={shopId ?? ""}
+                isOwner={role === "customer"}
+                value={expCategory}
+                onChange={setExpCategory}
+                defaultOrder={DEFAULT_EXPENSE_CATEGORIES}
+                categoryStyle={EXPENSE_CATEGORY_STYLE}
+                categories={expCategories}
+                onCategoriesChanged={setExpCategories}
+                onRenamed={loadExpenses}
+              />
+            )}
             <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
-                ປະເພດລາຍຈ່າຍ
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {([
-                  { v: "capital" as const, label: "🏪 ທຸລະກິດ", active: "#1d4ed8" },
-                  { v: "general" as const, label: "👤 ສ່ວນຕົວ", active: "#c2410c" },
-                ] as const).map(({ v, label, active }) => (
-                  <button
-                    key={v}
-                    onClick={() => setExpCategory(v)}
-                    style={{
-                      flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
-                      background: expCategory === v ? active : "#f5f0eb",
-                      color: expCategory === v ? "#fff" : "#57534e",
-                      fontWeight: 700, fontSize: "0.88rem", cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
                 ປະເພດການຈ່າຍ
               </p>
-              <PaymentToggle value={expPayment} onChange={setExpPayment} />
+              <PaymentToggle value={expPayment} onChange={setExpPayment} options={EXPENSE_PAYMENT_OPTIONS} />
             </div>
             <button
               onClick={handleExpSave}
@@ -802,10 +934,10 @@ const Finance: React.FC = () => {
                 border: "none",
                 background:
                   expBusy || !expDesc.trim() || expAmount <= 0
-                    ? "#e5e7eb"
+                    ? "var(--app-border)"
                     : "var(--ion-color-primary)",
                 color:
-                  expBusy || !expDesc.trim() || expAmount <= 0 ? "#a8a29e" : "#fff",
+                  expBusy || !expDesc.trim() || expAmount <= 0 ? "var(--app-text-muted)" : "#fff",
                 fontSize: "1rem",
                 fontWeight: 800,
                 cursor: "pointer",
@@ -849,7 +981,7 @@ const Finance: React.FC = () => {
           >
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ຄຳອະທິບາຍ
               </p>
@@ -862,20 +994,20 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "0.95rem",
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
-                ຈຳນວນ (₭)
+                ຈຳນວນ (ກີບ)
               </p>
               <NumInput
                 value={incAmount}
@@ -885,23 +1017,23 @@ const Finance: React.FC = () => {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1.5px solid #e5e7eb",
+                  border: "1.5px solid var(--app-border)",
                   fontSize: "1.1rem",
                   fontWeight: 700,
                   outline: "none",
-                  background: "#fafaf9",
-                  color: "#1c1917",
+                  background: "var(--app-surface-alt)",
+                  color: "var(--ion-text-color)",
                   boxSizing: "border-box",
                 }}
               />
             </div>
             <div>
               <p
-                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "#78716c" }}
+                style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)" }}
               >
                 ປະເພດການຮັບ
               </p>
-              <PaymentToggle value={incPayment} onChange={setIncPayment} />
+              <PaymentToggle value={incPayment} onChange={setIncPayment} options={INCOME_PAYMENT_OPTIONS} />
             </div>
             <button
               onClick={handleIncSave}
@@ -913,10 +1045,10 @@ const Finance: React.FC = () => {
                 border: "none",
                 background:
                   incBusy || !incDesc.trim() || incAmount <= 0
-                    ? "#e5e7eb"
+                    ? "var(--app-border)"
                     : "var(--ion-color-primary)",
                 color:
-                  incBusy || !incDesc.trim() || incAmount <= 0 ? "#a8a29e" : "#fff",
+                  incBusy || !incDesc.trim() || incAmount <= 0 ? "var(--app-text-muted)" : "#fff",
                 fontSize: "1rem",
                 fontWeight: 800,
                 cursor: "pointer",

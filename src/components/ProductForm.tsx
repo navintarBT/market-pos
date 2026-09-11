@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton,
-  IonContent, IonItem, IonLabel, IonInput, IonNote, IonIcon,
+  IonContent, IonItem, IonLabel, IonInput, IonIcon,
   IonList, IonListHeader, IonText, IonSpinner, IonAlert,
 } from "@ionic/react";
 import { addOutline, trashOutline, chevronDownOutline, checkmarkOutline, closeOutline, createOutline } from "ionicons/icons";
@@ -42,6 +42,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   const [price, setPrice] = useState<number>(0);
   const [costPrice, setCostPrice] = useState<number>(0);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
+  const [canBeGift, setCanBeGift] = useState(false);
   const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
@@ -53,6 +54,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
   const [manageCatMode, setManageCatMode] = useState(false);
   const [editCatTarget, setEditCatTarget] = useState<Category | null>(null);
   const [deleteCatTarget, setDeleteCatTarget] = useState<Category | null>(null);
+  const contentRef = useRef<HTMLIonContentElement>(null);
+  const [deleteVariantIdx, setDeleteVariantIdx] = useState<number | null>(null);
   const [catError, setCatError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,6 +68,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
       const cp = product?.costPrice ?? 0;
       setCostPrice(cp);
       setPhotoUrl(product?.photoUrl);
+      setCanBeGift(product?.canBeGift ?? false);
       setPendingDataUrl(null);
       const vArr = product?.variants.length ? [...product.variants] : [emptyVariant()];
       setVariants(vArr);
@@ -165,10 +169,10 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
     if (!name.trim()) newErrors.name = "ກະລຸນາໃສ່ຊື່ສິນຄ້າ";
     if (name.trim().length > 0 && name.trim().length < 2) newErrors.name = "ຊື່ສິນຄ້າຕ້ອງຢ່າງໜ້ອຍ 2 ຕົວອັກສອນ";
-    if (price <= 0) newErrors.price = "ຕ້ອງໃສ່ລາຄາຂາຍ ຫຼາຍກວ່າ 0 ₭";
-    if (costPrice <= 0) newErrors.cost = "ຕ້ອງໃສ່ລາຄາຕົ້ນທຶນ ຫຼາຍກວ່າ 0 ₭";
+    if (price <= 0) newErrors.price = "ຕ້ອງໃສ່ລາຄາຂາຍ ຫຼາຍກວ່າ 0 ກີບ";
+    if (costPrice <= 0) newErrors.cost = "ຕ້ອງໃສ່ລາຄາຕົ້ນທຶນ ຫຼາຍກວ່າ 0 ກີບ";
     if (price > 0 && costPrice > 0 && price < costPrice) {
-      newErrors.priceWarn = `ລາຄາຂາຍ (${fmtK(price)} ₭) ຕ່ຳກວ່າຕົ້ນທຶນ (${fmtK(costPrice)} ₭) — ຂາຍຂາດທຶນ!`;
+      newErrors.priceWarn = `ລາຄາຂາຍ (${fmtK(price)} ກີບ) ຕ່ຳກວ່າຕົ້ນທຶນ (${fmtK(costPrice)} ກີບ) — ຂາຍຂາດທຶນ!`;
     }
 
     // Validate each variant row
@@ -200,7 +204,13 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
     setErrors(newErrors);
 
     const hasBlocker = newErrors.name || newErrors.price || newErrors.cost || newErrors.variantsMsg;
-    if (hasBlocker) return;
+    if (hasBlocker) {
+      // The blocking field(s) can be scrolled out of view (e.g. user is down
+      // at the variants section when ຊື່ສິນຄ້າ up top is still empty), which
+      // otherwise makes clicking ບັນທຶກ look like it silently did nothing.
+      contentRef.current?.scrollToTop(300);
+      return;
+    }
 
     setBusy(true);
     try {
@@ -217,10 +227,11 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         costPrice,
         photoUrl: finalPhotoUrl,
         variants: validVariants.map(v => ({ ...v, stock: Number(v.stock) || 0 })),
+        canBeGift,
       });
       onDismiss();
-    } catch {
-      setErrors(prev => ({ ...prev, save: "ບັນທຶກບໍ່ສຳເລັດ ລອງໃໝ່ອີກຄັ້ງ" }));
+    } catch (err) {
+      setErrors(prev => ({ ...prev, save: err instanceof Error ? err.message : "ບັນທຶກບໍ່ສຳເລັດ ລອງໃໝ່ອີກຄັ້ງ" }));
     } finally {
       setBusy(false);
       setUploading(false);
@@ -229,13 +240,13 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
   const inputBase: React.CSSProperties = {
     width: "100%", border: "none", outline: "none", background: "transparent",
-    fontSize: "1rem", padding: "8px 0", color: "#1c1917",
+    fontSize: "1rem", padding: "8px 0", color: "var(--ion-text-color)",
   };
   const errText: React.CSSProperties = {
-    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "#dc2626",
+    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "var(--app-danger)",
   };
   const warnText: React.CSSProperties = {
-    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "#d97706",
+    margin: "3px 0 4px", fontSize: "0.75rem", fontWeight: 600, color: "var(--app-warning)",
   };
 
   return (
@@ -260,11 +271,11 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="ion-padding">
+      <IonContent className="ion-padding" ref={contentRef}>
 
         {/* Image */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: "0 0 8px", fontSize: "0.85rem", fontWeight: 600, color: "#78716c" }}>ຮູບສິນຄ້າ</p>
+          <p style={{ margin: "0 0 8px", fontSize: "0.85rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>ຮູບສິນຄ້າ</p>
           <ImagePicker
             currentUrl={photoUrl}
             uploading={uploading}
@@ -275,22 +286,23 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
         {/* Name */}
         <IonList lines="full">
-          <IonItem className={errors.name ? "ion-invalid ion-touched" : ""}>
-            <IonLabel position="stacked">ຊື່ສິນຄ້າ *</IonLabel>
+          <IonItem>
+            <IonLabel position="stacked" color={errors.name ? "danger" : undefined}>ຊື່ສິນຄ້າ *</IonLabel>
             <IonInput
               value={name}
               onIonInput={(e) => { setName(e.detail.value ?? ""); clearFieldError("name"); }}
               placeholder="ເຊັ່ນ: ເສື້ອຍືດ oversize"
+              style={{ borderBottom: `2px solid ${errors.name ? "var(--app-danger)" : "transparent"}` }}
             />
-            {errors.name && <IonNote slot="error">{errors.name}</IonNote>}
           </IonItem>
+          {errors.name && <p style={{ ...errText, paddingLeft: 16 }}>{errors.name}</p>}
           <IonItem button detail={false} onClick={() => setCatPickerOpen(true)}>
             <IonLabel position="stacked">ໝວດໝູ່</IonLabel>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 0 8px" }}>
-              <span style={{ color: category ? "#1c1917" : "#a8a29e", fontSize: "1rem" }}>
+              <span style={{ color: category ? "var(--ion-text-color)" : "var(--app-text-muted)", fontSize: "1rem" }}>
                 {category || "ເລືອກໝວດໝູ່"}
               </span>
-              <IonIcon icon={chevronDownOutline} style={{ color: "#a8a29e", fontSize: 18 }} />
+              <IonIcon icon={chevronDownOutline} style={{ color: "var(--app-text-muted)", fontSize: 18 }} />
             </div>
           </IonItem>
         </IonList>
@@ -305,7 +317,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
               value={price}
               onChange={(n) => { setPrice(n); clearFieldError("price"); clearFieldError("priceWarn"); }}
               placeholder="ເຊັ່ນ: 150.000"
-              style={{ ...inputBase, borderBottom: `2px solid ${errors.price ? "#dc2626" : "transparent"}` }}
+              style={{ ...inputBase, borderBottom: `2px solid ${errors.price ? "var(--app-danger)" : "transparent"}` }}
             />
           </IonItem>
           {errors.price && <p style={{ ...errText, paddingLeft: 16 }}>{errors.price}</p>}
@@ -318,7 +330,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
               value={costPrice}
               onChange={(n) => { setCostPrice(n); clearFieldError("cost"); clearFieldError("priceWarn"); }}
               placeholder="ເຊັ່ນ: 80.000"
-              style={{ ...inputBase, borderBottom: `2px solid ${errors.cost ? "#dc2626" : "transparent"}` }}
+              style={{ ...inputBase, borderBottom: `2px solid ${errors.cost ? "var(--app-danger)" : "transparent"}` }}
             />
           </IonItem>
           {errors.cost && <p style={{ ...errText, paddingLeft: 16 }}>{errors.cost}</p>}
@@ -328,11 +340,43 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         {errors.priceWarn && (
           <div style={{
             margin: "8px 0", padding: "8px 14px",
-            background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8,
+            background: "var(--app-warning-surface)", border: "1px solid var(--app-warning)", borderRadius: 8,
           }}>
             <p style={{ ...warnText, margin: 0 }}>⚠ {errors.priceWarn}</p>
           </div>
         )}
+
+        {/* Gift eligibility */}
+        <div
+          onClick={() => setCanBeGift((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            margin: "8px 0", padding: "12px 14px", borderRadius: 10,
+            background: canBeGift ? "var(--app-accent-surface)" : "var(--ion-color-step-50, #f5f5f4)",
+            border: `1.5px solid ${canBeGift ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
+            cursor: "pointer",
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--ion-text-color)" }}>
+              🎁 ໃຫ້ເປັນຂອງແຖມໄດ້
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: "0.74rem", color: "var(--app-text-secondary)" }}>
+              ຖ້າເປີດ ຈະເລືອກສິນຄ້ານີ້ເປັນຂອງແຖມໄດ້ຈາກໜ້າກະຕ່າ
+            </p>
+          </div>
+          <div style={{
+            width: 46, height: 26, borderRadius: 13, flexShrink: 0, marginLeft: 12,
+            background: canBeGift ? "var(--ion-color-primary)" : "var(--ion-color-step-200, #d4d4d0)",
+            position: "relative", transition: "background 0.15s",
+          }}>
+            <div style={{
+              position: "absolute", top: 2, left: canBeGift ? 22 : 2,
+              width: 22, height: 22, borderRadius: "50%", background: "var(--app-surface)",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.3)", transition: "left 0.15s",
+            }} />
+          </div>
+        </div>
 
         {/* Variants */}
         <IonListHeader style={{ paddingTop: 8 }}>
@@ -341,7 +385,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 44px", gap: 8, padding: "2px 0 4px" }}>
           {["ໄຊສ໌ *", "ສີ *", "ຈຳນວນ", "ເຕືອນ≤", ""].map((h, idx) => (
-            <span key={idx} style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 600, textAlign: "center" }}>{h}</span>
+            <span key={idx} style={{ fontSize: "0.7rem", color: "var(--app-text-muted)", fontWeight: 600, textAlign: "center" }}>{h}</span>
           ))}
         </div>
 
@@ -349,8 +393,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
           const isInvalid = errors.badVariants?.has(i) ?? false;
           const missSize  = isInvalid && !v.size.trim();
           const missColor = isInvalid && !v.color.trim();
-          const borderInvalid = "1.5px solid #dc2626";
-          const borderNormal  = "1.5px solid #c8c8c8";
+          const borderInvalid = "1.5px solid var(--app-danger)";
+          const borderNormal  = "1.5px solid var(--app-border)";
           return (
             <div key={i}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 44px", gap: 8, padding: "4px 0" }}>
@@ -369,8 +413,8 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   }}
                   style={{
                     "--min-height": "44px", textAlign: "center",
-                    "--border-color": missSize ? "#dc2626" : undefined,
-                    "--highlight-color-focused": missSize ? "#dc2626" : undefined,
+                    "--border-color": missSize ? "var(--app-danger)" : undefined,
+                    "--highlight-color-focused": missSize ? "var(--app-danger)" : undefined,
                   }}
                 />
                 <IonInput
@@ -388,23 +432,23 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
                   }}
                   style={{
                     "--min-height": "44px", textAlign: "center",
-                    "--border-color": missColor ? "#dc2626" : undefined,
-                    "--highlight-color-focused": missColor ? "#dc2626" : undefined,
+                    "--border-color": missColor ? "var(--app-danger)" : undefined,
+                    "--highlight-color-focused": missColor ? "var(--app-danger)" : undefined,
                   }}
                 />
                 <NumInput
                   value={v.stock}
                   onChange={(n) => updateVariant(i, "stock", n)}
                   placeholder="0"
-                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
+                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "var(--app-surface)", color: "var(--ion-text-color)", fontSize: "1rem" }}
                 />
                 <NumInput
                   value={v.minStock ?? 5}
                   onChange={(n) => updateVariant(i, "minStock", Math.max(1, n || 1))}
                   placeholder="5"
-                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "#fff", color: "#1c1917", fontSize: "1rem" }}
+                  style={{ width: "100%", height: 44, textAlign: "center", border: borderNormal, borderRadius: 4, outline: "none", background: "var(--app-surface)", color: "var(--ion-text-color)", fontSize: "1rem" }}
                 />
-                <IonButton fill="clear" color="danger" onClick={() => removeVariant(i)}
+                <IonButton fill="clear" color="danger" onClick={() => setDeleteVariantIdx(i)}
                   disabled={variants.length === 1} style={{ minHeight: 44, minWidth: 44, margin: 0 }}>
                   <IonIcon slot="icon-only" icon={trashOutline} />
                 </IonButton>
@@ -473,6 +517,28 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
       onDidDismiss={() => setDeleteCatTarget(null)}
     />
 
+    <IonAlert
+      isOpen={deleteVariantIdx !== null}
+      header="ລຶບ Variant"
+      message={(() => {
+        const v = variants[deleteVariantIdx ?? -1];
+        const label = v && (v.size.trim() || v.color.trim()) ? `${v.size} / ${v.color}` : `ລາຍການທີ ${(deleteVariantIdx ?? 0) + 1}`;
+        return `ຕ້ອງການລຶບ "${label}" ແມ່ນບໍ່?`;
+      })()}
+      buttons={[
+        { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteVariantIdx(null) },
+        {
+          text: "ລຶບ",
+          role: "destructive",
+          handler: () => {
+            if (deleteVariantIdx !== null) removeVariant(deleteVariantIdx);
+            setDeleteVariantIdx(null);
+          },
+        },
+      ]}
+      onDidDismiss={() => setDeleteVariantIdx(null)}
+    />
+
     {/* Category picker sheet */}
     <IonModal
       isOpen={catPickerOpen}
@@ -515,7 +581,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
         )}
         {!manageCatMode && (
           <IonItem button detail={false} onClick={() => { setCategory(""); setCatPickerOpen(false); }}>
-            <IonLabel style={{ color: "#78716c" }}>— ບໍ່ລະບຸ —</IonLabel>
+            <IonLabel style={{ color: "var(--app-text-secondary)" }}>— ບໍ່ລະບຸ —</IonLabel>
             {category === "" && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}
           </IonItem>
         )}
@@ -525,7 +591,7 @@ const ProductForm: React.FC<Props> = ({ isOpen, product, categories, shopId, isO
             button={!manageCatMode}
             detail={false}
             onClick={() => { if (!manageCatMode) { setCategory(cat.name); setCatPickerOpen(false); } }}
-            style={{ "--background": "#ffffff" }}
+            style={{ "--background": "var(--app-surface)" }}
           >
             <IonLabel style={{ fontWeight: category === cat.name ? 700 : 400 }}>{cat.name}</IonLabel>
             {!manageCatMode && category === cat.name && <IonIcon slot="end" icon={checkmarkOutline} color="primary" />}

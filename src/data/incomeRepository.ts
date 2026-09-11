@@ -23,7 +23,7 @@ function mapIncome(d: any): Income {
     id: d.id,
     description: data.description as string,
     amount: data.amount as number,
-    paymentType: (data.paymentType as "cash" | "transfer") ?? "cash",
+    paymentType: (data.paymentType as Income["paymentType"]) ?? "cash",
     createdAt: (data.createdAt as Timestamp).toDate(),
   };
 }
@@ -47,11 +47,16 @@ export async function getIncomesByDateRange(
   return snap.docs.map(mapIncome);
 }
 
+export async function getAllIncomes(shopId: string): Promise<Income[]> {
+  const snap = await getDocs(incomesCol(shopId));
+  return snap.docs.map(mapIncome);
+}
+
 export async function addIncome(
   shopId: string,
   description: string,
   amount: number,
-  paymentType: "cash" | "transfer"
+  paymentType: Income["paymentType"]
 ): Promise<string> {
   const ref = await addDoc(incomesCol(shopId), {
     description,
@@ -67,7 +72,7 @@ export async function updateIncome(
   incomeId: string,
   description: string,
   amount: number,
-  paymentType: "cash" | "transfer"
+  paymentType: Income["paymentType"]
 ): Promise<void> {
   await updateDoc(doc(incomesCol(shopId), incomeId), {
     description,

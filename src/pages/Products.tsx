@@ -15,13 +15,12 @@ import {
   IonRefresherContent,
   IonAlert,
   IonSpinner,
-  IonText,
   IonButtons,
   IonButton,
   IonBadge,
   IonMenuButton,
 } from "@ionic/react";
-import { addOutline, notificationsOutline, cubeOutline, giftOutline, returnUpBackOutline } from "ionicons/icons";
+import { addOutline, notificationsOutline, cubeOutline, returnUpBackOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getProducts, addProduct, updateProduct, deleteProduct } from "../data/productRepository";
 import { getCategories } from "../data/categoryRepository";
@@ -33,6 +32,8 @@ import ProductDetailSheet from "../components/ProductDetailSheet";
 import BundleManager from "../components/BundleManager";
 import ReturnForm from "../components/ReturnForm";
 import RestockModal from "../components/RestockModal";
+import ShopHeaderTag from "../components/ShopHeaderTag";
+import EmptyState from "../components/EmptyState";
 import type { Product, Category } from "../data/types";
 import { useIonViewWillEnter } from "@ionic/react";
 
@@ -51,14 +52,15 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [bundleOpen, setBundleOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [restockTarget, setRestockTarget] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [productTab, setProductTab] = useState<"retail" | "bundle">("retail");
 
   const isAdmin = permissions.canManageProducts;
   const isOwner = role === "customer";
+  const canViewFinance = isOwner || permissions.canViewFinance;
 
   const alertCount = useMemo(() =>
     products.filter((p) => p.variants.some((v) => v.stock <= (v.minStock ?? 5))).length,
@@ -77,7 +79,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
     }
   }, [shopId]);
 
-  useIonViewWillEnter(() => { load(); });
+  useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh(e: CustomEvent) {
@@ -127,7 +129,8 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar className="has-shop-tag">
+          <div slot="start"><ShopHeaderTag /></div>
           <IonTitle>ສິນຄ້າ</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => setInventoryOpen(true)}>
@@ -142,7 +145,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                     position: "absolute", top: 4, right: 2,
                     fontSize: "0.6rem", minWidth: 16, height: 16,
                     borderRadius: 8, padding: "0 3px",
-                    background: "#ff3b30", color: "#ffffff", fontWeight: 700,
+                    background: "var(--app-danger)", color: "#ffffff", fontWeight: 700,
                   }}
                 >
                   {alertCount}
@@ -150,11 +153,6 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
               )}
             </IonButton>
 
-            {isAdmin && (
-              <IonButton onClick={() => setBundleOpen(true)}>
-                <IonIcon slot="icon-only" icon={giftOutline} />
-              </IonButton>
-            )}
             <IonMenuButton autoHide={false} />
           </IonButtons>
         </IonToolbar>
@@ -165,6 +163,34 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           <IonRefresherContent />
         </IonRefresher>
 
+        {isAdmin && (
+          <div style={{ display: "flex", gap: 0, margin: "12px 16px 0", borderRadius: 12, background: "var(--ion-color-step-50, var(--app-surface-alt))", padding: 4 }}>
+            {([
+              { v: "retail" as const, label: "ສິນຄ້າລາຍຍ່ອຍ" },
+              { v: "bundle" as const, label: "ສິນຄ້າເປັນຊຸດ" },
+            ]).map(({ v, label }) => (
+              <button
+                key={v}
+                onClick={() => setProductTab(v)}
+                style={{
+                  flex: 1, padding: "9px 0", borderRadius: 9, border: "none",
+                  background: productTab === v ? "var(--ion-item-background, #ffffff)" : "transparent",
+                  color: productTab === v ? "var(--ion-text-color)" : "var(--ion-color-medium, var(--app-text-secondary))",
+                  fontWeight: productTab === v ? 700 : 600, fontSize: "0.88rem", cursor: "pointer",
+                  boxShadow: productTab === v ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+                  transition: "all 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {productTab === "bundle" ? (
+          shopId && <BundleManager products={products} shopId={shopId} isOwner={isOwner} />
+        ) : (
+        <>
         {loading && (
           <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
             <IonSpinner name="crescent" />
@@ -177,7 +203,11 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           return (
             <>
               {cats.length > 0 && (
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px 6px", scrollbarWidth: "none" }}>
+                <div style={{
+                  display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px 6px", scrollbarWidth: "none",
+                  position: "sticky", top: 0, zIndex: 5,
+                  background: "var(--ion-background-color)",
+                }}>
                   {["all", ...cats].map((cat) => {
                     const isActive = activeCategory === cat;
                     return (
@@ -186,9 +216,9 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                         onClick={() => setActiveCategory(cat)}
                         style={{
                           flexShrink: 0, padding: "7px 18px", borderRadius: 24,
-                          border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
-                          background: isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-50, #f9fafb)",
-                          color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                          border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
+                          background: isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-50, var(--app-surface-alt))",
+                          color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                           fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
                           boxShadow: isActive ? "0 2px 8px rgba(224,123,57,0.3)" : "none",
                           transition: "all 0.15s",
@@ -204,7 +234,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                 <IonRow>
                   {filtered.map((p) => (
                     <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
-                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner || permissions.canDeleteProducts} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
+                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner || permissions.canDeleteProducts} canViewFinance={canViewFinance} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
                     </IonCol>
                   ))}
                 </IonRow>
@@ -214,11 +244,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         })()}
 
         {!loading && products.length === 0 && (
-          <IonText color="medium">
-            <p style={{ textAlign: "center", padding: 32 }}>
-              {isAdmin ? "ກົດ + ເພື່ອເພີ່ມສິນຄ້າທຳອິດ" : "ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ"}
-            </p>
-          </IonText>
+          <EmptyState icon="🛍️" title={isAdmin ? "ກົດ + ເພື່ອເພີ່ມສິນຄ້າທຳອິດ" : "ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ"} />
         )}
 
         {isAdmin && (
@@ -237,20 +263,13 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
             </IonFab>
           </>
         )}
+        </>
+        )}
       </IonContent>
-
-      {shopId && (
-        <BundleManager
-          isOpen={bundleOpen}
-          products={products}
-          shopId={shopId}
-          isOwner={isOwner || permissions.canDeleteProducts}
-          onDismiss={() => setBundleOpen(false)}
-        />
-      )}
 
       <ProductDetailSheet
         product={detailProduct}
+        canViewFinance={canViewFinance}
         onDismiss={() => setDetailProduct(null)}
       />
 
@@ -270,6 +289,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
       <InventoryReportSheet
         isOpen={inventoryOpen}
         products={products}
+        canViewFinance={canViewFinance}
         onDismiss={() => setInventoryOpen(false)}
       />
 

@@ -52,13 +52,15 @@ export async function getShopUsers(shopId: string): Promise<ShopUser[]> {
       email: data.email as string,
       role: data.role as "customer" | "staff",
       displayName: data.displayName as string | undefined,
+      profileUrl: data.profileUrl as string | undefined,
       createdAt,
       permissions: p ? {
         canManageProducts: p.canManageProducts ?? false,
+        canDeleteProducts: p.canDeleteProducts ?? false,
         canEditCartPrice: p.canEditCartPrice ?? false,
         canDeleteSales: p.canDeleteSales ?? false,
         canAddExpenses: p.canAddExpenses ?? false,
-        canDeleteProducts: p.canDeleteProducts ?? false,
+        canViewFinance: p.canViewFinance ?? false,
       } : undefined,
     };
   }).sort((a, b) => `${a.role}-${a.email}`.localeCompare(`${b.role}-${b.email}`));
@@ -92,10 +94,11 @@ export async function createStaffUser(
   const now = serverTimestamp();
   const permissions: StaffPermissions = data.permissions ?? {
     canManageProducts: false,
+    canDeleteProducts: false,
     canEditCartPrice: false,
     canDeleteSales: false,
     canAddExpenses: false,
-    canDeleteProducts: false,
+    canViewFinance: false,
   };
 
   const batch = writeBatch(db);
@@ -114,6 +117,19 @@ export async function updateStaffUser(
   const batch = writeBatch(db);
   batch.update(doc(db, "users", uid), { displayName, updatedAt: now });
   batch.update(doc(db, "shops", shopId, "users", uid), { displayName, updatedAt: now });
+  await batch.commit();
+}
+
+/** Self-service: lets the signed-in user (owner or staff) set their own profile photo. */
+export async function updateMyProfilePhoto(
+  shopId: string,
+  uid: string,
+  profileUrl: string,
+): Promise<void> {
+  const now = serverTimestamp();
+  const batch = writeBatch(db);
+  batch.update(doc(db, "users", uid), { profileUrl, updatedAt: now });
+  batch.update(doc(db, "shops", shopId, "users", uid), { profileUrl, updatedAt: now });
   await batch.commit();
 }
 

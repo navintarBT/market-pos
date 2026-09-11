@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import type { StaffPermissions, ShopFeatures } from "../data/types";
+import type { StaffPermissions, ShopFeatures, ShopProfile } from "../data/types";
 
 export interface TenantInfo {
   plan: "trial" | "monthly" | "yearly" | "unlimited";
@@ -19,16 +19,18 @@ export interface TenantInfo {
 
 const OWNER_PERMISSIONS: StaffPermissions = {
   canManageProducts: true,
+  canDeleteProducts: true,
   canEditCartPrice: true,
   canDeleteSales: true,
   canAddExpenses: true,
-  canDeleteProducts: true,
+  canViewFinance: true,
 };
 
 const DEFAULT_FEATURES: ShopFeatures = {
   returnEnabled: false,
   returnSummaryEnabled: false,
   monthlySummaryEnabled: false,
+  ledgerEnabled: false,
 };
 
 interface AuthState {
@@ -41,6 +43,8 @@ interface AuthState {
   loading: boolean;
   permissions: StaffPermissions;
   features: ShopFeatures;
+  shopProfile: ShopProfile | null;
+  myProfileUrl: string | null;
   availableShops: { id: string; name: string; profileUrl?: string }[];
   needsShopPick: boolean;
 }
@@ -50,6 +54,8 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   switchShop: (shopId: string) => Promise<void>;
   showShopPicker: () => void;
+  setShopProfile: (profile: ShopProfile) => void;
+  setMyProfileUrl: (url: string | null) => void;
 }
 
 function parseTenant(data: Record<string, unknown>): TenantInfo {
@@ -77,17 +83,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const NO_PERMISSIONS: StaffPermissions = {
   canManageProducts: false,
+  canDeleteProducts: false,
   canEditCartPrice: false,
   canDeleteSales: false,
   canAddExpenses: false,
-  canDeleteProducts: false,
+  canViewFinance: false,
 };
 
 const BLANK_STATE: AuthState = {
   user: null, shopId: null, role: null, displayName: "",
   tenant: null, blocked: false, loading: false,
   permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
-  availableShops: [], needsShopPick: false,
+  shopProfile: null, myProfileUrl: null, availableShops: [], needsShopPick: false,
 };
 
 async function loadShopData(user: User, userData: Record<string, unknown>, shopId: string) {
@@ -97,6 +104,7 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
   let permissions: StaffPermissions = NO_PERMISSIONS;
   let displayName = user.email ?? "";
   let features: ShopFeatures = DEFAULT_FEATURES;
+  let shopProfile: ShopProfile = { id: shopId, name: "Minny ONE" };
 
   try {
     const tSnap = await getDoc(doc(db, "tenants", shopId));
@@ -115,10 +123,11 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
       const sp = su?.permissions as Partial<StaffPermissions> | undefined;
       permissions = {
         canManageProducts: sp?.canManageProducts ?? false,
+        canDeleteProducts: sp?.canDeleteProducts ?? false,
         canEditCartPrice: sp?.canEditCartPrice ?? false,
         canDeleteSales: sp?.canDeleteSales ?? false,
         canAddExpenses: sp?.canAddExpenses ?? false,
-        canDeleteProducts: sp?.canDeleteProducts ?? false,
+        canViewFinance: sp?.canViewFinance ?? false,
       };
       const dn = su?.displayName as string | undefined;
       if (dn) displayName = dn;
@@ -129,15 +138,22 @@ async function loadShopData(user: User, userData: Record<string, unknown>, shopI
 
   try {
     const shopSnap = await getDoc(doc(db, "shops", shopId));
-    const f = shopSnap.data()?.features as Partial<ShopFeatures> | undefined;
+    const shopData = shopSnap.data();
+    const f = shopData?.features as Partial<ShopFeatures> | undefined;
     features = {
       returnEnabled: f?.returnEnabled ?? false,
       returnSummaryEnabled: f?.returnSummaryEnabled ?? false,
       monthlySummaryEnabled: f?.monthlySummaryEnabled ?? false,
+      ledgerEnabled: f?.ledgerEnabled ?? false,
+    };
+    shopProfile = {
+      id: shopId,
+      name: (shopData?.name as string) ?? "Minny ONE",
+      profileUrl: shopData?.profileUrl as string | undefined,
     };
   } catch { /* shop rules may not allow yet */ }
 
-  return { role, tenant, blocked, permissions, displayName, features };
+  return { role, tenant, blocked, permissions, displayName, features, shopProfile };
 }
 
 function savedShopKey(uid: string) {
@@ -157,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDoc(doc(db, "users", user.uid));
       const data = snap.data();
       const role = data?.role as string | undefined;
+      const myProfileUrl = (data?.profileUrl as string | undefined) ?? null;
 
       if (!data || !["customer", "staff"].includes(role ?? "")) {
         await firebaseSignOut(auth);
@@ -203,6 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
+          shopProfile: shopData.shopProfile, myProfileUrl,
           availableShops, needsShopPick: false,
         });
         return;
@@ -216,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user, shopId: saved, role: shopData.role, displayName: shopData.displayName,
           tenant: shopData.tenant, blocked: shopData.blocked, loading: false,
           permissions: shopData.permissions, features: shopData.features,
+          shopProfile: shopData.shopProfile, myProfileUrl,
           availableShops, needsShopPick: false,
         });
         return;
@@ -226,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user, shopId: null, role: role as "customer" | "staff", displayName: user.email ?? "",
         tenant: null, blocked: false, loading: false,
         permissions: NO_PERMISSIONS, features: DEFAULT_FEATURES,
+        shopProfile: null, myProfileUrl,
         availableShops, needsShopPick: true,
       });
     });
@@ -245,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, loading: true }));
     const snap = await getDoc(doc(db, "users", state.user!.uid));
     const userData = (snap.data() ?? {}) as Record<string, unknown>;
+    const myProfileUrl = (userData.profileUrl as string | undefined) ?? null;
     const shopData = await loadShopData(state.user!, userData, shopId);
     localStorage.setItem(savedShopKey(state.user!.uid), shopId);
     setState(prev => ({
@@ -257,6 +278,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading: false,
       permissions: shopData.permissions,
       features: shopData.features,
+      shopProfile: shopData.shopProfile,
+      myProfileUrl,
       needsShopPick: false,
     }));
   }
@@ -265,8 +288,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, shopId: null, needsShopPick: true }));
   }
 
+  function setShopProfile(profile: ShopProfile) {
+    setState(prev => ({
+      ...prev,
+      shopProfile: profile,
+      // Keep the multi-shop switcher/dashboard list (AllShopsDashboard,
+      // ShopPicker) in sync too — it's a separate snapshot fetched once at
+      // login/switchShop, so without this an edited shop's new name/photo
+      // only shows in the current shop's own views, not in those lists.
+      availableShops: prev.availableShops.map(s =>
+        s.id === profile.id ? { ...s, name: profile.name, profileUrl: profile.profileUrl } : s
+      ),
+    }));
+  }
+
+  function setMyProfileUrl(url: string | null) {
+    setState(prev => ({ ...prev, myProfileUrl: url }));
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, switchShop, showShopPicker, setShopProfile, setMyProfileUrl }}>
       {children}
     </AuthContext.Provider>
   );

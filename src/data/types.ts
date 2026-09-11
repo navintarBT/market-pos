@@ -2,6 +2,7 @@ export interface ShopFeatures {
   returnEnabled: boolean;
   returnSummaryEnabled: boolean;
   monthlySummaryEnabled: boolean;
+  ledgerEnabled: boolean;
 }
 
 export interface ReturnRecord {
@@ -13,6 +14,7 @@ export interface ReturnRecord {
   quantity: number;
   costPrice: number;
   sellingPrice: number;
+  paymentType?: "cash" | "transfer" | "cod";
   createdAt: Date;
 }
 
@@ -31,6 +33,7 @@ export interface Product {
   costPrice?: number;
   photoUrl?: string;
   variants: ProductVariant[];
+  canBeGift?: boolean;
 }
 
 export interface BundleItem {
@@ -60,6 +63,8 @@ export interface SaleItem {
   costPrice?: number;
   isBundle?: boolean;
   bundleItems?: BundleItem[];
+  isGift?: boolean;
+  giftForKey?: string;
   splitId?: string;
 }
 
@@ -80,6 +85,7 @@ export interface StaffPermissions {
   canDeleteSales: boolean;
   canAddExpenses: boolean;
   canDeleteProducts: boolean;
+  canViewFinance: boolean;
 }
 
 export interface ShopUser {
@@ -87,13 +93,17 @@ export interface ShopUser {
   email: string;
   role: "customer" | "staff";
   displayName?: string;
+  profileUrl?: string;
   createdAt?: Date;
   permissions?: StaffPermissions;
 }
 
-export type PaymentType = "cash" | "qr";
+export type PaymentType = "cash" | "qr" | "cod";
 
-export type ExpenseCategory = "capital" | "general";
+// Was a fixed 3-value union; widened to allow custom categories (see
+// src/data/expenseCategoryRepository.ts). "shop"/"capital"/"general" are
+// still the three built-in defaults and remain valid values.
+export type ExpenseCategory = string;
 
 export interface Expense {
   id: string;
@@ -102,13 +112,15 @@ export interface Expense {
   category: ExpenseCategory;
   paymentType?: "cash" | "transfer";
   createdAt: Date;
+  createdByUid?: string;
+  createdByName?: string;
 }
 
 export interface Income {
   id: string;
   description: string;
   amount: number;
-  paymentType: "cash" | "transfer";
+  paymentType: "cash" | "transfer" | "cod";
   createdAt: Date;
 }
 

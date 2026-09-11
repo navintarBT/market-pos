@@ -6,10 +6,12 @@ import {
 import { closeOutline } from "ionicons/icons";
 import type { Product } from "../data/types";
 import { fmtK } from "../utils/format";
+import EmptyState from "./EmptyState";
 
 interface Props {
   isOpen: boolean;
   products: Product[];
+  canViewFinance: boolean;
   onDismiss: () => void;
 }
 
@@ -31,7 +33,7 @@ function computeRow(p: Product): ProductRow {
   return { product: p, totalStock, costTotal, sellTotal, profitTotal, hasCost };
 }
 
-const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) => {
+const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, canViewFinance, onDismiss }) => {
   const [activeCategory, setActiveCategory] = useState("all");
 
   const categories = [...new Set(products.map((p) => p.category).filter(Boolean) as string[])];
@@ -85,9 +87,9 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                   onClick={() => setActiveCategory(cat)}
                   style={{
                     flexShrink: 0, padding: "6px 16px", borderRadius: 24,
-                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, #e5e7eb)"}`,
+                    border: `1.5px solid ${isActive ? "var(--ion-color-primary)" : "var(--ion-color-step-150, var(--app-border))"}`,
                     background: isActive ? "var(--ion-color-primary)" : "var(--ion-item-background, #ffffff)",
-                    color: isActive ? "#ffffff" : "var(--ion-text-color, #57534e)",
+                    color: isActive ? "#ffffff" : "var(--ion-text-color, var(--app-text-secondary))",
                     fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
                     transition: "all 0.15s",
                   }}
@@ -101,7 +103,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
 
         <div style={{ padding: "8px 14px 24px" }}>
           {rows.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#a8a29e", padding: 40 }}>ບໍ່ມີສິນຄ້າ</p>
+            <EmptyState icon="📦" title="ບໍ່ມີສິນຄ້າ" />
           ) : (
             groups.map((group) => (
               <div key={group.label}>
@@ -109,7 +111,7 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                 {activeCategory === "all" && (
                   <p style={{
                     margin: "14px 0 8px", fontSize: "0.78rem", fontWeight: 700,
-                    color: "#78716c", letterSpacing: "0.04em",
+                    color: "var(--app-text-secondary)", letterSpacing: "0.04em",
                   }}>
                     📂 {group.label}
                   </p>
@@ -119,49 +121,73 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                   <div
                     key={product.id}
                     style={{
-                      background: "#ffffff", borderRadius: 14, padding: "12px 14px",
+                      background: "var(--app-surface)", borderRadius: 14, padding: "12px 14px",
                       marginBottom: 8, boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
                     }}
                   >
-                    {/* Name + stock badge */}
+                    {/* Photo + name + stock badge */}
                     <div style={{
-                      display: "flex", justifyContent: "space-between",
-                      alignItems: "center", marginBottom: 8,
+                      display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
                     }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "#1c1917" }}>
-                        {product.name}
-                      </p>
-                      <span style={{
-                        background: totalStock === 0 ? "#fef2f2" : "#dcfce7",
-                        color: totalStock === 0 ? "#dc2626" : "#16a34a",
-                        fontSize: "0.72rem", fontWeight: 700,
-                        padding: "3px 10px", borderRadius: 20,
+                      {product.photoUrl
+                        ? <img src={product.photoUrl} alt={product.name} loading="lazy" decoding="async"
+                            style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+                        : <div style={{
+                            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                            background: "var(--app-accent-surface)",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                          }}>👕</div>
+                      }
+                      <div style={{
+                        flex: 1, minWidth: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
                       }}>
-                        {totalStock} ຊີ້ນ
-                      </span>
+                        <p style={{
+                          margin: 0, fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {product.name}
+                        </p>
+                        <span style={{
+                          background: totalStock === 0 ? "var(--app-danger-surface)" : "var(--app-success-surface)",
+                          color: totalStock === 0 ? "var(--app-danger)" : "var(--app-success)",
+                          fontSize: "0.72rem", fontWeight: 700,
+                          padding: "3px 10px", borderRadius: 20, flexShrink: 0,
+                        }}>
+                          {totalStock} ຊີ້ນ
+                        </span>
+                      </div>
                     </div>
 
-                    {/* 3-column value grid */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                      <div style={{ background: "#fef3c7", borderRadius: 8, padding: "7px 8px" }}>
-                        <p style={{ margin: 0, fontSize: "0.58rem", color: "#92400e", fontWeight: 700 }}>ຕົ້ນທຶນ</p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#92400e" }}>
-                          {hasCost ? `₭${fmtK(costTotal)}` : "—"}
+                    {/* Value grid — cost/profit only for staff with financial visibility */}
+                    {canViewFinance ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                        <div style={{ background: "var(--app-cost-surface)", borderRadius: 8, padding: "7px 8px" }}>
+                          <p style={{ margin: 0, fontSize: "0.58rem", color: "var(--app-cost)", fontWeight: 700 }}>ຕົ້ນທຶນ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "var(--app-cost)" }}>
+                            {hasCost ? `${fmtK(costTotal)} ກີບ` : "—"}
+                          </p>
+                        </div>
+                        <div style={{ background: "var(--app-success-surface)", borderRadius: 8, padding: "7px 8px" }}>
+                          <p style={{ margin: 0, fontSize: "0.58rem", color: "var(--app-success)", fontWeight: 700 }}>ກຳໄລ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "var(--app-success)" }}>
+                            {hasCost ? `${fmtK(profitTotal)} ກີບ` : "—"}
+                          </p>
+                        </div>
+                        <div style={{ background: "var(--app-info-surface)", borderRadius: 8, padding: "7px 8px" }}>
+                          <p style={{ margin: 0, fontSize: "0.58rem", color: "var(--app-info)", fontWeight: 700 }}>ລາຄາຂາຍ</p>
+                          <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "var(--app-info)" }}>
+                            {fmtK(sellTotal)} ກີບ
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: "var(--app-info-surface)", borderRadius: 8, padding: "7px 8px" }}>
+                        <p style={{ margin: 0, fontSize: "0.58rem", color: "var(--app-info)", fontWeight: 700 }}>ລາຄາຂາຍ</p>
+                        <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "var(--app-info)" }}>
+                          {fmtK(sellTotal)} ກີບ
                         </p>
                       </div>
-                      <div style={{ background: "#f0fdf4", borderRadius: 8, padding: "7px 8px" }}>
-                        <p style={{ margin: 0, fontSize: "0.58rem", color: "#16a34a", fontWeight: 700 }}>ກຳໄລ</p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#16a34a" }}>
-                          {hasCost ? `₭${fmtK(profitTotal)}` : "—"}
-                        </p>
-                      </div>
-                      <div style={{ background: "#eff6ff", borderRadius: 8, padding: "7px 8px" }}>
-                        <p style={{ margin: 0, fontSize: "0.58rem", color: "#2563eb", fontWeight: 700 }}>ລາຄາຂາຍ</p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.8rem", fontWeight: 800, color: "#2563eb" }}>
-                          ₭{fmtK(sellTotal)}
-                        </p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -174,8 +200,8 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
       {rows.length > 0 && (
         <IonFooter>
           <div style={{
-            background: "linear-gradient(135deg, #d97706, #92400e)", padding: "12px 20px",
-            display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4,
+            background: "linear-gradient(135deg, var(--app-warning), var(--app-cost))", padding: "12px 20px",
+            display: "grid", gridTemplateColumns: canViewFinance ? "repeat(4, 1fr)" : "repeat(2, 1fr)", gap: 4,
           }}>
             <div style={{ textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ຈຳນວນ</p>
@@ -183,22 +209,26 @@ const InventoryReportSheet: React.FC<Props> = ({ isOpen, products, onDismiss }) 
                 {grandStock} ຊີ້ນ
               </p>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ຕົ້ນທຶນ</p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandCost)}
-              </p>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ກຳໄລ</p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandProfit)}
-              </p>
-            </div>
+            {canViewFinance && (
+              <>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ຕົ້ນທຶນ</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
+                    {fmtK(grandCost)} ກີບ
+                  </p>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ກຳໄລ</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
+                    {fmtK(grandProfit)} ກີບ
+                  </p>
+                </div>
+              </>
+            )}
             <div style={{ textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "0.57rem", color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>ລາຄາຂາຍ</p>
               <p style={{ margin: "2px 0 0", fontSize: "0.88rem", fontWeight: 800, color: "#ffffff" }}>
-                ₭{fmtK(grandSell)}
+                {fmtK(grandSell)} ກີບ
               </p>
             </div>
           </div>

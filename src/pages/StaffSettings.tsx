@@ -32,14 +32,16 @@ const cardStyle: React.CSSProperties = {
 };
 
 const PERM_LABELS: { key: keyof StaffPermissions; label: string; icon: string }[] = [
-  { key: "canManageProducts", label: "ຈັດການສິນຄ້າ (ເພີ່ມ / ແກ້ໄຂ) — ລຶບສິນຄ້າ/ຊຸດ ເຈົ້າຂອງຮ້ານເທົ່ານັ້ນ", icon: "📦" },
+  { key: "canManageProducts", label: "ຈັດການສິນຄ້າ (ເພີ່ມ / ແກ້ໄຂ)", icon: "📦" },
+  { key: "canDeleteProducts", label: "ລຶບສິນຄ້າ / ຊຸດ", icon: "🗑️" },
   { key: "canEditCartPrice", label: "ແກ້ໄຂລາຄາໃນກະຕ່າ", icon: "✏️" },
-  { key: "canDeleteSales", label: "ລຶບປະຫວັດການຂາຍ", icon: "🗑️" },
+  { key: "canDeleteSales", label: "ລຶບປະຫວັດການຂາຍ", icon: "📋" },
   { key: "canAddExpenses", label: "ຈັດການລາຍຈ່າຍ & ລາຍຮັບ (ເພີ່ມ / ແກ້ໄຂ / ລຶບ)", icon: "💸" },
 ];
 
 const DEFAULT_PERMS: StaffPermissions = {
   canManageProducts: false,
+  canDeleteProducts: false,
   canEditCartPrice: false,
   canDeleteSales: false,
   canAddExpenses: false,

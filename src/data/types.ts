@@ -79,6 +79,7 @@ export interface StaffPermissions {
   canEditCartPrice: boolean;
   canDeleteSales: boolean;
   canAddExpenses: boolean;
+  canDeleteProducts: boolean;
 }
 
 export interface ShopUser {

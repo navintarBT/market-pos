@@ -204,7 +204,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
                 <IonRow>
                   {filtered.map((p) => (
                     <IonCol key={p.id} size="6" sizeMd="4" sizeLg="3">
-                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
+                      <ProductCard product={p} isAdmin={isAdmin} canDelete={isOwner || permissions.canDeleteProducts} onEdit={openEdit} onDelete={setDeleteTarget} onDetail={setDetailProduct} onRestock={setRestockTarget} />
                     </IonCol>
                   ))}
                 </IonRow>
@@ -244,7 +244,7 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           isOpen={bundleOpen}
           products={products}
           shopId={shopId}
-          isOwner={isOwner}
+          isOwner={isOwner || permissions.canDeleteProducts}
           onDismiss={() => setBundleOpen(false)}
         />
       )}

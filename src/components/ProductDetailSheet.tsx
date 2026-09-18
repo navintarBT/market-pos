@@ -2,17 +2,19 @@ import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent,
   IonButtons, IonButton, IonIcon,
 } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
+import { closeOutline, trashOutline } from "ionicons/icons";
 import type { Product } from "../data/types";
 import { fmtK } from "../utils/format";
 
 interface Props {
   product: Product | null;
   canViewFinance: boolean;
+  canDelete?: boolean;
   onDismiss: () => void;
+  onDelete?: () => void;
 }
 
-const ProductDetailSheet: React.FC<Props> = ({ product, canViewFinance, onDismiss }) => {
+const ProductDetailSheet: React.FC<Props> = ({ product, canViewFinance, canDelete, onDismiss, onDelete }) => {
   if (!product) return null;
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
@@ -160,6 +162,22 @@ const ProductDetailSheet: React.FC<Props> = ({ product, canViewFinance, onDismis
               {totalStock === 0 ? "ໝົດສະຕ໋ອກ" : `${totalStock} ຊີ້ນ`}
             </span>
           </div>
+
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              style={{
+                width: "100%", marginTop: 24, padding: "13px 16px",
+                borderRadius: 12, border: "1.5px solid var(--app-danger)",
+                background: "var(--app-danger-surface)", color: "var(--app-danger)",
+                fontSize: "0.9rem", fontWeight: 700, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}
+            >
+              <IonIcon icon={trashOutline} style={{ fontSize: 18 }} />
+              ລຶບສິນຄ້ານີ້
+            </button>
+          )}
         </div>
       </IonContent>
     </IonModal>

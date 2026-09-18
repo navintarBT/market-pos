@@ -4,12 +4,15 @@ import {
   IonContent, IonFooter, IonIcon, IonSpinner, IonAlert,
 } from "@ionic/react";
 import {
-  closeOutline, addOutline, removeOutline, chevronBackOutline, timeOutline,
+  closeOutline, addOutline, removeOutline, chevronBackOutline, timeOutline, linkOutline,
 } from "ionicons/icons";
 import { processAtomicReturn } from "../data/returnRepository";
-import { processAtomicTransfer } from "../data/transferRepository";
+import { processAtomicTransfer, processCrossShopTransfer } from "../data/transferRepository";
+import { getProducts } from "../data/productRepository";
+import { useAuth } from "../context/AuthContext";
 import ReturnHistory from "./ReturnHistory";
 import TransferHistory from "./TransferHistory";
+import ProductLinkModal from "./ProductLinkModal";
 import type { Product, ProductVariant } from "../data/types";
 
 // ── VariantRow: module-level so React never unmounts it on parent re-render ──
@@ -112,16 +115,33 @@ function VariantSteppers({ product, qtys, setQty, accentColor, isReduce }: {
 
 interface Props {
   isOpen: boolean;
-  products: Product[];
-  shopId: string;
   onDismiss: () => void;
-  onSaved: (updatedProduct: Product) => void;
+  onSaved?: () => void;
 }
 
 type Tab = "return" | "transfer";
 
-const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSaved }) => {
+const ReturnForm: React.FC<Props> = ({ isOpen, onDismiss, onSaved }) => {
+  const { shopId, availableShops } = useAuth();
+  const otherShops = availableShops.filter((s) => s.id !== shopId);
   const [activeTab, setActiveTab] = useState<Tab>("return");
+
+  // ── Own product list — the modal is mounted app-wide (side menu), so it
+  // fetches fresh stock itself on each open instead of relying on a caller
+  // that may not have a products list loaded (e.g. when opened from a tab
+  // other than Products).
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !shopId) return;
+    let cancelled = false;
+    setProductsLoading(true);
+    getProducts(shopId)
+      .then((list) => { if (!cancelled) setProducts(list); })
+      .finally(() => { if (!cancelled) setProductsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, shopId]);
 
   // ── Return state ──
   const [rStep, setRStep] = useState<"product" | "detail">("product");
@@ -137,10 +157,12 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const [tProduct, setTProduct] = useState<Product | null>(null);
   const [tQtys, setTQtys] = useState<Record<number, number>>({});
   const [tNote, setTNote] = useState("");
+  const [tDestShopId, setTDestShopId] = useState("");
   const [tSaving, setTSaving] = useState(false);
   const [tError, setTError] = useState(false);
   const [tStockError, setTStockError] = useState("");
   const [tHistoryOpen, setTHistoryOpen] = useState(false);
+  const [linkManagerOpen, setLinkManagerOpen] = useState(false);
 
   // ── Category filter for product list ──
   const [listCat, setListCat] = useState("all");
@@ -149,7 +171,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
 
   function resetAll() {
     setRStep("product"); setRProduct(null); setRQtys({}); setRPayment("cash");
-    setTStep("product"); setTProduct(null); setTQtys({}); setTNote("");
+    setTStep("product"); setTProduct(null); setTQtys({}); setTNote(""); setTDestShopId("");
     setActiveTab("return");
     setListCat("all");
   }
@@ -164,7 +186,7 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const rTotalQty = rEntries.reduce((s, e) => s + e.qty, 0);
 
   async function handleReturn() {
-    if (!rProduct || rEntries.length === 0) return;
+    if (!rProduct || rEntries.length === 0 || !shopId) return;
     setRSaving(true);
     try {
       const variantQtys = rProduct.variants
@@ -178,7 +200,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
           return added > 0 ? { ...v, stock: v.stock + added } : v;
         }),
       };
-      onSaved(updatedProduct);
+      setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)));
+      onSaved?.();
       setRStep("product"); setRProduct(null); setRQtys({}); setRPayment("cash");
     } catch {
       setRError(true);
@@ -197,13 +220,24 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const tTotalQty = tEntries.reduce((s, e) => s + e.qty, 0);
 
   async function handleTransfer() {
-    if (!tProduct || tEntries.length === 0) return;
+    if (!tProduct || tEntries.length === 0 || !shopId) return;
     setTSaving(true);
     try {
       const variantQtys = tProduct.variants
         .map((v, idx) => ({ size: v.size, color: v.color, qty: tQtys[idx] ?? 0, costPrice: tProduct.costPrice ?? 0 }))
         .filter((x) => x.qty > 0);
-      await processAtomicTransfer(shopId, tProduct, variantQtys, tNote.trim() || undefined);
+      const destShop = otherShops.length > 0 && tDestShopId
+        ? otherShops.find((s) => s.id === tDestShopId)
+        : undefined;
+      if (destShop) {
+        const sourceShop = availableShops.find((s) => s.id === shopId);
+        await processCrossShopTransfer(
+          shopId, destShop.id, destShop.name, sourceShop?.name ?? shopId,
+          tProduct, variantQtys, tNote.trim() || undefined,
+        );
+      } else {
+        await processAtomicTransfer(shopId, tProduct, variantQtys, tNote.trim() || undefined);
+      }
       const updatedProduct: Product = {
         ...tProduct,
         variants: tProduct.variants.map((v, idx) => {
@@ -211,8 +245,9 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
           return removed > 0 ? { ...v, stock: Math.max(0, v.stock - removed) } : v;
         }),
       };
-      onSaved(updatedProduct);
-      setTStep("product"); setTProduct(null); setTQtys({}); setTNote("");
+      setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)));
+      onSaved?.();
+      setTStep("product"); setTProduct(null); setTQtys({}); setTNote(""); setTDestShopId("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.startsWith("INSUFFICIENT_STOCK:")) {
@@ -296,6 +331,8 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
   const isReturnStep = activeTab === "return";
   const currentStep = isReturnStep ? rStep : tStep;
 
+  if (!shopId) return null;
+
   return (
     <>
       <IonModal isOpen={isOpen} onDidDismiss={() => { resetAll(); onDismiss(); }} canDismiss={async () => !rSaving && !tSaving}>
@@ -357,7 +394,13 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     ເລືອກສິນຄ້າທີ່ຕ້ອງການຕີກັບ
                   </p>
-                  <ProductList onSelect={(p) => { setRProduct(p); setRQtys({}); setRPayment("cash"); setRStep("detail"); }} />
+                  {productsLoading ? (
+                    <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
+                      <IonSpinner name="crescent" />
+                    </div>
+                  ) : (
+                    <ProductList onSelect={(p) => { setRProduct(p); setRQtys({}); setRPayment("cash"); setRStep("detail"); }} />
+                  )}
                 </>
               )}
               {rStep === "detail" && rProduct && (
@@ -419,7 +462,13 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                   <p style={{ margin: "12px 16px 4px", fontSize: "0.82rem", color: "var(--app-text-secondary)" }}>
                     ເລືອກສິນຄ້າທີ່ຕ້ອງການຍ້າຍຈາກສາງ
                   </p>
-                  <ProductList onSelect={(p) => { setTProduct(p); setTQtys({}); setTNote(""); setTStep("detail"); }} />
+                  {productsLoading ? (
+                    <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
+                      <IonSpinner name="crescent" />
+                    </div>
+                  ) : (
+                    <ProductList onSelect={(p) => { setTProduct(p); setTQtys({}); setTNote(""); setTDestShopId(otherShops[0]?.id ?? ""); setTStep("detail"); }} />
+                  )}
                 </>
               )}
               {tStep === "detail" && tProduct && (
@@ -438,6 +487,50 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
                     product={tProduct} qtys={tQtys} setQty={tSetQty}
                     accentColor="var(--app-info)" isReduce
                   />
+                  {/* Destination shop — hidden entirely for single-shop owners */}
+                  {otherShops.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
+                        ຍ້າຍໄປຮ້ານໃດ?
+                      </p>
+                      <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none" }}>
+                        {otherShops.map((s) => {
+                          const isActive = tDestShopId === s.id;
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => setTDestShopId(s.id)}
+                              style={{
+                                flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+                                padding: "6px 14px 6px 6px", borderRadius: 24, fontSize: "0.82rem", fontWeight: 700,
+                                cursor: "pointer", transition: "all 0.15s",
+                                border: `1.5px solid ${isActive ? "var(--app-info)" : "var(--app-border)"}`,
+                                background: isActive ? "var(--app-info)" : "var(--app-surface)",
+                                color: isActive ? "#fff" : "var(--app-text-secondary)",
+                              }}
+                            >
+                              {s.profileUrl
+                                ? <img src={s.profileUrl} alt={s.name} style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                                : <span style={{ width: 22, height: 22, borderRadius: "50%", background: isActive ? "rgba(255,255,255,0.25)" : "var(--app-accent-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12 }}>🏬</span>
+                              }
+                              {s.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => setLinkManagerOpen(true)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10,
+                          background: "none", border: "none", padding: 0, cursor: "pointer",
+                          fontSize: "0.78rem", fontWeight: 700, color: "var(--app-info)",
+                        }}
+                      >
+                        <IonIcon icon={linkOutline} style={{ fontSize: 15 }} />
+                        ຈັດການການເຊື່ອມສິນຄ້າ
+                      </button>
+                    </div>
+                  )}
                   {/* Note field */}
                   <div style={{ marginTop: 16 }}>
                     <p style={{ margin: "0 0 6px", fontSize: "0.8rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
@@ -563,6 +656,19 @@ const ReturnForm: React.FC<Props> = ({ isOpen, products, shopId, onDismiss, onSa
       {/* History modals */}
       <ReturnHistory isOpen={rHistoryOpen} shopId={shopId} onDismiss={() => setRHistoryOpen(false)} />
       <TransferHistory isOpen={tHistoryOpen} shopId={shopId} onDismiss={() => setTHistoryOpen(false)} />
+
+      <ProductLinkModal
+        isOpen={linkManagerOpen}
+        shopId={shopId}
+        products={products}
+        initialDestShopId={tDestShopId}
+        onDismiss={() => setLinkManagerOpen(false)}
+        onSourceUpdated={(updated) => {
+          setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+          if (tProduct?.id === updated.id) setTProduct(updated);
+          onSaved?.();
+        }}
+      />
     </>
   );
 };

@@ -31,11 +31,13 @@ import {
   shirtOutline,
   timeOutline,
   swapHorizontalOutline,
+  returnUpBackOutline,
 } from "ionicons/icons";
 import { CartProvider } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../data/productRepository";
 import MyProfileModal from "../components/MyProfileModal";
+import ReturnForm from "../components/ReturnForm";
 
 const Sell = lazy(() => import("./Sell"));
 const Products = lazy(() => import("./Products"));
@@ -81,6 +83,11 @@ const MainTabs: React.FC = () => {
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  // Bumped whenever a return/transfer saves, so Products.tsx (mounted
+  // separately from this menu-triggered modal) re-fetches even when the user
+  // never left the products tab to trigger its own view-enter refresh.
+  const [productsRefreshKey, setProductsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (tenant && !tenant.isExpired && tenant.daysLeft !== null && tenant.daysLeft <= 7) {
@@ -158,24 +165,38 @@ const MainTabs: React.FC = () => {
 
             {/* ── Menu sections ── */}
             <div style={{ flex: 1, padding: "8px 0" }}>
-              {role === "customer" && (
+              {(role === "customer" || (permissions.canManageProducts && features.returnEnabled)) && (
                 <>
                   <div style={{ padding: "12px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
                     ຈັດການຮ້ານ
                   </div>
                   <IonList lines="none">
-                    <IonMenuToggle autoHide={false}>
-                      <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
-                        <IonIcon slot="start" icon={businessOutline} color="primary" />
-                        <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
-                      </IonItem>
-                    </IonMenuToggle>
-                    <IonMenuToggle autoHide={false}>
-                      <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "rgba(15,118,110,0.1)" }}>
-                        <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
-                        <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
-                      </IonItem>
-                    </IonMenuToggle>
+                    {role === "customer" && (
+                      <>
+                        <IonMenuToggle autoHide={false}>
+                          <IonItem button detail={false} routerLink="/tabs/shop-profile" style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                            <IonIcon slot="start" icon={businessOutline} color="primary" />
+                            <IonLabel style={{ fontWeight: 600 }}>ໂປຣໄຟລ໌ຮ້ານ</IonLabel>
+                          </IonItem>
+                        </IonMenuToggle>
+                        <IonMenuToggle autoHide={false}>
+                          <IonItem button detail={false} routerLink="/tabs/staff" style={{ "--background-hover": "rgba(15,118,110,0.1)" }}>
+                            <IonIcon slot="start" icon={peopleOutline} style={{ color: "#0f766e" }} />
+                            <IonLabel style={{ fontWeight: 600 }}>ພະນັກງານ</IonLabel>
+                          </IonItem>
+                        </IonMenuToggle>
+                      </>
+                    )}
+                    {/* Matches the old FAB's gate on Products.tsx: isAdmin (permissions.canManageProducts) && features.returnEnabled,
+                        so staff granted product-management permission keep access, not just the shop owner. */}
+                    {permissions.canManageProducts && features.returnEnabled && (
+                      <IonMenuToggle autoHide={false}>
+                        <IonItem button detail={false} onClick={() => setReturnOpen(true)} style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                          <IonIcon slot="start" icon={returnUpBackOutline} color="primary" />
+                          <IonLabel style={{ fontWeight: 600 }}>ຕີກັບ / ຍ້າຍເຄື່ອງ</IonLabel>
+                        </IonItem>
+                      </IonMenuToggle>
+                    )}
                   </IonList>
                 </>
               )}
@@ -219,6 +240,12 @@ const MainTabs: React.FC = () => {
       </IonMenu>
 
       <MyProfileModal isOpen={myProfileOpen} onDismiss={() => setMyProfileOpen(false)} />
+
+      <ReturnForm
+        isOpen={returnOpen}
+        onDismiss={() => setReturnOpen(false)}
+        onSaved={() => { refreshAlerts(); setProductsRefreshKey((k) => k + 1); }}
+      />
 
       <IonModal
         isOpen={showExpiryAlert}
@@ -285,7 +312,7 @@ const MainTabs: React.FC = () => {
             <Suspense fallback={<RouteFallback />}><Sell /></Suspense>
           </Route>
           <Route exact path="/tabs/products">
-            <Suspense fallback={<RouteFallback />}><Products onStockChanged={refreshAlerts} /></Suspense>
+            <Suspense fallback={<RouteFallback />}><Products onStockChanged={refreshAlerts} refreshKey={productsRefreshKey} /></Suspense>
           </Route>
           <Route exact path="/tabs/summary">
             <Suspense fallback={<RouteFallback />}><Summary /></Suspense>

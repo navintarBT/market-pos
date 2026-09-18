@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -20,7 +20,7 @@ import {
   IonBadge,
   IonMenuButton,
 } from "@ionic/react";
-import { addOutline, notificationsOutline, cubeOutline, returnUpBackOutline } from "ionicons/icons";
+import { addOutline, notificationsOutline, cubeOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
 import { getProducts, addProduct, updateProduct, deleteProduct } from "../data/productRepository";
 import { getCategories } from "../data/categoryRepository";
@@ -30,7 +30,6 @@ import StockAlertSheet from "../components/StockAlertSheet";
 import InventoryReportSheet from "../components/InventoryReportSheet";
 import ProductDetailSheet from "../components/ProductDetailSheet";
 import BundleManager from "../components/BundleManager";
-import ReturnForm from "../components/ReturnForm";
 import RestockModal from "../components/RestockModal";
 import ShopHeaderTag from "../components/ShopHeaderTag";
 import EmptyState from "../components/EmptyState";
@@ -39,10 +38,16 @@ import { useIonViewWillEnter } from "@ionic/react";
 
 interface Props {
   onStockChanged?: () => void;
+  // Bumped by MainTabs whenever a return/transfer is saved from the side-menu
+  // ReturnForm. That modal is mounted app-wide now (not inside this page), so
+  // if the user is already sitting on this tab when they use it via the menu,
+  // no tab switch happens and useIonViewWillEnter never fires — this is the
+  // fallback that keeps the grid's stock numbers in sync in that case.
+  refreshKey?: number;
 }
 
-const Products: React.FC<Props> = ({ onStockChanged }) => {
-  const { shopId, role, permissions, features } = useAuth();
+const Products: React.FC<Props> = ({ onStockChanged, refreshKey }) => {
+  const { shopId, role, permissions } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +57,6 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [returnOpen, setReturnOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [restockTarget, setRestockTarget] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -81,6 +85,14 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
 
   useIonViewWillEnter(() => { load(); }, [load]);
   useEffect(() => { load(); }, [load]);
+
+  // Skip the very first run (the mount-time load above already covers it) —
+  // only reload when refreshKey actually changes after that.
+  const didMountRefreshRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRefreshRef.current) { didMountRefreshRef.current = true; return; }
+    load();
+  }, [refreshKey]);
 
   async function handleRefresh(e: CustomEvent) {
     await load();
@@ -248,20 +260,11 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
         )}
 
         {isAdmin && (
-          <>
-            {features.returnEnabled && (
-              <IonFab vertical="bottom" horizontal="start" slot="fixed">
-                <IonFabButton color="medium" onClick={() => setReturnOpen(true)}>
-                  <IonIcon icon={returnUpBackOutline} />
-                </IonFabButton>
-              </IonFab>
-            )}
-            <IonFab vertical="bottom" horizontal="end" slot="fixed">
-              <IonFabButton onClick={openAdd}>
-                <IonIcon icon={addOutline} />
-              </IonFabButton>
-            </IonFab>
-          </>
+          <IonFab vertical="bottom" horizontal="end" slot="fixed">
+            <IonFabButton onClick={openAdd}>
+              <IonIcon icon={addOutline} />
+            </IonFabButton>
+          </IonFab>
         )}
         </>
         )}
@@ -270,7 +273,12 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
       <ProductDetailSheet
         product={detailProduct}
         canViewFinance={canViewFinance}
+        canDelete={isOwner}
         onDismiss={() => setDetailProduct(null)}
+        onDelete={() => {
+          setDeleteTarget(detailProduct);
+          setDetailProduct(null);
+        }}
       />
 
       {shopId && (
@@ -312,20 +320,6 @@ const Products: React.FC<Props> = ({ onStockChanged }) => {
           setProducts((prev) => prev.map((p) => p.category === oldName ? { ...p, category: newName } : p))
         }
       />
-
-      {shopId && (
-        <ReturnForm
-          isOpen={returnOpen}
-          products={products}
-          shopId={shopId}
-          onDismiss={() => setReturnOpen(false)}
-          onSaved={(updated) => {
-            setProducts((prev) => prev.map((p) => p.id === updated.id ? updated : p));
-            onStockChanged?.();
-          }}
-        />
-      )}
-
 
       <IonAlert
         isOpen={!!deleteError}

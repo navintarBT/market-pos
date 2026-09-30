@@ -439,9 +439,20 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
                   {fmtK(total)} ກີບ
                 </span>
               </div>
-              <IonButton expand="block" onClick={onCheckout} style={{ minHeight: 54, "--border-radius": "14px" }}>
-                ຊຳລະເງິນ
-              </IonButton>
+              <div style={{ display: "flex", gap: 10 }}>
+                <IonButton
+                  expand="block" onClick={onCheckout}
+                  style={{ minHeight: 54, "--border-radius": "14px", flex: 1 }}
+                >
+                  ຊຳລະເງິນ
+                </IonButton>
+                <IonButton
+                  fill="outline" onClick={onDismiss}
+                  style={{ minHeight: 54, "--border-radius": "14px", flex: "0 0 auto" }}
+                >
+                  ເພີ່ມອີກ
+                </IonButton>
+              </div>
             </div>
           </IonFooter>
         )}
@@ -621,6 +632,7 @@ const CartSheet: React.FC<Props> = ({ isOpen, products, onCheckout, onDismiss })
         isOpen={!!giftVariantProduct}
         onAdd={handleAddGift}
         onDismiss={() => setGiftVariantProduct(null)}
+        allowPriceEdit={false}
       />
     </>
   );

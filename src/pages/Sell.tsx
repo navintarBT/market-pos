@@ -90,16 +90,16 @@ const Sell: React.FC = () => {
     ? productsEffective
     : productsEffective.filter((p) => p.category === activeCategory);
 
-  function handleAddToCart(items: { variant: ProductVariant; quantity: number }[]) {
+  function handleAddToCart(items: { variant: ProductVariant; quantity: number; unitPrice: number }[]) {
     if (!pickerProduct) return;
-    items.forEach(({ variant, quantity }) => {
+    items.forEach(({ variant, quantity, unitPrice }) => {
       addItem({
         productId: pickerProduct.id,
         productName: pickerProduct.name,
         variant,
         quantity,
         originalPrice: pickerProduct.price,
-        unitPrice: pickerProduct.price,
+        unitPrice,
         costPrice: pickerProduct.costPrice,
       });
     });

@@ -121,6 +121,11 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                           {r.variantSize}{r.variantColor ? ` / ${r.variantColor}` : ""}
                           {" · "}{dateStr} {timeStr}
                         </p>
+                        {r.otherShopName && (
+                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>
+                            {r.direction === "in" ? "⬅ ຈາກ " : "➡ ໄປ "}{r.otherShopName}
+                          </p>
+                        )}
                         {r.note && (
                           <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "var(--app-info)", fontWeight: 600 }}>
                             📌 {r.note}
@@ -129,8 +134,8 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
                       </div>
                       <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginLeft: 12 }}>
                         <div style={{ textAlign: "right" }}>
-                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: "var(--app-danger)" }}>
-                            -{r.quantity} ຊິ້ນ
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: "0.95rem", color: r.direction === "in" ? "var(--app-success)" : "var(--app-danger)" }}>
+                            {r.direction === "in" ? "+" : "-"}{r.quantity} ຊິ້ນ
                           </p>
                           {r.costPrice > 0 && (
                             <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--app-text-secondary)" }}>
@@ -163,7 +168,7 @@ const TransferHistory: React.FC<Props> = ({ isOpen, shopId, onDismiss }) => {
       <IonAlert
         isOpen={!!deleteTarget}
         header="ລຶບລາຍການຍ້າຍ"
-        message={deleteTarget ? `ຕ້ອງການລຶບ "${deleteTarget.productName}" ແມ່ນບໍ່? stock ຈະຖືກຄືນ` : ""}
+        message={deleteTarget ? `ຕ້ອງການລຶບ "${deleteTarget.productName}" ແມ່ນບໍ່? ${deleteTarget.direction === "in" ? "stock ຈະຖືກຫັກຄືນ" : "stock ຈະຖືກຄືນ"}${deleteTarget.otherShopName ? ` (stock ຮ້ານ ${deleteTarget.otherShopName} ກໍ່ຈະຖືກແກ້ຄືນນຳ)` : ""}` : ""}
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel", handler: () => setDeleteTarget(null) },
           { text: "ລຶບ", role: "destructive", handler: handleDelete },

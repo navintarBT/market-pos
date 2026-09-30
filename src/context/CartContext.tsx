@@ -27,12 +27,21 @@ function reducer(state: CartState, action: CartAction): CartState {
     case "ADD": {
       const key = itemKey(action.item);
       const existing = state.items.find((i) => itemKey(i) === key);
-      if (existing) {
+      if (existing && existing.unitPrice === action.item.unitPrice) {
         return {
           items: state.items.map((i) =>
             itemKey(i) === key ? { ...i, quantity: i.quantity + action.item.quantity } : i
           ),
         };
+      }
+      if (existing) {
+        // Same variant is already in the cart but at a different unit price — e.g. the
+        // picker's price was edited differently on this add than on an earlier one for
+        // the same variant. Merging quantities would silently keep whichever price got
+        // there first and drop the other, so keep them as separate lines instead (same
+        // mechanism SPLIT_PRICE uses for a single differently-priced unit).
+        const splitId = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        return { items: [...state.items, { ...action.item, splitId }] };
       }
       return { items: [...state.items, action.item] };
     }

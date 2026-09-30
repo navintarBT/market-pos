@@ -5,6 +5,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   orderBy,
   runTransaction,
@@ -20,6 +21,42 @@ export async function getProducts(shopId: string): Promise<Product[]> {
   const q = query(productsCol(shopId), orderBy("name"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+}
+
+/**
+ * Links two products across shops for cross-shop transfers: writes `linkedProducts[otherShopId]`
+ * on BOTH product docs in one transaction, so a transfer can never end up with a one-sided link
+ * (source points at destination but not back) if it's interrupted mid-write.
+ */
+export async function linkProducts(
+  shopAId: string,
+  productAId: string,
+  shopBId: string,
+  productBId: string,
+): Promise<void> {
+  const refA = doc(db, "shops", shopAId, "products", productAId);
+  const refB = doc(db, "shops", shopBId, "products", productBId);
+  await runTransaction(db, async (tx) => {
+    const [snapA, snapB] = [await tx.get(refA), await tx.get(refB)];
+    if (!snapA.exists() || !snapB.exists()) throw new Error("Product not found");
+    tx.update(refA, { [`linkedProducts.${shopBId}`]: productBId });
+    tx.update(refB, { [`linkedProducts.${shopAId}`]: productAId });
+  });
+}
+
+/** Removes the link on both sides atomically — see linkProducts for why this must be transactional. */
+export async function unlinkProducts(
+  shopAId: string,
+  productAId: string,
+  shopBId: string,
+  productBId: string,
+): Promise<void> {
+  const refA = doc(db, "shops", shopAId, "products", productAId);
+  const refB = doc(db, "shops", shopBId, "products", productBId);
+  await runTransaction(db, async (tx) => {
+    tx.update(refA, { [`linkedProducts.${shopBId}`]: deleteField() });
+    tx.update(refB, { [`linkedProducts.${shopAId}`]: deleteField() });
+  });
 }
 
 export async function addProduct(shopId: string, product: Omit<Product, "id">): Promise<string> {

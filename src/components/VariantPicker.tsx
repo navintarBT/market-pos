@@ -9,14 +9,18 @@ import {
   IonContent,
   IonFooter,
   IonIcon,
+  IonAlert,
 } from "@ionic/react";
-import { addOutline, removeOutline } from "ionicons/icons";
+import { addOutline, removeOutline, createOutline } from "ionicons/icons";
+import { useAuth } from "../context/AuthContext";
+import NumInput from "./NumInput";
 import type { Product, ProductVariant } from "../data/types";
 import { fmtK } from "../utils/format";
 
 interface PickedItem {
   variant: ProductVariant;
   quantity: number;
+  unitPrice: number;
 }
 
 interface Props {
@@ -24,17 +28,24 @@ interface Props {
   isOpen: boolean;
   onAdd: (items: PickedItem[]) => void;
   onDismiss: () => void;
+  allowPriceEdit?: boolean;
 }
 
 function variantKey(v: ProductVariant) {
   return `${v.size}|${v.color}`;
 }
 
-const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) => {
+const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, allowPriceEdit = true }) => {
+  const { permissions } = useAuth();
   const [qtys, setQtys] = useState<Record<string, number>>({});
+  const [price, setPriceState] = useState(0);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [draftPrice, setDraftPrice] = useState(0);
+  const [pendingPrice, setPendingPrice] = useState<number | null>(null);
 
   function handleOpen() {
     setQtys({});
+    setPriceState(product?.price ?? 0);
   }
 
   function setQty(v: ProductVariant, delta: number) {
@@ -49,7 +60,7 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
     if (!product) return;
     const items = product.variants
       .filter((v) => (qtys[variantKey(v)] ?? 0) > 0)
-      .map((v) => ({ variant: v, quantity: qtys[variantKey(v)] }));
+      .map((v) => ({ variant: v, quantity: qtys[variantKey(v)], unitPrice: price }));
     if (items.length === 0) return;
     onAdd(items);
     onDismiss();
@@ -58,9 +69,10 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
   if (!product) return null;
 
   const totalQty = Object.values(qtys).reduce((s, q) => s + q, 0);
-  const totalPrice = product.variants.reduce((s, v) => s + (qtys[variantKey(v)] ?? 0) * product.price, 0);
+  const totalPrice = product.variants.reduce((s, v) => s + (qtys[variantKey(v)] ?? 0) * price, 0);
 
   return (
+    <>
     <IonModal
       isOpen={isOpen}
       onDidDismiss={onDismiss}
@@ -79,8 +91,19 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
 
       <IonContent>
         <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
-            {fmtK(product.price)} ກີບ / ຊິ້ນ
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
+              {fmtK(price)} ກີບ / ຊິ້ນ
+            </span>
+            {permissions.canEditCartPrice && allowPriceEdit && (
+              <IonButton
+                fill="clear" size="small"
+                onClick={() => { setDraftPrice(price); setEditingPrice(true); }}
+                style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
+              >
+                <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 18 }} />
+              </IonButton>
+            )}
           </span>
           <span style={{ fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
             ເລືອກໄດ້ຫຼາຍ variant
@@ -220,6 +243,85 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss }) =
         </div>
       </IonFooter>
     </IonModal>
+
+    <IonModal
+      isOpen={editingPrice}
+      onDidDismiss={() => setEditingPrice(false)}
+      initialBreakpoint={1}
+      breakpoints={[0, 1]}
+    >
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle style={{ fontSize: "1rem" }}>ແກ້ໄຂລາຄາ</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => setEditingPrice(false)}>ຍົກເລີກ</IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        <div style={{ padding: "20px 20px 16px" }}>
+          <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>
+            {product.name}
+          </p>
+          <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
+            ລາຄາເດີມ {fmtK(product.price)} ກີບ
+          </p>
+          <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
+            ລາຄາໃໝ່ (ກີບ)
+          </p>
+          <NumInput
+            value={draftPrice}
+            onChange={setDraftPrice}
+            placeholder="ລາຄາໃໝ່"
+            style={{
+              width: "100%", padding: "14px 16px", fontSize: "1.2rem", fontWeight: 700,
+              border: "1.5px solid var(--app-border)", borderRadius: 12, outline: "none",
+              background: "var(--ion-item-background, #fff)",
+              color: "var(--ion-text-color, var(--ion-text-color))",
+            }}
+          />
+        </div>
+      </IonContent>
+      <IonFooter>
+        <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
+          <IonButton
+            expand="block"
+            disabled={draftPrice <= 0}
+            onClick={() => {
+              const costPrice = product.costPrice ?? 0;
+              if (costPrice > 0 && draftPrice < costPrice) {
+                setPendingPrice(draftPrice);
+              } else {
+                setPriceState(draftPrice);
+              }
+              setEditingPrice(false);
+            }}
+            style={{ minHeight: 52, "--border-radius": "14px" }}
+          >
+            ຢືນຢັນ
+          </IonButton>
+        </div>
+      </IonFooter>
+    </IonModal>
+
+    <IonAlert
+      isOpen={pendingPrice !== null}
+      header="⚠ ລາຄາຕໍ່າກວ່າຕົ້ນທຶນ"
+      message="ລາຄາຂາຍຕໍ່າກວ່າລາຄາຕົ້ນທຶນ ທ່ານຕ້ອງການດຳເນີນຕໍ່ຫຼືບໍ່?"
+      buttons={[
+        { text: "ຍົກເລີກ", role: "cancel", handler: () => setPendingPrice(null) },
+        {
+          text: "ຢືນຢັນ",
+          cssClass: "alert-button-confirm",
+          handler: () => {
+            if (pendingPrice !== null) setPriceState(pendingPrice);
+            setPendingPrice(null);
+          },
+        },
+      ]}
+      onDidDismiss={() => setPendingPrice(null)}
+    />
+    </>
   );
 };
 

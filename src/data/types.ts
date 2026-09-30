@@ -34,6 +34,9 @@ export interface Product {
   photoUrl?: string;
   variants: ProductVariant[];
   canBeGift?: boolean;
+  /** otherShopId -> product id at that shop — the explicit, user-set cross-shop transfer link
+   *  (see productRepository.linkProducts/unlinkProducts). Written symmetrically on both sides. */
+  linkedProducts?: { [otherShopId: string]: string };
 }
 
 export interface BundleItem {

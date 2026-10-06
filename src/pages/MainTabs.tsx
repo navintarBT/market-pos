@@ -27,6 +27,7 @@ import {
   logOutOutline,
   peopleOutline,
   personCircleOutline,
+  printOutline,
   walletOutline,
   shirtOutline,
   timeOutline,
@@ -46,6 +47,7 @@ const Finance = lazy(() => import("./Finance"));
 const SalesHistory = lazy(() => import("./SalesHistory"));
 const ShopProfileSettings = lazy(() => import("./ShopProfileSettings"));
 const StaffSettings = lazy(() => import("./StaffSettings"));
+const PrintBill = lazy(() => import("./PrintBill"));
 
 function RouteFallback() {
   return (
@@ -110,6 +112,7 @@ const MainTabs: React.FC = () => {
     import("./SalesHistory");
     import("./ShopProfileSettings");
     import("./StaffSettings");
+    import("./PrintBill");
   }, []);
 
   return (
@@ -200,6 +203,18 @@ const MainTabs: React.FC = () => {
                   </IonList>
                 </>
               )}
+
+              <div style={{ padding: "14px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
+                ເຄື່ອງມື
+              </div>
+              <IonList lines="none">
+                <IonMenuToggle autoHide={false}>
+                  <IonItem button detail={false} routerLink="/tabs/print" style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                    <IonIcon slot="start" icon={printOutline} color="primary" />
+                    <IonLabel style={{ fontWeight: 600 }}>ພິມບິນ</IonLabel>
+                  </IonItem>
+                </IonMenuToggle>
+              </IonList>
 
               <div style={{ padding: "14px 18px 6px", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-muted)" }}>
                 ບັນຊີ
@@ -328,6 +343,9 @@ const MainTabs: React.FC = () => {
           </Route>
           <Route exact path="/tabs/staff">
             <Suspense fallback={<RouteFallback />}><StaffSettings /></Suspense>
+          </Route>
+          <Route exact path="/tabs/print">
+            <Suspense fallback={<RouteFallback />}><PrintBill /></Suspense>
           </Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>

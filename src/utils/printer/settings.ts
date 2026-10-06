@@ -12,6 +12,13 @@ export const MIN_WIDTH_MM = 30;
 
 export type PaperMode = "label" | "continuous";
 
+/**
+ * How BLE packets go out. fast = don't wait for the printer; paced = don't
+ * wait, but leave a gap between packets; reliable = wait for the printer to
+ * acknowledge each one. auto = fast on a computer, reliable on iPhone/iPad.
+ */
+export type WriteMode = "auto" | "fast" | "paced" | "reliable";
+
 export interface PrintSettings {
   widthMm: number;
   /** Label height — ignored for continuous rolls (height follows the content). */
@@ -35,8 +42,7 @@ export interface PrintSettings {
    * but only works if the printer negotiated a larger MTU.
    */
   chunkSize: number;
-  /** BLE write-without-response: faster, but a slow printer may drop data. */
-  fastMode: boolean;
+  writeMode: WriteMode;
   /** Shop print template in use on this device; null = the standard bill. */
   templateId: string | null;
 }
@@ -55,7 +61,7 @@ export const DEFAULT_SETTINGS: PrintSettings = {
   footerText: "ຂອບໃຈທີ່ມາອຸດໜູນ",
   showSeller: true,
   chunkSize: 20,
-  fastMode: true,
+  writeMode: "auto",
   templateId: null,
 };
 
@@ -91,7 +97,11 @@ const LEGACY_KEYS = ["print-settings-v2", "print-settings-v1"];
 export function loadSettings(): PrintSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      delete saved.fastMode; // replaced by writeMode
+      return { ...DEFAULT_SETTINGS, ...saved };
+    }
     const legacy = LEGACY_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
     if (legacy) {
       // Keep the paper/text setup, reset the Bluetooth transfer settings.

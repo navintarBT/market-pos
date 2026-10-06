@@ -50,6 +50,7 @@ import {
   connectSerial,
   forgetPrinter,
   hasPrinter,
+  isIOS,
   logLine,
   scanChannels,
   selectChannel,
@@ -72,6 +73,7 @@ import {
   PAPER_PRESETS,
   saveSettings,
   type PrintSettings,
+  type WriteMode,
 } from "../utils/printer/settings";
 import { loadBatch, saveBatch, type BatchItem } from "../utils/printer/batchStore";
 import { printViaSystem } from "../utils/printer/systemPrint";
@@ -200,7 +202,7 @@ const PrintBill: React.FC = () => {
 
   const NOT_PICKED = "ຍັງບໍ່ໄດ້ເລືອກເຄື່ອງພິມ — ຖ້າບໍ່ເຫັນເຄື່ອງພິມໃນລາຍການ ລອງເຊື່ອມຕໍ່ຜ່ານ COM ຫຼື ກົດ ພິມຜ່ານລະບົບ";
 
-  async function send(buildJob: () => Promise<Uint8Array>, opts: { chunkSize: number; fastMode: boolean }, doneText: string) {
+  async function send(buildJob: () => Promise<Uint8Array>, opts: { chunkSize: number; writeMode: WriteMode }, doneText: string) {
     logLine(`ກົດພິມ (ສະຖານະ: ${printer.status}${printer.deviceName ? ` · ${printer.deviceName}` : ""})`);
     try {
       if (!hasPrinter()) {
@@ -226,7 +228,7 @@ const PrintBill: React.FC = () => {
   function runTest(kind: "tspl" | "escpos") {
     return send(
       async () => (kind === "tspl" ? tsplTextTest(settings) : escPosTest()),
-      { chunkSize: 20, fastMode: settings.fastMode },
+      { chunkSize: 20, writeMode: settings.writeMode },
       "ສົ່ງແລ້ວ — ເບິ່ງວ່າເຄື່ອງພິມມີກະດາດອອກມາບໍ່",
     );
   }
@@ -899,10 +901,22 @@ const PrintBill: React.FC = () => {
                       {[20, 100, 180, 244, 512].map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </label>
-                  <ToggleRow
-                    label="ໂໝດສົ່ງໄວ" hint="ໄວຂຶ້ນ ແຕ່ບາງເຄື່ອງພິມອາດພິມຂາດ — ປິດໄວ້ຖ້າພິມອອກມາບໍ່ຄົບ"
-                    checked={settings.fastMode} onChange={(v) => update({ fastMode: v })}
-                  />
+                  <label style={{ display: "block", marginTop: 12 }}>
+                    <span style={fieldLabel}>ວິທີສົ່ງຂໍ້ມູນ</span>
+                    <select
+                      className="print-bill-input"
+                      value={settings.writeMode}
+                      onChange={(e) => update({ writeMode: e.target.value as WriteMode })}
+                    >
+                      <option value="auto">ອັດຕະໂນມັດ ({isIOS ? "iPhone: ຊ້າ ແຕ່ຄົບ" : "ຄອມ: ໄວ"})</option>
+                      <option value="fast">ໄວ — ບໍ່ລໍຖ້າເຄື່ອງພິມຕອບ</option>
+                      <option value="paced">ປານກາງ — ເວັ້ນຊ່ວງລະຫວ່າງແພັກເກັດ</option>
+                      <option value="reliable">ຊ້າ ແຕ່ຄົບ — ລໍຖ້າເຄື່ອງພິມຕອບທຸກແພັກເກັດ</option>
+                    </select>
+                    <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--app-text-muted)", lineHeight: 1.5 }}>
+                      ຖ້າພິມອອກມາບໍ່ຄົບ ຫຼື ຕົວໜັງສືຂາດ ໃຫ້ເລືອກ "ຊ້າ ແຕ່ຄົບ"
+                    </div>
+                  </label>
                   <IonButton
                     fill="clear" color="medium" size="small"
                     onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText, templateId: settings.templateId })}

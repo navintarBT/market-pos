@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { WriteMode } from "./settings";
 
 /**
  * Printer connection, kept at module level so it survives navigating away
@@ -16,8 +17,10 @@ import { useSyncExternalStore } from "react";
 interface BtCharacteristic {
   uuid: string;
   properties: { write: boolean; writeWithoutResponse: boolean; notify?: boolean };
-  writeValueWithResponse(value: Uint8Array): Promise<void>;
-  writeValueWithoutResponse(value: Uint8Array): Promise<void>;
+  writeValueWithResponse?(value: Uint8Array): Promise<void>;
+  writeValueWithoutResponse?(value: Uint8Array): Promise<void>;
+  /** The older API — some browsers (e.g. iOS ones) may only have this. */
+  writeValue?(value: Uint8Array): Promise<void>;
 }
 interface BtService {
   uuid: string;
@@ -97,6 +100,20 @@ const PREFERRED_CHARS = new Set([
   "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
 ]);
 const SPP_UUID = u16("1101");
+
+/**
+ * iPhone/iPad (Bluefy and similar): iOS accepts writes-without-response far
+ * faster than a printer module drains them and silently drops the overflow —
+ * the label comes out with pieces missing. So there the default is to wait
+ * for the printer to acknowledge every packet.
+ */
+export const isIOS = typeof navigator !== "undefined"
+  && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+/** Gap between packets in "paced" mode. */
+const PACE_MS = 20;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** A write that hasn't completed in this long means the printer isn't listening. */
 const WRITE_TIMEOUT_MS = 10_000;
@@ -289,44 +306,89 @@ export async function connectBluetooth(): Promise<boolean> {
   }
 }
 
-async function writeBle(data: Uint8Array, chunkSize: number, fastMode: boolean) {
+// Per device: write-with-response went unanswered once — go straight to
+// paced write-without-response next time instead of waiting on it again.
+const NO_ACK_KEY = "printer-no-ack:";
+
+function hasNoAck(device: BtDevice): boolean {
+  try { return localStorage.getItem(NO_ACK_KEY + device.id) === "1"; } catch { return false; }
+}
+
+function rememberNoAck(device: BtDevice) {
+  try { localStorage.setItem(NO_ACK_KEY + device.id, "1"); } catch { /* storage blocked */ }
+}
+
+function bleWrite(ch: BtCharacteristic, value: Uint8Array, noResponse: boolean): Promise<void> {
+  if (noResponse && ch.writeValueWithoutResponse) return ch.writeValueWithoutResponse(value);
+  if (!noResponse && ch.writeValueWithResponse) return ch.writeValueWithResponse(value);
+  return ch.writeValue!(value);
+}
+
+/** Acknowledged or not, and the gap between packets, for this characteristic. */
+function writePlan(mode: WriteMode, ch: BtCharacteristic, device: BtDevice): { noResponse: boolean; pace: number } {
+  let m: WriteMode = mode === "auto" ? (isIOS ? "reliable" : "fast") : mode;
+  if (m === "reliable" && hasNoAck(device)) m = "paced";
+  if (!ch.properties.write && m === "reliable") m = "paced";
+  if (!ch.properties.writeWithoutResponse) m = "reliable";
+  return { noResponse: m !== "reliable", pace: m === "paced" ? PACE_MS : 0 };
+}
+
+async function writeBle(data: Uint8Array, chunkSize: number, mode: WriteMode) {
+  const device = bleDevice!;
   let ch = bleChar!;
-  const noResponse = (fastMode && ch.properties.writeWithoutResponse) || !ch.properties.write;
+  let { noResponse, pace } = writePlan(mode, ch, device);
   // Never retry a size this printer already choked on.
-  const limit = chunkLimit(bleDevice!);
+  const limit = chunkLimit(device);
   let size = Math.max(20, limit ? Math.min(chunkSize, limit) : chunkSize);
   let nextLog = 0.25;
-  logLine(`ສົ່ງ ${data.length} bytes · ${size}B/ຄັ້ງ · ${noResponse ? "writeWithoutResponse" : "writeWithResponse"}`);
+  const describe = () =>
+    `${size}B/ຄັ້ງ · ${noResponse ? "writeWithoutResponse" : "writeWithResponse"}${pace ? ` · ໜ່ວງ ${pace}ms` : ""}${isIOS ? " · iOS" : ""}`;
+  logLine(`ສົ່ງ ${data.length} bytes · ${describe()}`);
+
+  // A write the printer never answers stays pending inside the browser, and
+  // every later one then fails with "GATT operation already in progress" —
+  // reconnecting clears it.
+  const reconnect = async () => {
+    device.gatt!.disconnect();
+    await attachBle(device);
+    setState({ status: "printing" });
+    ch = bleChar!;
+  };
+
   const started = performance.now();
   let offset = 0;
   while (offset < data.length) {
     const slice = data.slice(offset, offset + size);
     try {
-      const write = noResponse ? ch.writeValueWithoutResponse(slice) : ch.writeValueWithResponse(slice);
-      await withTimeout(write, offset === 0 ? FIRST_WRITE_TIMEOUT_MS : WRITE_TIMEOUT_MS);
+      await withTimeout(bleWrite(ch, slice, noResponse), offset === 0 ? FIRST_WRITE_TIMEOUT_MS : WRITE_TIMEOUT_MS);
     } catch (err) {
-      // First write too big for this link's MTU — drop to the BLE minimum.
       if (offset === 0 && size > 20) {
+        // Too big for this link's MTU — drop to the BLE minimum.
         logLine(`ຂຽນ ${size}B ບໍ່ໄດ້ (${errText(err)}) → ເຊື່ອມຕໍ່ໃໝ່ ແລ້ວລອງ 20B`);
         size = 20;
-        rememberChunkLimit(bleDevice!, size);
-        // Some printers never answer an oversized write, and the browser
-        // keeps it pending — every later write then fails with "GATT
-        // operation already in progress". Reconnecting clears it.
-        bleDevice!.gatt!.disconnect();
-        await attachBle(bleDevice!);
-        setState({ status: "printing" });
-        ch = bleChar!;
+        rememberChunkLimit(device, size);
+        await reconnect();
+        continue;
+      }
+      if (offset === 0 && !noResponse && ch.properties.writeWithoutResponse) {
+        // This printer never acknowledges — send unacknowledged, with gaps
+        // so nothing gets dropped on the way.
+        noResponse = true;
+        pace = Math.max(pace, PACE_MS);
+        rememberNoAck(device);
+        logLine(`ເຄື່ອງພິມບໍ່ຕອບຮັບ (${errText(err)}) → ເຊື່ອມຕໍ່ໃໝ່ ແລ້ວສົ່ງແບບ ${describe()}`);
+        await reconnect();
         continue;
       }
       logLine(`ສົ່ງຄ້າງຢູ່ byte ${offset}/${data.length} — ${errText(err)}`);
       // A stuck GATT write blocks every later one — drop the link so the
       // next print starts from a clean reconnect.
-      bleDevice?.gatt?.disconnect();
+      device.gatt?.disconnect();
       throw err;
     }
     offset += slice.length;
     reportProgress(offset / data.length);
+    if (noResponse && pace) await sleep(pace);
     if (offset / data.length >= nextLog && offset < data.length) {
       logLine(`… ${Math.round(nextLog * 100)}% (${Math.round(performance.now() - started) / 1000} s)`);
       nextLog += 0.25;
@@ -410,7 +472,8 @@ export async function scanChannels(buildJob: (label: string) => Uint8Array): Pro
         const data = buildJob(label);
         for (let off = 0; off < data.length; off += 20) {
           const slice = data.slice(off, off + 20);
-          await withTimeout(noResponse ? ch.writeValueWithoutResponse(slice) : ch.writeValueWithResponse(slice), FIRST_WRITE_TIMEOUT_MS);
+          await withTimeout(bleWrite(ch, slice, noResponse), FIRST_WRITE_TIMEOUT_MS);
+          if (noResponse && isIOS) await sleep(PACE_MS);
         }
         logLine(`  ສົ່ງແລ້ວ ${data.length} bytes`);
       } catch (err) {
@@ -520,7 +583,7 @@ export async function disconnectPrinter(): Promise<void> {
   setState({ status: "disconnected", transport: null, deviceName: null, progress: 0, channels: [], channel: null });
 }
 
-export async function sendToPrinter(data: Uint8Array, opts: { chunkSize: number; fastMode: boolean }): Promise<void> {
+export async function sendToPrinter(data: Uint8Array, opts: { chunkSize: number; writeMode: WriteMode }): Promise<void> {
   if (state.status === "printing") throw new Error("ກຳລັງພິມຢູ່ ກະລຸນາລໍຖ້າ");
 
   if (state.transport !== "serial") {
@@ -543,7 +606,7 @@ export async function sendToPrinter(data: Uint8Array, opts: { chunkSize: number;
   setState({ status: "printing", progress: 0 });
   try {
     if (state.transport === "serial") await writeSerial(data);
-    else await writeBle(data, opts.chunkSize, opts.fastMode);
+    else await writeBle(data, opts.chunkSize, opts.writeMode);
   } finally {
     const stillUp = state.transport === "serial" ? !!serialPort : !!bleChar;
     setState({ status: stillUp ? "connected" : "disconnected", progress: 0 });

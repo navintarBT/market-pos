@@ -1,0 +1,44 @@
+.print-bill-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1.5px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  color: var(--ion-text-color);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.print-bill-input:focus {
+  border-color: var(--ion-color-primary);
+}
+
+.print-bill-input:disabled {
+  opacity: 0.5;
+}
+
+.print-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.print-icon-btn.is-danger {
+  color: var(--app-danger);
+}
+
+.print-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

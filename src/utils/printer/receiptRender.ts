@@ -23,7 +23,7 @@ export interface ReceiptData {
   paymentType: Sale["paymentType"];
 }
 
-const PAYMENT_LABEL: Record<Sale["paymentType"], string> = {
+export const PAYMENT_LABEL: Record<Sale["paymentType"], string> = {
   cash: "ເງິນສົດ",
   qr: "ໂອນ",
   cod: "COD (ເກັບເງິນປາຍທາງ)",
@@ -63,7 +63,7 @@ export function sampleReceipt(shopName: string, s: PrintSettings): ReceiptData {
   };
 }
 
-const FONT_FAMILY = `"Noto Sans Lao", sans-serif`;
+export const FONT_FAMILY = `"Noto Sans Lao", sans-serif`;
 
 /** Make sure the Lao webfont is ready — a canvas silently falls back otherwise. */
 export async function ensureFontsLoaded(): Promise<void> {
@@ -102,7 +102,7 @@ function graphemes(text: string): string[] {
   return graphemeSeg ? Array.from(graphemeSeg.segment(text), (s) => s.segment) : Array.from(text);
 }
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const out: string[] = [];
   for (const para of text.split("\n")) {
     let line = "";
@@ -163,7 +163,7 @@ function layout(ctx: CanvasRenderingContext2D, d: ReceiptData, s: PrintSettings,
   function text(str: string, size: number, weight: Weight, align: CanvasTextAlign = "left", left = 0) {
     ctx.font = fontOf(size, weight);
     const h = lineHeight(size);
-    for (const line of wrap(ctx, str, contentW - left)) {
+    for (const line of wrapText(ctx, str, contentW - left)) {
       push(h, (c, y) => {
         c.font = fontOf(size, weight);
         c.textAlign = align;
@@ -337,7 +337,7 @@ export function renderReceiptPages(d: ReceiptData, s: PrintSettings): HTMLCanvas
 }
 
 /** Snap anti-aliased text to pure black/white, as the thermal head will. */
-function threshold(ctx: CanvasRenderingContext2D, w: number, h: number) {
+export function threshold(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const img = ctx.getImageData(0, 0, w, h);
   const px = img.data;
   for (let i = 0; i < px.length; i += 4) {

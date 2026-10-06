@@ -16,24 +16,3 @@
     top: 16px;
   }
 }
-
-.print-bill-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 10px;
-  border: 1.5px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--app-surface);
-  color: var(--ion-text-color);
-  font-size: 0.9rem;
-  font-family: inherit;
-  outline: none;
-}
-
-.print-bill-input:focus {
-  border-color: var(--ion-color-primary);
-}
-
-.print-bill-input:disabled {
-  opacity: 0.5;
-}

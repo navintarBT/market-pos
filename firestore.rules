@@ -226,6 +226,19 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profileUrl', 'updatedAt']);
       }
 
+      // Bill/label layouts for the receipt printer: every member prints with
+      // them, only the owner designs them.
+      match /printTemplates/{templateId} {
+        allow read:  if isControlAdmin() || isShopMember(shopId);
+        allow write: if isTenantActive(shopId) && isShopOwner(shopId)
+          && (request.resource == null || (
+            request.resource.data.name is string
+            && request.resource.data.widthMm is number
+            && request.resource.data.heightMm is number
+            && request.resource.data.elements is list
+          ));
+      }
+
       match /transfers/{transferId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
         allow create: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'));

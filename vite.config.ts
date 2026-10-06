@@ -43,6 +43,9 @@ export default defineConfig({
           if (id.includes("firebase")) return "vendor-firebase";
           if (id.includes("@ionic") || id.includes("ionicons")) return "vendor-ionic";
           if (id.includes("react-dom") || id.includes("/react/") || id.includes("react-router")) return "vendor-react";
+          // Only the lazily-loaded print page uses these — keep them in its
+          // chunk instead of the vendor chunk every page load pulls in.
+          if (id.includes("jsbarcode") || id.includes("qrcode-generator")) return "vendor-print";
           return "vendor";
         },
       },

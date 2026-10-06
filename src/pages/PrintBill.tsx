@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  IonAlert,
   IonButton,
   IonButtons,
   IonContent,
@@ -8,31 +9,35 @@ import {
   IonIcon,
   IonMenuButton,
   IonPage,
-  IonRange,
   IonSegment,
   IonSegmentButton,
   IonSpinner,
   IonTitle,
   IonToast,
-  IonToggle,
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
 import {
+  addOutline,
   bluetoothOutline,
-  chevronDownOutline,
-  chevronUpOutline,
+  brushOutline,
+  checkmarkCircle,
   constructOutline,
+  createOutline,
   documentTextOutline,
   eyeOutline,
+  listOutline,
+  pencilOutline,
   printOutline,
   receiptOutline,
   resizeOutline,
   settingsOutline,
+  trashOutline,
 } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
+import { getTemplates } from "../data/printTemplateRepository";
 import { getSalesByDateRange } from "../data/saleRepository";
-import type { Sale } from "../data/types";
+import type { PrintTemplate, Sale } from "../data/types";
 import { dateFromInputStr, dateInputStr, fmtK, fmtTime } from "../utils/format";
 import {
   autoReconnect,
@@ -59,7 +64,6 @@ import {
   type ReceiptData,
 } from "../utils/printer/receiptRender";
 import {
-  clamp,
   DEFAULT_SETTINGS,
   loadSettings,
   matchPreset,
@@ -69,137 +73,32 @@ import {
   saveSettings,
   type PrintSettings,
 } from "../utils/printer/settings";
+import { loadBatch, saveBatch, type BatchItem } from "../utils/printer/batchStore";
 import { printViaSystem } from "../utils/printer/systemPrint";
 import { escPosTest, tsplTextTest } from "../utils/printer/testJobs";
+import { preloadTemplateImages, renderTemplate, templateFields, templateUsesSale } from "../utils/printer/templateRender";
 import { buildTsplJob, pageHeightMm } from "../utils/printer/tspl";
+import { Collapsible, MmInput, RangeRow, SectionHeading, ToggleRow } from "../components/printUi";
+import TemplateEditor from "../components/TemplateEditor";
+import { cardStyle, fieldLabel } from "../components/printUiStyles";
 import "./PrintBill.css";
 
 const canPrintDirect = canUseBluetooth || canUseSerial;
 
 const PAYMENT_SHORT: Record<Sale["paymentType"], string> = { cash: "ສົດ", qr: "ໂອນ", cod: "COD" };
 
-const cardStyle: React.CSSProperties = {
-  background: "var(--app-surface)",
-  borderRadius: 16,
-  padding: 16,
-  boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
-  marginBottom: 14,
-};
-
-const fieldLabel: React.CSSProperties = {
-  display: "block", fontSize: "0.75rem", fontWeight: 700,
-  color: "var(--app-text-secondary)", marginBottom: 5,
-};
-
-function SectionHeading({ icon, label, right }: { icon: string; label: string; right?: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-      <div style={{
-        width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-        background: "var(--app-accent-surface)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <IonIcon icon={icon} style={{ fontSize: 14, color: "var(--ion-color-primary)" }} />
-      </div>
-      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--ion-text-color)", flex: 1 }}>{label}</span>
-      {right}
-    </div>
-  );
-}
-
-/** Number field that lets you type freely and clamps on blur. */
-function MmInput({ value, min, max, step = 1, disabled, onCommit }: {
-  value: number; min: number; max: number; step?: number; disabled?: boolean;
-  onCommit: (n: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  const [lastValue, setLastValue] = useState(value);
-  if (value !== lastValue) {
-    setLastValue(value);
-    setDraft(String(value));
-  }
-  function commit() {
-    const n = clamp(parseFloat(draft), min, max);
-    setDraft(String(n));
-    if (n !== value) onCommit(n);
-  }
-  return (
-    <input
-      className="print-bill-input"
-      type="number"
-      inputMode="decimal"
-      min={min}
-      max={max}
-      step={step}
-      value={draft}
-      disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-    />
-  );
-}
-
-function RangeRow({ label, value, display, min, max, step, onChange }: {
-  label: string; value: number; display: string; min: number; max: number; step: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={fieldLabel}>{label}</span>
-        <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--ion-color-primary)" }}>{display}</span>
-      </div>
-      <IonRange
-        min={min} max={max} step={step} value={value}
-        onIonInput={(e) => onChange(Number(e.detail.value))}
-        style={{ padding: "0 4px", "--bar-height": "4px" }}
-      />
-    </div>
-  );
-}
-
-function ToggleRow({ label, hint, checked, onChange }: {
-  label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void;
-}) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ion-text-color)" }}>{label}</div>
-        {hint && <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)", marginTop: 1 }}>{hint}</div>}
-      </div>
-      <IonToggle checked={checked} onIonChange={(e) => onChange(e.detail.checked)} aria-label={label} />
-    </div>
-  );
-}
-
-function Collapsible({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ borderTop: "1px solid var(--app-border)", marginTop: 16, paddingTop: 4 }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
-          padding: "10px 0", background: "none", border: "none", cursor: "pointer",
-          fontFamily: "inherit", color: "var(--ion-text-color)",
-        }}
-      >
-        <IonIcon icon={icon} style={{ fontSize: 16, color: "var(--app-text-secondary)" }} />
-        <span style={{ flex: 1, textAlign: "left", fontWeight: 700, fontSize: "0.85rem" }}>{label}</span>
-        <IonIcon icon={open ? chevronUpOutline : chevronDownOutline} style={{ fontSize: 16, color: "var(--app-text-muted)" }} />
-      </button>
-      {open && <div style={{ paddingBottom: 4 }}>{children}</div>}
-    </div>
-  );
-}
-
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
 }
 
+/** A template brings its own paper size; everything else stays per device. */
+function effectiveSettings(s: PrintSettings, t: PrintTemplate | null): PrintSettings {
+  return t ? { ...s, widthMm: t.widthMm, heightMm: t.heightMm, mode: t.mode } : s;
+}
+
 const PrintBill: React.FC = () => {
-  const { shopId, shopProfile } = useAuth();
+  const { shopId, shopProfile, role } = useAuth();
+  const isOwner = role === "customer";
   const printer = usePrinter();
   const [settings, setSettings] = useState<PrintSettings>(loadSettings);
   const [date, setDate] = useState(() => dateInputStr(new Date()));
@@ -210,6 +109,13 @@ const PrintBill: React.FC = () => {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [previewHeightMm, setPreviewHeightMm] = useState(0);
   const [toast, setToast] = useState<{ color: "success" | "danger" | "medium"; text: string } | null>(null);
+  const [templates, setTemplates] = useState<PrintTemplate[]>([]);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [editor, setEditor] = useState<{ open: boolean; template: PrintTemplate | null }>({ open: false, template: null });
+  const [batch, setBatch] = useState<BatchItem[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const fieldRefs = useRef<(HTMLInputElement | null)[]>([]);
   const requestIdRef = useRef(0);
 
   useEffect(() => { autoReconnect(); }, []);
@@ -241,9 +147,19 @@ const PrintBill: React.FC = () => {
     }
   }, [shopId, date]);
 
-  useEffect(() => { loadSales(); }, [loadSales]);
-  // Coming back from the Sell tab — pick up the bill that was just made.
-  useIonViewWillEnter(() => { loadSales(); }, [loadSales]);
+  const loadTemplates = useCallback(async () => {
+    if (!shopId) return;
+    try {
+      setTemplates(await getTemplates(shopId));
+    } catch {
+      // offline with nothing cached — the standard bill still works
+    }
+  }, [shopId]);
+
+  useEffect(() => { loadSales(); loadTemplates(); }, [loadSales, loadTemplates]);
+  // Coming back from the Sell tab — pick up the bill that was just made
+  // (and any template edited on another device).
+  useIonViewWillEnter(() => { loadSales(); loadTemplates(); }, [loadSales, loadTemplates]);
 
   const shopName = shopProfile?.name ?? "Minny ONE";
   const selectedSale = sales.find((s) => s.id === selectedId) ?? null;
@@ -252,18 +168,35 @@ const PrintBill: React.FC = () => {
     [selectedSale, shopName, settings]
   );
 
+  const activeTemplate = templates.find((t) => t.id === settings.templateId) ?? null;
+  const usesSale = activeTemplate ? templateUsesSale(activeTemplate) : true;
+  const fields = activeTemplate ? templateFields(activeTemplate) : [];
+  const paper = effectiveSettings(settings, activeTemplate);
+
+  /** The chosen layout — a shop template or the standard bill — as printer pages. */
+  async function renderPages(data: ReceiptData): Promise<HTMLCanvasElement[]> {
+    await ensureFontsLoaded();
+    if (!activeTemplate) return renderReceiptPages(data, settings);
+    await preloadTemplateImages(activeTemplate);
+    const r = renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues }, { offsetXMm: settings.offsetXMm });
+    return [r.canvas];
+  }
+
   // Re-render the preview shortly after the last change (sliders fire a lot).
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
       await ensureFontsLoaded();
+      if (activeTemplate) await preloadTemplateImages(activeTemplate);
       if (cancelled) return;
-      const pages = renderReceiptPages(receipt, settings);
+      const pages = activeTemplate
+        ? [renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues }, { offsetXMm: settings.offsetXMm }).canvas]
+        : renderReceiptPages(receipt, settings);
       setPreviewUrls(pages.map((c) => c.toDataURL("image/png")));
-      setPreviewHeightMm(pageHeightMm(pages[0], settings));
+      setPreviewHeightMm(pageHeightMm(pages[0], effectiveSettings(settings, activeTemplate)));
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [receipt, settings]);
+  }, [receipt, settings, activeTemplate, selectedSale, shopName, fieldValues]);
 
   const NOT_PICKED = "ຍັງບໍ່ໄດ້ເລືອກເຄື່ອງພິມ — ຖ້າບໍ່ເຫັນເຄື່ອງພິມໃນລາຍການ ລອງເຊື່ອມຕໍ່ຜ່ານ COM ຫຼື ກົດ ພິມຜ່ານລະບົບ";
 
@@ -286,10 +219,7 @@ const PrintBill: React.FC = () => {
   }
 
   function printDirect(data: ReceiptData) {
-    return send(async () => {
-      await ensureFontsLoaded();
-      return buildTsplJob(renderReceiptPages(data, settings), settings);
-    }, settings, "ສົ່ງໄປພິມແລ້ວ");
+    return send(async () => buildTsplJob(await renderPages(data), paper), settings, "ສົ່ງໄປພິມແລ້ວ");
   }
 
   /** Tiny jobs sent 20 bytes at a time — rules out transfer-size problems. */
@@ -312,8 +242,7 @@ const PrintBill: React.FC = () => {
 
   async function printSystem() {
     try {
-      await ensureFontsLoaded();
-      await printViaSystem(renderReceiptPages(receipt, settings), settings);
+      await printViaSystem(await renderPages(receipt), paper);
     } catch (err) {
       setToast({ color: "danger", text: errorText(err) });
     }
@@ -337,9 +266,130 @@ const PrintBill: React.FC = () => {
     }
   }
 
-  const busy = printer.status === "printing" || printer.status === "connecting";
+  function onTemplateSaved(t: PrintTemplate) {
+    setTemplates((list) => [...list.filter((x) => x.id !== t.id), t].sort((a, b) => a.name.localeCompare(b.name)));
+    update({ templateId: t.id });
+    setEditor({ open: false, template: null });
+    setToast({ color: "success", text: "ບັນທຶກເທມເພລດແລ້ວ" });
+  }
+
+  function onTemplateDeleted(id: string) {
+    setTemplates((list) => list.filter((x) => x.id !== id));
+    if (settings.templateId === id) update({ templateId: null });
+    setEditor({ open: false, template: null });
+  }
+
+  // ── Several labels from one template, printed in one go ──
+  const tplId = settings.templateId;
+  useEffect(() => { setBatch(tplId ? loadBatch(tplId) : []); }, [tplId]);
+
+  // Saved on every change (not from an effect, which could write a stale list back).
+  const changeBatch = (fn: (b: BatchItem[]) => BatchItem[]) => {
+    setBatch((prev) => {
+      const next = fn(prev);
+      if (tplId) saveBatch(tplId, next);
+      return next;
+    });
+  };
+
+  const formHasData = fields.some((f) => (fieldValues[f] ?? "").trim());
+
+  /** The filled-in form as a list item (null when it's empty). */
+  function takeForm(): BatchItem | null {
+    if (!formHasData) return null;
+    const values = Object.fromEntries(fields.map((f) => [f, (fieldValues[f] ?? "").trim()]).filter(([, v]) => v));
+    return { id: Math.random().toString(36).slice(2, 10), fields: values, sale: usesSale ? selectedSale : null, printed: false };
+  }
+
+  function addToBatch() {
+    if (usesSale && !selectedSale) {
+      setToast({ color: "medium", text: "ເລືອກບິນກ່ອນ" });
+      return;
+    }
+    const item = takeForm();
+    if (!item) return;
+    changeBatch((b) => [...b, item]);
+    setFieldValues({});
+    requestAnimationFrame(() => fieldRefs.current[0]?.focus());
+  }
+
+  function editBatchItem(item: BatchItem) {
+    // Don't throw away whatever is half-typed in the form — park it in the list.
+    const current = takeForm();
+    changeBatch((b) => [...b.filter((i) => i.id !== item.id), ...(current ? [current] : [])]);
+    setFieldValues(item.fields);
+    if (item.sale && sales.some((s) => s.id === item.sale!.id)) setSelectedId(item.sale.id);
+    requestAnimationFrame(() => fieldRefs.current[0]?.focus());
+  }
+
+  /**
+   * Prints every label not printed yet — plus the form, if it's filled in
+   * but wasn't added. Once everything is printed, it prints the whole list
+   * again. Labels go out one at a time, so if the printer stops halfway the
+   * list shows exactly which ones made it.
+   */
+  async function printBatch(viaSystem: boolean) {
+    const template = activeTemplate;
+    if (!template) return;
+    if (formHasData && usesSale && !selectedSale) {
+      setToast({ color: "medium", text: "ເລືອກບິນກ່ອນ" });
+      return;
+    }
+    const pending = takeForm();
+    const list = pending ? [...batch, pending] : batch;
+    if (pending) {
+      changeBatch((b) => [...b, pending]);
+      setFieldValues({});
+    }
+    const todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
+    if (!todo.length) return;
+    const pageOf = (item: BatchItem) =>
+      renderTemplate(template, { sale: item.sale, shopName, fields: item.fields }, { offsetXMm: settings.offsetXMm }).canvas;
+    const markPrinted = (ids: string[]) => changeBatch((b) => b.map((i) => (ids.includes(i.id) ? { ...i, printed: true } : i)));
+
+    if (viaSystem) {
+      try {
+        await ensureFontsLoaded();
+        await preloadTemplateImages(template);
+        await printViaSystem(todo.map(pageOf), paper);
+        markPrinted(todo.map((i) => i.id));
+      } catch (err) {
+        setToast({ color: "danger", text: errorText(err) });
+      }
+      return;
+    }
+
+    let done = 0;
+    logLine(`ພິມ ${todo.length} ໃບ ຈາກເທມເພລດ "${template.name}"`);
+    try {
+      if (!hasPrinter()) {
+        // Must open the chooser first, while we still hold the tap's user activation.
+        const ok = canUseBluetooth ? await connectBluetooth() : await connectSerial();
+        if (!ok) { setToast({ color: "medium", text: NOT_PICKED }); return; }
+      }
+      await ensureFontsLoaded();
+      await preloadTemplateImages(template);
+      for (const item of todo) {
+        setBatchProgress({ done, total: todo.length });
+        await sendToPrinter(buildTsplJob([pageOf(item)], paper), settings);
+        markPrinted([item.id]);
+        done++;
+      }
+      setToast({ color: "success", text: `ສົ່ງໄປພິມແລ້ວ ${done} ໃບ` });
+    } catch (err) {
+      logLine(`ຜິດພາດ — ${errorText(err)}`);
+      setToast({ color: "danger", text: `ພິມໄດ້ ${done}/${todo.length} ໃບ — ${errorText(err)}` });
+    } finally {
+      setBatchProgress(null);
+    }
+  }
+
+  const busy = printer.status === "printing" || printer.status === "connecting" || !!batchProgress;
+  const batchMode = !!activeTemplate && batch.length > 0;
+  const pendingCount = batch.filter((i) => !i.printed).length + (formHasData ? 1 : 0);
   const presetId = matchPreset(settings);
   const isLabel = settings.mode === "label";
+  const needsSale = usesSale && !selectedSale;
 
   const statusView = (() => {
     switch (printer.status) {
@@ -353,9 +403,11 @@ const PrintBill: React.FC = () => {
   })();
 
   const mainLabel =
-    printer.status === "printing" ? `ກຳລັງພິມ… ${printer.progress}%`
+    batchProgress ? `ກຳລັງພິມ ໃບ ${batchProgress.done + 1}/${batchProgress.total} · ${printer.progress}%`
+    : printer.status === "printing" ? `ກຳລັງພິມ… ${printer.progress}%`
     : printer.status === "connecting" ? "ກຳລັງເຊື່ອມຕໍ່…"
-    : !selectedSale ? "ເລືອກບິນກ່ອນ"
+    : batchMode ? (pendingCount > 0 ? `ພິມ ${pendingCount} ໃບ` : `ພິມຊ້ຳທັງໝົດ ${batch.length} ໃບ`)
+    : needsSale ? "ເລືອກບິນກ່ອນ"
     : canPrintDirect && !printer.deviceName ? "ເຊື່ອມຕໍ່ ແລະ ພິມບິນ"
     : "ພິມບິນ";
 
@@ -502,7 +554,141 @@ const PrintBill: React.FC = () => {
                 )}
               </div>
 
+              {/* ── Layout: standard bill or a shop template ── */}
+              {(isOwner || templates.length > 0) && (
+                <div style={cardStyle}>
+                  <SectionHeading
+                    icon={brushOutline}
+                    label="ຮູບແບບບິນ"
+                    right={isOwner && activeTemplate && (
+                      <IonButton size="small" fill="outline" onClick={() => setEditor({ open: true, template: activeTemplate })} style={{ "--border-radius": "10px", margin: 0 }}>
+                        <IonIcon slot="start" icon={createOutline} />
+                        ແກ້ໄຂ
+                      </IonButton>
+                    )}
+                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {[{ id: null as string | null, name: "ບິນມາດຕະຖານ" }, ...templates].map((t) => {
+                      const active = settings.templateId === t.id || (!activeTemplate && t.id === null);
+                      return (
+                        <button
+                          key={t.id ?? "standard"}
+                          disabled={busy}
+                          onClick={() => { update({ templateId: t.id }); setFieldValues({}); }}
+                          style={{
+                            padding: "8px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
+                            fontSize: "0.82rem", fontWeight: 700,
+                            background: active ? "var(--ion-color-primary)" : "var(--app-surface-alt)",
+                            border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--app-border)"}`,
+                            color: active ? "#fff" : "var(--ion-text-color)",
+                          }}
+                        >
+                          {t.name}
+                        </button>
+                      );
+                    })}
+                    {isOwner && (
+                      <button
+                        onClick={() => setEditor({ open: true, template: null })}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          padding: "8px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
+                          fontSize: "0.82rem", fontWeight: 700, background: "none",
+                          border: "1.5px dashed var(--ion-color-primary)", color: "var(--ion-color-primary)",
+                        }}
+                      >
+                        <IonIcon icon={addOutline} />
+                        ອອກແບບໃໝ່
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTemplate && fields.length > 0 && (
+                <div style={cardStyle}>
+                  <SectionHeading
+                    icon={pencilOutline}
+                    label="ກອກຂໍ້ມູນ"
+                    right={
+                      <IonButton size="small" fill="clear" color="medium" onClick={() => setFieldValues({})} style={{ margin: 0 }}>
+                        ລ້າງ
+                      </IonButton>
+                    }
+                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {fields.map((f, i) => (
+                      <label key={f}>
+                        <span style={fieldLabel}>{f}</span>
+                        <input
+                          ref={(n) => { fieldRefs.current[i] = n; }}
+                          className="print-bill-input"
+                          value={fieldValues[f] ?? ""}
+                          enterKeyHint={i < fields.length - 1 ? "next" : "done"}
+                          onChange={(e) => setFieldValues((v) => ({ ...v, [f]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            // Enter walks down the form; on the last field it adds the label.
+                            if (e.key !== "Enter") return;
+                            e.preventDefault();
+                            if (i < fields.length - 1) fieldRefs.current[i + 1]?.focus();
+                            else addToBatch();
+                          }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <IonButton expand="block" fill="outline" disabled={!formHasData || busy} onClick={addToBatch} style={{ marginTop: 14, "--border-radius": "12px" }}>
+                    <IonIcon slot="start" icon={addOutline} />
+                    ເພີ່ມໃສ່ລາຍການພິມ
+                  </IonButton>
+                  <div style={{ marginTop: 6, fontSize: "0.72rem", color: "var(--app-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
+                    ພິມຫຼາຍໃບ: ກອກ → ເພີ່ມ → ກອກໃບຕໍ່ໄປ… ແລ້ວກົດ ພິມ ເທື່ອດຽວ
+                  </div>
+                </div>
+              )}
+
+              {activeTemplate && batch.length > 0 && (
+                <div style={cardStyle}>
+                  <SectionHeading
+                    icon={listOutline}
+                    label={`ລາຍການພິມ (${batch.length} ໃບ)`}
+                    right={
+                      <IonButton size="small" fill="clear" color="medium" disabled={busy} onClick={() => setConfirmClear(true)} style={{ margin: 0 }}>
+                        ລ້າງທັງໝົດ
+                      </IonButton>
+                    }
+                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 340, overflowY: "auto" }}>
+                    {batch.map((item, i) => (
+                      <div key={item.id} style={{
+                        display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 10px", borderRadius: 12,
+                        background: item.printed ? "var(--app-success-surface)" : "var(--app-surface-alt)",
+                        border: "1px solid var(--app-border)",
+                      }}>
+                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: "var(--app-text-muted)", minWidth: 18 }}>{i + 1}</span>
+                        <div style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {fields.map((f) => item.fields[f]).filter(Boolean).join(" · ") || "—"}
+                        </div>
+                        {item.printed && <IonIcon icon={checkmarkCircle} aria-label="ພິມແລ້ວ" style={{ color: "var(--app-success)", fontSize: 18, flexShrink: 0 }} />}
+                        <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy} onClick={() => editBatchItem(item)}>
+                          <IonIcon icon={createOutline} />
+                        </button>
+                        <button className="print-icon-btn is-danger" title="ລຶບ" disabled={busy} onClick={() => changeBatch((b) => b.filter((x) => x.id !== item.id))}>
+                          <IonIcon icon={trashOutline} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {batch.some((i) => i.printed) && (
+                    <IonButton size="small" fill="clear" disabled={busy} onClick={() => changeBatch((b) => b.filter((i) => !i.printed))} style={{ marginTop: 6 }}>
+                      ລຶບໃບທີ່ພິມແລ້ວອອກ
+                    </IonButton>
+                  )}
+                </div>
+              )}
+
               {/* ── Pick a bill ── */}
+              {usesSale && (
               <div style={cardStyle}>
                 <SectionHeading
                   icon={receiptOutline}
@@ -566,18 +752,35 @@ const PrintBill: React.FC = () => {
                   </div>
                 )}
               </div>
+              )}
 
               {/* ── Size & layout ── */}
               <div style={cardStyle}>
                 <SectionHeading
                   icon={resizeOutline}
-                  label="ຂະໜາດເຈ້ຍ"
-                  right={!presetId && (
+                  label={activeTemplate ? "ການພິມ" : "ຂະໜາດເຈ້ຍ"}
+                  right={!activeTemplate && !presetId && (
                     <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "var(--app-accent-surface)", color: "var(--ion-color-primary)" }}>
                       ກຳນົດເອງ
                     </span>
                   )}
                 />
+                {activeTemplate ? (
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+                    <div style={{ flex: 1, fontSize: "0.82rem", color: "var(--app-text-secondary)", lineHeight: 1.5 }}>
+                      ເຈ້ຍ <strong style={{ color: "var(--ion-text-color)" }}>{activeTemplate.widthMm} × {activeTemplate.heightMm} mm</strong>
+                      {" · "}{activeTemplate.mode === "label" ? "ສະຕິກເກີ" : "ມ້ວນຕໍ່ເນື່ອງ"}
+                      <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>ຂະໜາດມາຈາກເທມເພລດ</div>
+                    </div>
+                    {activeTemplate.mode === "label" && (
+                      <label style={{ width: 110 }}>
+                        <span style={fieldLabel}>ຊ່ອງຫວ່າງ (mm)</span>
+                        <MmInput value={settings.gapMm} min={0} max={10} step={0.5} onCommit={(n) => update({ gapMm: n })} />
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                <>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                   {PAPER_PRESETS.map((p) => {
                     const active = p.id === presetId;
@@ -638,6 +841,8 @@ const PrintBill: React.FC = () => {
                   label="ຂະໜາດຕົວອັກສອນ" value={settings.fontScale} display={`${settings.fontScale}%`}
                   min={60} max={200} step={5} onChange={(n) => update({ fontScale: n })}
                 />
+                </>
+                )}
                 <RangeRow
                   label="ຄວາມເຂັ້ມການພິມ" value={settings.density} display={String(settings.density)}
                   min={0} max={15} step={1} onChange={(n) => update({ density: n })}
@@ -652,6 +857,7 @@ const PrintBill: React.FC = () => {
                   </div>
                 </div>
 
+                {!activeTemplate && (
                 <Collapsible icon={documentTextOutline} label="ຂໍ້ຄວາມໃນບິນ">
                   <label style={{ display: "block", marginTop: 4 }}>
                     <span style={fieldLabel}>ຫົວບິນ (ທີ່ຢູ່, ເບີໂທ…)</span>
@@ -674,6 +880,7 @@ const PrintBill: React.FC = () => {
                   </label>
                   <ToggleRow label="ສະແດງຊື່ຜູ້ຂາຍ" checked={settings.showSeller} onChange={(v) => update({ showSeller: v })} />
                 </Collapsible>
+                )}
 
                 <Collapsible icon={settingsOutline} label="ຕັ້ງຄ່າຂັ້ນສູງ">
                   <ToggleRow label="ໝຸນ 180°" hint="ຖ້າບິນອອກມາປີ້ນຫົວ" checked={settings.rotate180} onChange={(v) => update({ rotate180: v })} />
@@ -698,7 +905,7 @@ const PrintBill: React.FC = () => {
                   />
                   <IonButton
                     fill="clear" color="medium" size="small"
-                    onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText })}
+                    onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText, templateId: settings.templateId })}
                     style={{ marginTop: 8 }}
                   >
                     ຄືນຄ່າເລີ່ມຕົ້ນ
@@ -715,14 +922,14 @@ const PrintBill: React.FC = () => {
                   label="ຕົວຢ່າງ"
                   right={
                     <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--app-text-secondary)" }}>
-                      {settings.widthMm} × {previewHeightMm || "–"} mm
+                      {paper.widthMm} × {previewHeightMm || "–"} mm
                       {previewUrls.length > 1 ? ` · ${previewUrls.length} ແຜ່ນ` : ""}
                     </span>
                   }
                 />
-                {!selectedSale && (
+                {needsSale && (
                   <div style={{ textAlign: "center", fontSize: "0.72rem", fontWeight: 700, color: "var(--app-warning)", marginBottom: 10 }}>
-                    ບິນທົດສອບ — ຍັງບໍ່ໄດ້ເລືອກບິນ
+                    {activeTemplate ? "ຍັງບໍ່ໄດ້ເລືອກບິນ — ຂໍ້ມູນການຂາຍຍັງຫວ່າງຢູ່" : "ບິນທົດສອບ — ຍັງບໍ່ໄດ້ເລືອກບິນ"}
                   </div>
                 )}
                 <div style={{
@@ -733,7 +940,7 @@ const PrintBill: React.FC = () => {
                   {previewUrls.length === 0 ? (
                     <IonSpinner name="crescent" color="primary" style={{ margin: 32 }} />
                   ) : previewUrls.map((url, i) => (
-                    <div key={i} style={{ width: `${(settings.widthMm / MAX_WIDTH_MM) * 100}%`, maxWidth: 420 }}>
+                    <div key={i} style={{ width: `${(paper.widthMm / MAX_WIDTH_MM) * 100}%`, maxWidth: 420 }}>
                       {previewUrls.length > 1 && (
                         <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--app-text-muted)", marginBottom: 4 }}>ແຜ່ນ {i + 1}</div>
                       )}
@@ -742,7 +949,7 @@ const PrintBill: React.FC = () => {
                         alt={`ຕົວຢ່າງບິນ ແຜ່ນ ${i + 1}`}
                         style={{
                           display: "block", width: "100%", background: "#fff",
-                          borderRadius: isLabel ? 6 : 0,
+                          borderRadius: paper.mode === "label" ? 6 : 0,
                           boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
                         }}
                       />
@@ -768,14 +975,14 @@ const PrintBill: React.FC = () => {
           )}
           <div style={{ display: "flex", gap: 10, maxWidth: 1100, margin: "0 auto" }}>
             {canPrintDirect && (
-              <IonButton fill="outline" disabled={busy} onClick={printSystem} style={{ minHeight: 50, "--border-radius": "14px", flex: "0 0 auto" }}>
+              <IonButton fill="outline" disabled={busy} onClick={() => (batchMode ? printBatch(true) : printSystem())} style={{ minHeight: 50, "--border-radius": "14px", flex: "0 0 auto" }}>
                 ພິມຜ່ານລະບົບ
               </IonButton>
             )}
             <IonButton
               expand="block"
-              disabled={busy || !selectedSale}
-              onClick={() => (canPrintDirect ? printDirect(receipt) : printSystem())}
+              disabled={busy || (!batchMode && needsSale)}
+              onClick={() => (batchMode ? printBatch(!canPrintDirect) : canPrintDirect ? printDirect(receipt) : printSystem())}
               style={{ minHeight: 50, "--border-radius": "14px", flex: 1, fontWeight: 700 }}
             >
               {busy ? <IonSpinner slot="start" name="crescent" style={{ width: 18, height: 18 }} /> : <IonIcon slot="start" icon={printOutline} />}
@@ -784,6 +991,28 @@ const PrintBill: React.FC = () => {
           </div>
         </div>
       </IonFooter>
+
+      {isOwner && (
+        <TemplateEditor
+          isOpen={editor.open}
+          template={editor.template}
+          shopName={shopName}
+          onDismiss={() => setEditor({ open: false, template: null })}
+          onSaved={onTemplateSaved}
+          onDeleted={onTemplateDeleted}
+        />
+      )}
+
+      <IonAlert
+        isOpen={confirmClear}
+        header="ລ້າງລາຍການພິມທັງໝົດ?"
+        message={`${batch.length} ໃບ ຈະຖືກລຶບອອກຈາກລາຍການ`}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel" },
+          { text: "ລ້າງ", role: "destructive", handler: () => changeBatch(() => []) },
+        ]}
+        onDidDismiss={() => setConfirmClear(false)}
+      />
 
       <IonToast
         isOpen={!!toast}

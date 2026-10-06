@@ -239,3 +239,62 @@ describe("shop admin", () => {
     );
   });
 });
+
+// =============================================================================
+// Print templates — every member prints with them, only the owner edits.
+// Seeds users/{uid} docs, which is what the rules actually read roles from.
+// =============================================================================
+
+describe("print templates", () => {
+  const TEMPLATE = { name: "ໃບປະໜ້າ", widthMm: 100, heightMm: 150, mode: "label", elements: [] };
+
+  async function seedMembers() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, "users/owner-a"), { role: "customer", shopId: "shop-a" });
+      await setDoc(doc(db, "users/staff-a"), { role: "staff", shopId: "shop-a" });
+      await setDoc(doc(db, "users/owner-b"), { role: "customer", shopId: "shop-b" });
+      await setDoc(doc(db, "shops/shop-a/printTemplates/t1"), TEMPLATE);
+    });
+  }
+
+  const as = (uid: string) => testEnv.authenticatedContext(uid).firestore();
+
+  it("owner can create, update and delete", async () => {
+    await seedMembers();
+    const db = as("owner-a");
+    await assertSucceeds(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), TEMPLATE));
+    await assertSucceeds(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), { ...TEMPLATE, name: "ໃໝ່" }));
+    await assertSucceeds(deleteDoc(doc(db, "shops/shop-a/printTemplates/t2")));
+  });
+
+  it("staff can read but not write", async () => {
+    await seedMembers();
+    const db = as("staff-a");
+    await assertSucceeds(getDoc(doc(db, "shops/shop-a/printTemplates/t1")));
+    await assertFails(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), TEMPLATE));
+    await assertFails(deleteDoc(doc(db, "shops/shop-a/printTemplates/t1")));
+  });
+
+  it("another shop's owner can neither read nor write", async () => {
+    await seedMembers();
+    const db = as("owner-b");
+    await assertFails(getDoc(doc(db, "shops/shop-a/printTemplates/t1")));
+    await assertFails(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), TEMPLATE));
+  });
+
+  it("rejects a malformed template", async () => {
+    await seedMembers();
+    const db = as("owner-a");
+    await assertFails(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), { ...TEMPLATE, name: 5 }));
+    await assertFails(setDoc(doc(db, "shops/shop-a/printTemplates/t2"), { ...TEMPLATE, elements: "x" }));
+  });
+
+  it("a suspended shop's owner cannot edit", async () => {
+    await seedMembers();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "tenants/shop-a"), { status: "suspended" });
+    });
+    await assertFails(setDoc(doc(as("owner-a"), "shops/shop-a/printTemplates/t2"), TEMPLATE));
+  });
+});

@@ -136,3 +136,80 @@ export interface Sale {
   sellerUid?: string;
   sellerName?: string;
 }
+
+// ── Print templates ─────────────────────────────────────────────────────────
+// A free-form layout for the bill printer, designed by the shop owner.
+// All positions/sizes are millimetres from the paper's top-left corner.
+
+interface TemplateElementBase {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  /** Ignored for text (height follows the content). */
+  h: number;
+}
+
+export interface TemplateTextElement extends TemplateElementBase {
+  type: "text";
+  /** May contain {{field}} placeholders — see utils/printer/templateRender. */
+  text: string;
+  /** Printer dots (8 per mm). */
+  fontSize: number;
+  bold: boolean;
+  align: "left" | "center" | "right";
+}
+
+export interface TemplateLineElement extends TemplateElementBase {
+  type: "line";
+  /** Horizontal when w >= h, vertical otherwise. Dots. */
+  thickness: number;
+  dashed: boolean;
+}
+
+export interface TemplateRectElement extends TemplateElementBase {
+  type: "rect";
+  thickness: number;
+  filled: boolean;
+}
+
+export interface TemplateImageElement extends TemplateElementBase {
+  type: "image";
+  /** PNG data URL, downscaled on upload so the template doc stays small. */
+  src: string;
+}
+
+export interface TemplateQrElement extends TemplateElementBase {
+  type: "qr";
+  value: string;
+}
+
+export interface TemplateBarcodeElement extends TemplateElementBase {
+  type: "barcode";
+  value: string;
+  showText: boolean;
+}
+
+/** The sale's item lines; grows the paper on a continuous roll. */
+export interface TemplateItemsElement extends TemplateElementBase {
+  type: "items";
+  fontSize: number;
+}
+
+export type TemplateElement =
+  | TemplateTextElement
+  | TemplateLineElement
+  | TemplateRectElement
+  | TemplateImageElement
+  | TemplateQrElement
+  | TemplateBarcodeElement
+  | TemplateItemsElement;
+
+export interface PrintTemplate {
+  id: string;
+  name: string;
+  widthMm: number;
+  heightMm: number;
+  mode: "label" | "continuous";
+  elements: TemplateElement[];
+}

@@ -1,0 +1,205 @@
+/* Full screen on desktop too — Ionic's default is a small centred dialog. */
+ion-modal.tpl-modal {
+  --width: 100%;
+  --height: 100%;
+  --border-radius: 0;
+}
+
+.tpl-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .tpl-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .tpl-side {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.tpl-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0 6px;
+}
+
+.tpl-tool {
+  flex: 1 1 calc(25% - 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 66px;
+  padding: 8px 8px 7px;
+  border-radius: 12px;
+  border: 1.5px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--ion-text-color);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tpl-tool ion-icon {
+  font-size: 20px;
+  color: var(--ion-color-primary);
+}
+
+.tpl-stage-wrap {
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 18px 14px;
+}
+
+.tpl-stage {
+  position: relative;
+  margin: 0 auto;
+}
+
+.tpl-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Drag targets over each element. touch-action only here, so a finger on
+   blank paper still scrolls the page. */
+.tpl-el {
+  position: absolute;
+  box-sizing: border-box;
+  touch-action: none;
+  cursor: move;
+  outline: 1px dashed rgba(224, 123, 57, 0.45);
+  border-radius: 2px;
+}
+
+.tpl-el.is-selected {
+  outline: 2px solid var(--ion-color-primary);
+  background: rgba(224, 123, 57, 0.08);
+  z-index: 2;
+}
+
+.tpl-handle {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ion-color-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.tpl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tpl-chip {
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--ion-color-primary);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tpl-chip.is-neutral {
+  border-color: var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--ion-text-color);
+}
+
+.tpl-chip.is-active {
+  border-color: var(--ion-color-primary);
+  background: var(--ion-color-primary);
+  color: #fff;
+}
+
+.tpl-chip.is-custom {
+  border-color: var(--app-info);
+  background: var(--app-info-surface);
+  color: var(--app-info);
+}
+
+.tpl-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.tpl-icon-btn.is-danger {
+  color: var(--app-danger);
+}
+
+.tpl-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tpl-seg {
+  display: flex;
+  border: 1.5px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tpl-seg button {
+  flex: 1;
+  padding: 7px 4px;
+  border: none;
+  background: var(--app-surface);
+  color: var(--app-text-secondary);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tpl-seg button.is-active {
+  background: var(--ion-color-primary);
+  color: #fff;
+}
+
+.tpl-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--ion-text-color);
+  font-family: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}

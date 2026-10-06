@@ -37,6 +37,8 @@ export interface PrintSettings {
   chunkSize: number;
   /** BLE write-without-response: faster, but a slow printer may drop data. */
   fastMode: boolean;
+  /** Shop print template in use on this device; null = the standard bill. */
+  templateId: string | null;
 }
 
 export const DEFAULT_SETTINGS: PrintSettings = {
@@ -54,6 +56,7 @@ export const DEFAULT_SETTINGS: PrintSettings = {
   showSeller: true,
   chunkSize: 20,
   fastMode: true,
+  templateId: null,
 };
 
 export interface PaperPreset {

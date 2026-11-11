@@ -49,12 +49,15 @@ export function priceItemsToTotal(items: SaleItem[], total: number): SaleItem[] 
 
 export const itemsTotal = (items: SaleItem[]) => items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
 
+/** "ເສື້ອ A (M/ແດງ)" — a set lists the size/colour picked for each piece. */
+export function itemLabel(i: SaleItem): string {
+  const v = i.isBundle
+    ? (i.bundleItems ?? []).map((b) => fmtVariant(b.variantSize, b.variantColor)).filter(Boolean).join(", ")
+    : fmtVariant(i.variant.size, i.variant.color);
+  return `${i.productName}${v ? ` (${v})` : ""}`;
+}
+
 /** "ເສື້ອ A (M/ແດງ) x2, ໝວກ" — what goes in the label's item field. */
 export function itemsSummary(items: SaleItem[]): string {
-  return items
-    .map((i) => {
-      const v = fmtVariant(i.variant.size, i.variant.color);
-      return `${i.productName}${v ? ` (${v})` : ""}${i.quantity > 1 ? ` x${i.quantity}` : ""}`;
-    })
-    .join(", ");
+  return items.map((i) => `${itemLabel(i)}${i.quantity > 1 ? ` x${i.quantity}` : ""}`).join(", ");
 }

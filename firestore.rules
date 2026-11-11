@@ -250,18 +250,25 @@ service cloud.firestore {
           && request.resource.data.items is list
           && request.resource.data.cod is number
           && request.resource.data.cod >= 0;
-        // Only the label that made it (same localId) — a new label can never
-        // take over another one's barcode.
-        allow update: if isTenantActive(shopId) && isShopMember(shopId)
-          && resource.data.status == 'pending'
-          && request.resource.data.localId == resource.data.localId
-          && request.resource.data.items is list
-          && request.resource.data.cod is number
-          && request.resource.data.cod >= 0
-          && (
-            request.resource.data.status == 'pending'
-            || (request.resource.data.status == 'sold' && request.resource.data.saleId is string)
-          );
+        allow update: if isTenantActive(shopId) && isShopMember(shopId) && (
+          (
+            // Editing it, or selling it — only while pending, and only the
+            // label that made it (same localId): a new label can never take
+            // over another one's barcode.
+            resource.data.status == 'pending'
+            && request.resource.data.localId == resource.data.localId
+            && request.resource.data.items is list
+            && request.resource.data.cod is number
+            && request.resource.data.cod >= 0
+            && (
+              request.resource.data.status == 'pending'
+              || (request.resource.data.status == 'sold' && request.resource.data.saleId is string)
+            )
+          )
+          // The print list's bookkeeping — printed again, taken off the
+          // list — also once it's sold. Nothing else changes after a sale.
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listed', 'printedAt', 'printCount'])
+        );
         allow delete: if isTenantActive(shopId) && resource.data.status == 'pending' && (
           isShopOwner(shopId)
           || hasStaffPermission(shopId, 'canDeleteSales')

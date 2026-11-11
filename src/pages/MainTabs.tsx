@@ -18,7 +18,7 @@ import {
   IonTitle,
   IonToolbar,
 } from "@ionic/react";
-import { Redirect, Route } from "react-router-dom";
+import { Redirect, Route, useLocation } from "react-router-dom";
 import {
   barChartOutline,
   barcodeOutline,
@@ -82,6 +82,7 @@ function useStockAlertCount(shopId: string | null) {
 }
 
 const MainTabs: React.FC = () => {
+  const { pathname } = useLocation();
   const { shopId, role, permissions, signOut, features, tenant, availableShops, showShopPicker, shopProfile, setShopProfile, myProfileUrl } = useAuth();
   const canViewFinance = role === "customer" || permissions.canViewFinance;
   const { count: alertCount, refresh: refreshAlerts } = useStockAlertCount(shopId);
@@ -362,7 +363,12 @@ const MainTabs: React.FC = () => {
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>
 
-        <IonTabBar slot="bottom" onIonTabsDidChange={refreshAlerts}>
+        {/* The print page uses the whole screen; it has its own back button. */}
+        <IonTabBar
+          slot="bottom"
+          onIonTabsDidChange={refreshAlerts}
+          style={pathname === "/tabs/print" ? { display: "none" } : undefined}
+        >
           <IonTabButton tab="sell" href="/tabs/sell">
             <IonIcon icon={cartOutline} />
             <IonLabel>ຂາຍ</IonLabel>

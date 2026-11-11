@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IonAlert,
+  IonBackButton,
   IonButton,
   IonButtons,
   IonContent,
@@ -8,6 +9,7 @@ import {
   IonHeader,
   IonIcon,
   IonMenuButton,
+  IonModal,
   IonPage,
   IonSegment,
   IonSegmentButton,
@@ -40,8 +42,16 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { getTemplates } from "../data/printTemplateRepository";
 import { getSalesByDateRange } from "../data/saleRepository";
-import { saveShipments, type ShipmentDraft } from "../data/shipmentRepository";
-import type { PrintTemplate, Sale, SaleItem } from "../data/types";
+import {
+  createLabel,
+  deleteShipment,
+  unlistLabels,
+  updateLabel,
+  markLabelPrinted,
+  watchListedLabels,
+  type LabelDraft,
+} from "../data/shipmentRepository";
+import type { PrintTemplate, Sale, SaleItem, Shipment } from "../data/types";
 import { dateFromInputStr, dateInputStr, fmtK, fmtTime } from "../utils/format";
 import {
   autoReconnect,
@@ -81,7 +91,7 @@ import {
   type PrintSettings,
   type WriteMode,
 } from "../utils/printer/settings";
-import { loadBatch, loadPinned, saveBatch, savePinned, type BatchItem } from "../utils/printer/batchStore";
+import { clearBatch, loadBatch, loadPinned, saveBatch, savePinned, type BatchItem } from "../utils/printer/batchStore";
 import { fieldRole, fieldsByRole, isPhoneField, parseCustomerText, PHONE_MAX_DIGITS } from "../utils/printer/customerPaste";
 import { itemsSummary, itemsTotal, newScanCode } from "../utils/shipment";
 import { printViaSystem } from "../utils/printer/systemPrint";
@@ -109,6 +119,28 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : "ເກີດຂໍ້ຜິດພາດ";
 }
 
+type Roles = ReturnType<typeof fieldsByRole>;
+
+/** COD as typed on the label; left empty, what the products cost. "0" = paid already. */
+function codFrom(fields: Record<string, string>, items: SaleItem[], roles: Roles): number {
+  const typed = roles.cod ? (fields[roles.cod] ?? "").replace(/\D/g, "") : "";
+  return typed ? Number(typed) : itemsTotal(items);
+}
+
+/** A label as it's saved online. */
+function labelDraft(templateId: string, fields: Record<string, string>, items: SaleItem[], sale: Sale | null, roles: Roles): LabelDraft {
+  return {
+    templateId,
+    fields,
+    customerName: roles.name ? fields[roles.name] ?? "" : "",
+    phone: roles.phone ? fields[roles.phone] ?? "" : "",
+    branch: roles.branch ? fields[roles.branch] ?? "" : "",
+    cod: codFrom(fields, items, roles),
+    items,
+    sale,
+  };
+}
+
 /** A template brings its own paper size; everything else stays per device. */
 function effectiveSettings(s: PrintSettings, t: PrintTemplate | null): PrintSettings {
   return t ? { ...s, widthMm: t.widthMm, heightMm: t.heightMm, mode: t.mode } : s;
@@ -133,9 +165,15 @@ const PrintBill: React.FC = () => {
   const [templates, setTemplates] = useState<PrintTemplate[]>([]);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [editor, setEditor] = useState<{ open: boolean; template: PrintTemplate | null }>({ open: false, template: null });
-  const [batch, setBatch] = useState<BatchItem[]>([]);
+  /** Every template's print list, live from Firestore. */
+  const [listed, setListed] = useState<Shipment[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<BatchItem | null>(null);
+  const [printerOpen, setPrinterOpen] = useState(false);
+  const migrating = useRef(false);
   // A shipping label's products and barcode, while it's being filled in.
   const [formItems, setFormItems] = useState<SaleItem[]>([]);
   const [formCode, setFormCode] = useState<string | null>(null);
@@ -243,7 +281,7 @@ const PrintBill: React.FC = () => {
     return () => { cancelled = true; clearTimeout(t); };
   }, [receipt, settings, activeTemplate, selectedSale, shopName, fieldValues, scanCode]);
 
-  const NOT_PICKED = "ຍັງບໍ່ໄດ້ເລືອກເຄື່ອງພິມ — ຖ້າບໍ່ເຫັນເຄື່ອງພິມໃນລາຍການ ລອງເຊື່ອມຕໍ່ຜ່ານ COM ຫຼື ກົດ ພິມຜ່ານລະບົບ";
+  const NOT_PICKED = "ຍັງບໍ່ໄດ້ເລືອກເຄື່ອງພິມ — ຖ້າບໍ່ເຫັນເຄື່ອງພິມໃນລາຍການ ລອງເຊື່ອມຕໍ່ຜ່ານ COM (ປຸ່ມ Bluetooth ເທິງຫົວ)";
 
   async function send(buildJob: () => Promise<Uint8Array>, opts: { chunkSize: number; writeMode: WriteMode }, doneText: string) {
     logLine(`ກົດພິມ (ສະຖານະ: ${printer.status}${printer.deviceName ? ` · ${printer.deviceName}` : ""})`);
@@ -327,10 +365,24 @@ const PrintBill: React.FC = () => {
     setEditor({ open: false, template: null });
   }
 
-  // ── Several labels from one template, printed in one go ──
+  // ── The print list ──
+  // Every label is saved online the moment it's added (or printed): it can't
+  // be lost with a phone or a cleared browser, and every device sees it.
   const tplId = settings.templateId;
   useEffect(() => {
-    setBatch(tplId ? loadBatch(tplId) : []);
+    if (!shopId) return;
+    setListError(null);
+    return watchListedLabels(shopId, setListed, (err) => setListError(errorText(err)));
+  }, [shopId]);
+
+  const batch: BatchItem[] = useMemo(
+    () => listed
+      .filter((s) => s.templateId === tplId)
+      .map((s) => ({ id: s.id, code: s.id, fields: s.fields, sale: s.sale, items: s.items, printed: s.printCount > 0, status: s.status })),
+    [listed, tplId],
+  );
+
+  useEffect(() => {
     const pinned = tplId ? loadPinned(tplId) : { names: null, values: {} };
     setPinnedNames(pinned.names);
     setFieldValues(pinned.values);
@@ -340,27 +392,39 @@ const PrintBill: React.FC = () => {
     setPasteText("");
   }, [tplId]);
 
-  // Saved on every change (not from an effect, which could write a stale list back).
-  const changeBatch = (fn: (b: BatchItem[]) => BatchItem[]) => {
-    setBatch((prev) => {
-      const next = fn(prev);
-      if (tplId) saveBatch(tplId, next);
-      return next;
-    });
-  };
+  // A list this device kept before lists moved online: move it up, once.
+  // An entry leaves the device only after it's safely saved.
+  useEffect(() => {
+    if (!shopId || !user || !tplId || !activeTemplate || migrating.current || !loadBatch(tplId).length) return;
+    migrating.current = true;
+    const r = fieldsByRole(templateFields(activeTemplate));
+    (async () => {
+      try {
+        for (const item of loadBatch(tplId)) {
+          await createLabel(shopId, labelDraft(tplId, item.fields, item.items ?? [], item.sale, r), {
+            code: item.code ?? newScanCode(),
+            by: { uid: user.uid, name: displayName },
+            legacyId: item.id,
+            printed: item.printed,
+          });
+          saveBatch(tplId, loadBatch(tplId).filter((i) => i.id !== item.id));
+        }
+        clearBatch(tplId);
+      } catch {
+        // offline or refused — what's left stays on the device, tried again next visit
+      } finally {
+        migrating.current = false;
+      }
+    })();
+  }, [shopId, user, displayName, tplId, activeTemplate]);
 
   // Remembered fields (the sender) don't make a label on their own.
   const formHasData = formItems.length > 0 || customerFields.some((f) => (fieldValues[f] ?? "").trim());
 
-  /** The filled-in form as a list item (null when it's empty). */
-  function takeForm(): BatchItem | null {
-    if (!formHasData) return null;
-    const values = Object.fromEntries(fields.map((f) => [f, (fieldValues[f] ?? "").trim()]).filter(([, v]) => v));
-    return {
-      id: formId ?? Math.random().toString(36).slice(2, 10), fields: values, sale: usesSale ? selectedSale : null, printed: false,
-      ...(formItems.length ? { items: formItems, code: formCode ?? newScanCode() } : {}),
-    };
-  }
+  // A label's barcode number exists from the start, so the preview shows it.
+  useEffect(() => {
+    if (formHasData && !formCode) setFormCode(newScanCode());
+  }, [formHasData, formCode]);
 
   /** Ready for the next customer: remembered fields stay, the rest clears. */
   function resetForm() {
@@ -424,7 +488,6 @@ const PrintBill: React.FC = () => {
   function onPicked(items: SaleItem[]) {
     setPickerOpen(false);
     setFormItems(items);
-    setFormCode((c) => (items.length ? c ?? newScanCode() : null));
     setFieldValues((v) => ({
       ...v,
       ...(roles.item ? { [roles.item]: itemsSummary(items) } : {}),
@@ -432,58 +495,52 @@ const PrintBill: React.FC = () => {
     }));
   }
 
-  /** COD as typed on the label; left empty, it's what the products cost. "0" = paid already. */
-  function codOf(item: BatchItem): number {
-    const typed = roles.cod ? (item.fields[roles.cod] ?? "").replace(/\D/g, "") : "";
-    return typed ? Number(typed) : itemsTotal(item.items ?? []);
-  }
-
   /**
-   * Labels with products get registered before they print, so scanning their
-   * barcode can sell them. Returns the list with final codes (a clash gets a
-   * new one).
+   * Saves the form as a label — a new one, or the one being edited — and
+   * returns it as a list entry. Null (with a message) if it didn't save:
+   * then the form stays as it is, nothing typed is lost.
    */
-  async function registerShipments(list: BatchItem[], template: PrintTemplate): Promise<BatchItem[]> {
-    const drafts: ShipmentDraft[] = list.filter((i) => i.items?.length && i.code).map((i) => ({
-      code: i.code!,
-      localId: i.id,
-      templateId: template.id,
-      fields: i.fields,
-      customerName: roles.name ? i.fields[roles.name] ?? "" : "",
-      phone: roles.phone ? i.fields[roles.phone] ?? "" : "",
-      branch: roles.branch ? i.fields[roles.branch] ?? "" : "",
-      cod: codOf(i),
-      items: i.items!,
-    }));
-    if (!drafts.length || !shopId || !user) return list;
-    let codes: Map<string, string>;
-    try {
-      codes = await saveShipments(shopId, drafts, { uid: user.uid, name: displayName });
-    } catch (err) {
-      throw new Error(`ບັນທຶກບິນເພື່ອສະແກນບໍ່ໄດ້ — ${errorText(err)}`);
-    }
-    if (!list.some((i) => codes.has(i.id) && codes.get(i.id) !== i.code)) return list;
-    const withCode = (i: BatchItem) => (codes.has(i.id) ? { ...i, code: codes.get(i.id) } : i);
-    changeBatch((b) => b.map(withCode));
-    return list.map(withCode);
-  }
-
-  function addToBatch() {
+  async function saveForm(): Promise<BatchItem | null> {
+    if (!formHasData || !shopId || !user || !tplId) return null;
     if (usesSale && !selectedSale) {
       setToast({ color: "medium", text: "ເລືອກບິນກ່ອນ" });
-      return;
+      return null;
     }
-    const item = takeForm();
-    if (!item) return;
-    changeBatch((b) => [...b, item]);
+    const values = Object.fromEntries(fields.map((f) => [f, (fieldValues[f] ?? "").trim()]).filter(([, v]) => v));
+    const sale = usesSale ? selectedSale : null;
+    const draft = labelDraft(tplId, values, formItems, sale, roles);
+    setSaving(true);
+    try {
+      let code: string;
+      if (formId) {
+        await updateLabel(shopId, formId, draft);
+        code = formId;
+      } else {
+        code = await createLabel(shopId, draft, { code: formCode ?? newScanCode(), by: { uid: user.uid, name: displayName } });
+      }
+      return { id: code, code, fields: values, sale, items: formItems, printed: false, status: "pending" };
+    } catch (err) {
+      setToast({ color: "danger", text: `ບັນທຶກບິນບໍ່ສຳເລັດ — ${errorText(err)}` });
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addToBatch() {
+    if (saving) return;
+    if (!(await saveForm())) return;
     resetForm();
     focusFirstCustomerField();
   }
 
-  function editBatchItem(item: BatchItem) {
-    // Don't throw away whatever is half-typed in the form — park it in the list.
-    const current = takeForm();
-    changeBatch((b) => [...b.filter((i) => i.id !== item.id), ...(current ? [current] : [])]);
+  async function editBatchItem(item: BatchItem) {
+    if (item.status === "sold") {
+      setToast({ color: "medium", text: "ບິນນີ້ຂາຍແລ້ວ (ສະແກນແລ້ວ) — ແກ້ໄຂບໍ່ໄດ້" });
+      return;
+    }
+    // Whatever is half-typed goes into the list first, so it isn't lost.
+    if (formHasData && formId !== item.id && !(await saveForm())) return;
     setFieldValues(item.fields);
     setFormItems(item.items ?? []);
     setFormCode(item.code ?? null);
@@ -493,77 +550,99 @@ const PrintBill: React.FC = () => {
     focusFirstCustomerField();
   }
 
+  /** Never printed: deleted for good. Printed: off the list, still on record (and scannable). */
+  async function removeFromList(item: BatchItem) {
+    if (!shopId) return;
+    try {
+      if (!item.printed && item.status !== "sold") await deleteShipment(shopId, item.id);
+      else await unlistLabels(shopId, [item.id]);
+      if (formId === item.id) resetForm();
+    } catch (err) {
+      setToast({ color: "danger", text: `ເອົາອອກບໍ່ໄດ້ — ${errorText(err)}` });
+    }
+  }
+
+  async function clearPrinted() {
+    if (!shopId) return;
+    try {
+      await unlistLabels(shopId, batch.filter((i) => i.printed).map((i) => i.id));
+    } catch (err) {
+      setToast({ color: "danger", text: errorText(err) });
+    }
+  }
+
+  /** Counted as printed; queued if offline, so printing never waits on it. */
+  function markPrinted(item: BatchItem) {
+    if (!shopId) return;
+    markLabelPrinted(shopId, item.id).catch((err) => logLine(`ບັນທຶກວ່າ "ພິມແລ້ວ" ບໍ່ໄດ້ — ${errorText(err)}`));
+  }
+
   /**
-   * Prints every label not printed yet — plus the form, if it's filled in
-   * but wasn't added. Once everything is printed, it prints the whole list
-   * again. Labels go out one at a time, so if the printer stops halfway the
-   * list shows exactly which ones made it.
+   * Prints every label not printed yet — plus the form, saved first. Once
+   * everything is printed, it prints the whole list again. Labels go out one
+   * at a time, so if the printer stops halfway the list shows which made it.
    */
   async function printBatch(viaSystem: boolean) {
     const template = activeTemplate;
-    if (!template) return;
+    if (!template || saving) return;
     if (formHasData && usesSale && !selectedSale) {
       setToast({ color: "medium", text: "ເລືອກບິນກ່ອນ" });
       return;
     }
-    const pending = takeForm();
-    const list = pending ? [...batch, pending] : batch;
-    if (pending) {
-      changeBatch((b) => [...b, pending]);
-      resetForm();
-    }
-    let todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
-    if (!todo.length) return;
     const render = (item: BatchItem, forPrinter: boolean) => renderTemplate(
       template,
       { sale: item.sale, shopName, fields: item.fields, scanCode: item.code },
       { offsetXMm: settings.offsetXMm, printerBarcodes: forPrinter && settings.printerBarcodes },
     );
-    const markPrinted = (ids: string[]) => changeBatch((b) => b.map((i) => (ids.includes(i.id) ? { ...i, printed: true } : i)));
-
-    if (viaSystem) {
-      try {
-        todo = await registerShipments(todo, template);
-        await ensureFontsLoaded();
-        await preloadTemplateImages(template);
-        await printViaSystem(todo.map((i) => render(i, false).canvas), paper);
-        markPrinted(todo.map((i) => i.id));
-      } catch (err) {
-        setToast({ color: "danger", text: errorText(err) });
-      }
-      return;
-    }
-
     let done = 0;
-    logLine(`ພິມ ${todo.length} ໃບ ຈາກເທມເພລດ "${template.name}"`);
+    let total = 0;
     try {
-      if (!hasPrinter()) {
+      if (!viaSystem && !hasPrinter()) {
         // Must open the chooser first, while we still hold the tap's user activation.
         const ok = canUseBluetooth() ? await connectBluetooth() : await connectSerial();
         if (!ok) { setToast({ color: "medium", text: NOT_PICKED }); return; }
       }
-      todo = await registerShipments(todo, template);
+      // A label only prints once it's on record — its barcode has to scan.
+      let fresh: BatchItem | null = null;
+      if (formHasData) {
+        fresh = await saveForm();
+        if (!fresh) return;
+        resetForm();
+      }
+      const list = fresh ? [...batch.filter((i) => i.id !== fresh!.id), fresh] : batch;
+      const todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
+      total = todo.length;
+      if (!total) return;
       await ensureFontsLoaded();
       await preloadTemplateImages(template);
+
+      if (viaSystem) {
+        await printViaSystem(todo.map((i) => render(i, false).canvas), paper);
+        todo.forEach(markPrinted);
+        return;
+      }
+      logLine(`ພິມ ${total} ໃບ ຈາກເທມເພລດ "${template.name}"`);
       for (const item of todo) {
-        setBatchProgress({ done, total: todo.length });
+        setBatchProgress({ done, total });
         const page = render(item, true);
         await sendToPrinter(buildTsplJob([page.canvas], paper, [page.barcodes]), settings);
-        markPrinted([item.id]);
+        markPrinted(item);
         done++;
       }
       setToast({ color: "success", text: `ສົ່ງໄປພິມແລ້ວ ${done} ໃບ` });
     } catch (err) {
       logLine(`ຜິດພາດ — ${errorText(err)}`);
-      setToast({ color: "danger", text: `ພິມໄດ້ ${done}/${todo.length} ໃບ — ${errorText(err)}` });
+      setToast({ color: "danger", text: total ? `ພິມໄດ້ ${done}/${total} ໃບ — ${errorText(err)}` : errorText(err) });
     } finally {
       setBatchProgress(null);
     }
   }
 
   const busy = printer.status === "printing" || printer.status === "connecting" || !!batchProgress;
-  const batchMode = !!activeTemplate && (batch.length > 0 || formItems.length > 0);
-  const pendingCount = batch.filter((i) => !i.printed).length + (formHasData ? 1 : 0);
+  const editingUnprinted = !!formId && batch.some((i) => i.id === formId && !i.printed);
+  // A filled-in template label always goes through the list: saved, then printed.
+  const batchMode = !!activeTemplate && (batch.length > 0 || formHasData);
+  const pendingCount = batch.filter((i) => !i.printed).length + (formHasData && !editingUnprinted ? 1 : 0);
   const presetId = matchPreset(settings);
   const isLabel = settings.mode === "label";
   const needsSale = usesSale && !selectedSale;
@@ -579,21 +658,44 @@ const PrintBill: React.FC = () => {
     }
   })();
 
+  const headerDot =
+    !canPrintDirect ? "#fbbf24"
+    : printer.status === "connected" ? "#22c55e"
+    : printer.status === "printing" ? "#38bdf8"
+    : printer.status === "connecting" || printer.deviceName ? "#fbbf24"
+    : "#d1d5db";
+
   const mainLabel =
     batchProgress ? `ກຳລັງພິມ ໃບ ${batchProgress.done + 1}/${batchProgress.total} · ${printer.progress}%`
     : printer.status === "printing" ? `ກຳລັງພິມ… ${printer.progress}%`
     : printer.status === "connecting" ? "ກຳລັງເຊື່ອມຕໍ່…"
+    : saving ? "ກຳລັງບັນທຶກບິນ…"
     : batchMode ? (pendingCount > 0 ? `ພິມ ${pendingCount} ໃບ` : `ພິມຊ້ຳທັງໝົດ ${batch.length} ໃບ`)
     : needsSale ? "ເລືອກບິນກ່ອນ"
     : canPrintDirect && !printer.deviceName ? "ເຊື່ອມຕໍ່ ແລະ ພິມບິນ"
     : "ພິມບິນ";
+  // Without Bluetooth/COM in this browser, the same button prints through the system dialog.
+  const printMain = () => (batchMode ? printBatch(!canPrintDirect) : canPrintDirect ? printDirect(receipt) : printSystem());
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
+          {/* The tab bar is hidden on this page (MainTabs) — this is the way back. */}
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/tabs/sell" text="" />
+          </IonButtons>
           <IonTitle style={{ fontWeight: 700 }}>ພິມບິນ</IonTitle>
           <IonButtons slot="end">
+            <IonButton onClick={() => setPrinterOpen(true)} title="ເຄື່ອງພິມ · Bluetooth" aria-label={`ເຄື່ອງພິມ · Bluetooth — ${statusView.text}`}>
+              <span style={{ position: "relative", display: "inline-flex" }}>
+                <IonIcon icon={bluetoothOutline} style={{ fontSize: 24 }} />
+                <span style={{
+                  position: "absolute", top: -2, right: -4, width: 10, height: 10, borderRadius: "50%",
+                  background: headerDot, border: "2px solid var(--ion-toolbar-background, #c25e1e)",
+                }} />
+              </span>
+            </IonButton>
             <IonMenuButton autoHide={false} />
           </IonButtons>
         </IonToolbar>
@@ -603,145 +705,15 @@ const PrintBill: React.FC = () => {
         <div style={{ padding: "16px 16px 28px" }}>
           <div className="print-bill-grid">
             <div>
-              {/* ── Printer ── */}
-              <div style={cardStyle}>
-                <SectionHeading icon={printOutline} label="ເຄື່ອງພິມ" />
+              {printer.status === "connecting" && !printer.deviceName && !printerOpen && (
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "10px 12px", borderRadius: 12, background: "var(--app-surface-alt)",
-                  border: "1px solid var(--app-border)",
+                  marginBottom: 12, padding: "8px 12px", borderRadius: 10,
+                  background: "var(--app-info-surface)", color: "var(--app-info)",
+                  fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.5,
                 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusView.color, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--ion-text-color)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {printer.deviceName ?? "Xprinter XP-480B"}
-                    </div>
-                    <div style={{ fontSize: "0.75rem", color: statusView.color, fontWeight: 600 }}>{statusView.text}</div>
-                  </div>
-                  {printer.status === "connecting" && <IonSpinner name="crescent" style={{ width: 18, height: 18 }} />}
+                  👆 ເລືອກເຄື່ອງພິມໃນໜ້າຕ່າງນ້ອຍທີ່ບຣາວເຊີເປີດຂຶ້ນ ແລ້ວກົດ "ຈັບຄູ່ / Pair"
                 </div>
-                {printer.status === "connecting" && !printer.deviceName && (
-                  <div style={{
-                    marginTop: 8, padding: "8px 12px", borderRadius: 10,
-                    background: "var(--app-info-surface)", color: "var(--app-info)",
-                    fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.5,
-                  }}>
-                    👆 ເລືອກເຄື່ອງພິມໃນໜ້າຕ່າງນ້ອຍທີ່ Chrome ເປີດຂຶ້ນ (ມຸມຊ້າຍເທິງ ໃຕ້ແຖບທີ່ຢູ່ເວັບ) ແລ້ວກົດ "ຈັບຄູ່ / Pair"
-                  </div>
-                )}
-
-                {canPrintDirect ? (
-                  <>
-                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      {printer.deviceName ? (
-                        <IonButton fill="outline" color="medium" size="small" disabled={busy} onClick={() => forgetPrinter()} style={{ flex: 1, "--border-radius": "10px" }}>
-                          ຕັດການເຊື່ອມຕໍ່
-                        </IonButton>
-                      ) : (
-                        <IonButton size="small" disabled={busy || !canUseBluetooth()} onClick={() => handleConnect("ble")} style={{ flex: 1, "--border-radius": "10px" }}>
-                          <IonIcon slot="start" icon={bluetoothOutline} />
-                          ເຊື່ອມຕໍ່
-                        </IonButton>
-                      )}
-                      <IonButton fill="outline" size="small" disabled={busy} onClick={() => printDirect(sampleReceipt(shopName, settings))} style={{ flex: 1, "--border-radius": "10px" }}>
-                        ພິມທົດສອບ
-                      </IonButton>
-                    </div>
-                    {!printer.deviceName && !canAutoReconnect() && printer.status === "disconnected" && (
-                      <div style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55 }}>
-                        ເປີດແອັບໃໝ່ແຕ່ລະເທື່ອ ຕ້ອງກົດ "ເຊື່ອມຕໍ່" 1 ຄັ້ງ — ເຖິງວ່າຄອມ/ມືຖືຈະຈັບຄູ່ເຄື່ອງພິມໄວ້ແລ້ວ,
-                        Chrome ບໍ່ອະນຸຍາດໃຫ້ເວັບໃຊ້ Bluetooth ເອງ ຈົນກວ່າທ່ານຈະເລືອກເຄື່ອງ. ຫຼັງຈາກນັ້ນ ພິມໄດ້ຕະຫຼອດຈົນກວ່າຈະປິດແອັບ.
-                      </div>
-                    )}
-                    {canUseSerial && !printer.deviceName && (
-                      <button
-                        onClick={() => handleConnect("serial")}
-                        disabled={busy}
-                        style={{
-                          marginTop: 10, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
-                          fontFamily: "inherit", fontSize: "0.78rem", fontWeight: 600,
-                          color: "var(--ion-color-primary)", textDecoration: "underline",
-                        }}
-                      >
-                        ຫາບໍ່ເຫັນເຄື່ອງພິມ? ເຊື່ອມຕໍ່ຜ່ານ COM (Bluetooth ທີ່ຈັບຄູ່ໃນ Windows ແລ້ວ)
-                      </button>
-                    )}
-
-                    <Collapsible icon={constructOutline} label="ກວດສອບບັນຫາ (ກົດພິມແລ້ວບໍ່ອອກ)">
-                      <div style={{ fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55, marginBottom: 10 }}>
-                        ລອງກົດທີລະປຸ່ມ ແລ້ວເບິ່ງວ່າປຸ່ມໃດເຮັດໃຫ້ເຄື່ອງພິມມີກະດາດອອກມາ.
-                        ຖ້າເຊື່ອມຕໍ່ຜ່ານ COM: Windows ສ້າງໄວ້ 2 ພອດ — ຖ້າບໍ່ອອກ ໃຫ້ຕັດການເຊື່ອມຕໍ່ ແລ້ວລອງເລືອກອີກພອດໜຶ່ງ.
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-                        <IonButton fill="outline" size="small" disabled={busy} onClick={() => runTest("tspl")} style={{ "--border-radius": "10px" }}>
-                          ທົດສອບ 1 (TSPL)
-                        </IonButton>
-                        <IonButton fill="outline" size="small" disabled={busy} onClick={() => runTest("escpos")} style={{ "--border-radius": "10px" }}>
-                          ທົດສອບ 2 (ESC/POS)
-                        </IonButton>
-                      </div>
-                      {printer.transport === "ble" && printer.channels.length > 1 && (
-                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--app-border)" }}>
-                          <div style={{ fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55, marginBottom: 8 }}>
-                            ເຄື່ອງພິມນີ້ມີ {printer.channels.length} ຊ່ອງຮັບຂໍ້ມູນ. ກົດປຸ່ມລຸ່ມນີ້ ແອັບຈະລອງສົ່ງທຸກຊ່ອງ —
-                            ຊ່ອງທີ່ໃຊ້ໄດ້ຈະພິມເລກຂອງມັນອອກມາ (CH1, CH2…). ແລ້ວເລືອກຊ່ອງນັ້ນໃນລາຍການ.
-                          </div>
-                          <IonButton expand="block" size="small" disabled={busy} onClick={runChannelScan} style={{ "--border-radius": "10px" }}>
-                            ຊອກຫາຊ່ອງທີ່ໃຊ້ໄດ້
-                          </IonButton>
-                          <label style={{ display: "block", marginTop: 10 }}>
-                            <span style={fieldLabel}>ຊ່ອງສົ່ງຂໍ້ມູນ</span>
-                            <select
-                              className="print-bill-input"
-                              value={printer.channel ?? ""}
-                              disabled={busy}
-                              onChange={(e) => selectChannel(e.target.value)}
-                            >
-                              {printer.channels.map((uuid, i) => (
-                                <option key={uuid} value={uuid}>CH{i + 1} · {channelShort(uuid)}</option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
-                        <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ບັນທຶກການເຮັດວຽກ</span>
-                        <IonButton fill="clear" size="small" disabled={!printer.log.length} onClick={copyLog}>ຄັດລອກ</IonButton>
-                        <IonButton fill="clear" size="small" color="medium" disabled={!printer.log.length} onClick={clearPrinterLog}>ລ້າງ</IonButton>
-                      </div>
-                      <pre style={{
-                        margin: 0, padding: "8px 10px", borderRadius: 10, maxHeight: 200, overflow: "auto",
-                        background: "var(--app-surface-alt)", border: "1px solid var(--app-border)",
-                        fontFamily: "ui-monospace, Consolas, monospace", fontSize: "0.68rem", lineHeight: 1.5,
-                        color: "var(--app-text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-all",
-                      }}>
-                        {printer.log.length ? printer.log.join("\n") : "ຍັງບໍ່ມີບັນທຶກ"}
-                      </pre>
-                    </Collapsible>
-                  </>
-                ) : (
-                  <div style={{
-                    marginTop: 12, padding: "10px 12px", borderRadius: 12,
-                    background: "var(--app-warning-surface)", color: "var(--app-warning)",
-                    fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.5,
-                  }}>
-                    {btSupport === "needs-extension" ? (
-                      <>
-                        {NEEDS_BEACIO}
-                        <div style={{ fontWeight: 500, marginTop: 4 }}>
-                          1. ຕິດຕັ້ງແອັບ beacio ຈາກ App Store · 2. ໃນ Safari ກົດປຸ່ມເມນູຂ້າງແຖບທີ່ຢູ່ເວັບ → ຈັດການສ່ວນຂະຫຍາຍ →
-                          ເປີດ beacio → "ອະນຸຍາດໃນທຸກເວັບໄຊ" · 3. ໂຫຼດໜ້ານີ້ໃໝ່. (ຫຼື ເປີດລິ້ງນີ້ໃນແອັບ Bluefy)
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        ບຣາວເຊີນີ້ເຊື່ອມຕໍ່ Bluetooth ໂດຍກົງບໍ່ໄດ້.
-                        ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows — ຫຼື ກົດ "ພິມບິນ" ເພື່ອພິມຜ່ານລະບົບ.
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* ── Layout: standard bill or a shop template ── */}
               {(isOwner || templates.length > 0) && (
@@ -798,7 +770,7 @@ const PrintBill: React.FC = () => {
                 <div style={cardStyle}>
                   <SectionHeading
                     icon={pencilOutline}
-                    label="ກອກຂໍ້ມູນ"
+                    label={formId ? `ແກ້ໄຂບິນ ${formId}` : "ກອກຂໍ້ມູນ"}
                     right={
                       <IonButton size="small" fill="clear" color="medium" onClick={resetForm} style={{ margin: 0 }}>
                         ລ້າງ
@@ -899,7 +871,7 @@ const PrintBill: React.FC = () => {
                   )}
                   {showProducts && !formItems.length && formHasData && (
                     <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.5 }}>
-                      ຍັງບໍ່ໄດ້ເລືອກສິນຄ້າ — ບິນນີ້ຈະບໍ່ມີບາໂຄດສະແກນ ແລະ ບໍ່ຕັດສະຕັອກ
+                      ຍັງບໍ່ໄດ້ເລືອກສິນຄ້າ — ສະແກນບິນນີ້ແລ້ວຈະບໍ່ຕັດສະຕັອກ
                     </div>
                   )}
                   {formItems.length > 0 && !usesScan && (
@@ -908,56 +880,63 @@ const PrintBill: React.FC = () => {
                       ບິນຍັງຂາຍໄດ້ຈາກລາຍການໃນໜ້າ ສະແກນບິນ
                     </div>
                   )}
-                  <IonButton expand="block" fill="outline" disabled={!formHasData || busy} onClick={addToBatch} style={{ marginTop: 14, "--border-radius": "12px" }}>
-                    <IonIcon slot="start" icon={addOutline} />
-                    ເພີ່ມໃສ່ລາຍການພິມ
+                  <IonButton expand="block" fill="outline" disabled={!formHasData || busy || saving} onClick={addToBatch} style={{ marginTop: 14, "--border-radius": "12px" }}>
+                    {saving ? <IonSpinner slot="start" name="crescent" style={{ width: 16, height: 16 }} /> : <IonIcon slot="start" icon={addOutline} />}
+                    {formId ? "ບັນທຶກການແກ້ໄຂ" : "ເພີ່ມໃສ່ລາຍການພິມ"}
                   </IonButton>
                   <div style={{ marginTop: 6, fontSize: "0.72rem", color: "var(--app-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
-                    ພິມຫຼາຍໃບ: ກອກ → ເພີ່ມ → ກອກໃບຕໍ່ໄປ… ແລ້ວກົດ ພິມ ເທື່ອດຽວ
+                    ກົດເພີ່ມແລ້ວ ບິນຖືກບັນທຶກໄວ້ໃນລະບົບທັນທີ (ທຸກເຄື່ອງເຫັນ) · ພິມຫຼາຍໃບ: ກອກ → ເພີ່ມ → … ແລ້ວກົດ ພິມ ເທື່ອດຽວ
                   </div>
                 </div>
               )}
 
-              {activeTemplate && batch.length > 0 && (
+              {activeTemplate && (batch.length > 0 || !!listError) && (
                 <div style={cardStyle}>
                   <SectionHeading
                     icon={listOutline}
                     label={`ລາຍການພິມ (${batch.length} ໃບ)`}
                     right={
-                      <IonButton size="small" fill="clear" color="medium" disabled={busy} onClick={() => setConfirmClear(true)} style={{ margin: 0 }}>
-                        ລ້າງທັງໝົດ
-                      </IonButton>
+                      <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--app-success)" }}>☁ ບັນທຶກໃນລະບົບແລ້ວ</span>
                     }
                   />
+                  {listError && (
+                    <div style={{ color: "var(--app-danger)", fontSize: "0.8rem", fontWeight: 600, marginBottom: 8 }}>ໂຫຼດລາຍການບໍ່ໄດ້ — {listError}</div>
+                  )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 340, overflowY: "auto" }}>
-                    {batch.map((item, i) => (
-                      <div key={item.id} style={{
-                        display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 10px", borderRadius: 12,
-                        background: item.printed ? "var(--app-success-surface)" : "var(--app-surface-alt)",
-                        border: "1px solid var(--app-border)",
-                      }}>
-                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: "var(--app-text-muted)", minWidth: 18 }}>{i + 1}</span>
-                        <div style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {customerFields.filter((f) => f !== roles.item).map((f) => item.fields[f]).filter(Boolean).join(" · ") || "—"}
-                          {!!item.items?.length && (
-                            <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "var(--app-text-muted)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              📦 {itemsSummary(item.items)}
+                    {batch.map((item, i) => {
+                      const sold = item.status === "sold";
+                      return (
+                        <div key={item.id} style={{
+                          display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 10px", borderRadius: 12,
+                          background: item.id === formId ? "var(--app-accent-surface)" : item.printed ? "var(--app-success-surface)" : "var(--app-surface-alt)",
+                          border: `1px solid ${item.id === formId ? "var(--ion-color-primary)" : "var(--app-border)"}`,
+                        }}>
+                          <span style={{ fontWeight: 800, fontSize: "0.8rem", color: "var(--app-text-muted)", minWidth: 18 }}>{i + 1}</span>
+                          <div style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {customerFields.filter((f) => f !== roles.item).map((f) => item.fields[f]).filter(Boolean).join(" · ") || "—"}
+                            {!!item.items?.length && (
+                              <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "var(--app-text-muted)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                📦 {itemsSummary(item.items)}
+                              </div>
+                            )}
+                            <div style={{ fontSize: "0.66rem", fontWeight: 600, color: sold ? "var(--app-success)" : item.printed ? "var(--app-text-secondary)" : "var(--app-warning)" }}>
+                              {item.code} · {sold ? "ຂາຍແລ້ວ (ສະແກນແລ້ວ)" : item.printed ? "ພິມແລ້ວ" : "ຍັງບໍ່ພິມ"}
                             </div>
-                          )}
+                          </div>
+                          {item.printed && <IonIcon icon={checkmarkCircle} aria-label="ພິມແລ້ວ" style={{ color: "var(--app-success)", fontSize: 18, flexShrink: 0 }} />}
+                          <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy || saving || sold} onClick={() => editBatchItem(item)}>
+                            <IonIcon icon={createOutline} />
+                          </button>
+                          <button className="print-icon-btn is-danger" title={item.printed ? "ເອົາອອກຈາກລາຍການ" : "ລຶບ"} disabled={busy || saving} onClick={() => setConfirmRemove(item)}>
+                            <IonIcon icon={trashOutline} />
+                          </button>
                         </div>
-                        {item.printed && <IonIcon icon={checkmarkCircle} aria-label="ພິມແລ້ວ" style={{ color: "var(--app-success)", fontSize: 18, flexShrink: 0 }} />}
-                        <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy} onClick={() => editBatchItem(item)}>
-                          <IonIcon icon={createOutline} />
-                        </button>
-                        <button className="print-icon-btn is-danger" title="ລຶບ" disabled={busy} onClick={() => changeBatch((b) => b.filter((x) => x.id !== item.id))}>
-                          <IonIcon icon={trashOutline} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {batch.some((i) => i.printed) && (
-                    <IonButton size="small" fill="clear" disabled={busy} onClick={() => changeBatch((b) => b.filter((i) => !i.printed))} style={{ marginTop: 6 }}>
-                      ລຶບໃບທີ່ພິມແລ້ວອອກ
+                    <IonButton size="small" fill="clear" disabled={busy} onClick={() => setConfirmClear(true)} style={{ marginTop: 6 }}>
+                      ເອົາໃບທີ່ພິມແລ້ວອອກຈາກລາຍການ
                     </IonButton>
                   )}
                 </div>
@@ -1171,33 +1150,6 @@ const PrintBill: React.FC = () => {
                     display={`${settings.offsetXMm > 0 ? "+" : ""}${settings.offsetXMm} mm`}
                     min={-10} max={10} step={0.5} onChange={(n) => update({ offsetXMm: n })}
                   />
-                  <label style={{ display: "block", marginTop: 12 }}>
-                    <span style={fieldLabel}>ຂະໜາດແພັກເກັດ Bluetooth (byte)</span>
-                    <select
-                      className="print-bill-input"
-                      value={settings.chunkSize}
-                      onChange={(e) => update({ chunkSize: Number(e.target.value) })}
-                    >
-                      <option value={0}>ອັດຕະໂນມັດ ({isIOS ? "iPhone: ລອງ 180, ບໍ່ໄດ້ກໍ 20" : "20"})</option>
-                      {[20, 100, 180, 244, 512].map((n) => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </label>
-                  <label style={{ display: "block", marginTop: 12 }}>
-                    <span style={fieldLabel}>ວິທີສົ່ງຂໍ້ມູນ</span>
-                    <select
-                      className="print-bill-input"
-                      value={settings.writeMode}
-                      onChange={(e) => update({ writeMode: e.target.value as WriteMode })}
-                    >
-                      <option value="auto">ອັດຕະໂນມັດ ({isIOS ? "iPhone: ຊ້າ ແຕ່ຄົບ" : "ຄອມ: ໄວ"})</option>
-                      <option value="fast">ໄວ — ບໍ່ລໍຖ້າເຄື່ອງພິມຕອບ</option>
-                      <option value="paced">ປານກາງ — ເວັ້ນຊ່ວງລະຫວ່າງແພັກເກັດ</option>
-                      <option value="reliable">ຊ້າ ແຕ່ຄົບ — ລໍຖ້າເຄື່ອງພິມຕອບທຸກແພັກເກັດ</option>
-                    </select>
-                    <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--app-text-muted)", lineHeight: 1.5 }}>
-                      ຖ້າພິມອອກມາບໍ່ຄົບ ຫຼື ຕົວໜັງສືຂາດ ໃຫ້ເລືອກ "ຊ້າ ແຕ່ຄົບ"
-                    </div>
-                  </label>
                   <IonButton
                     fill="clear" color="medium" size="small"
                     onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText, templateId: settings.templateId })}
@@ -1257,30 +1209,208 @@ const PrintBill: React.FC = () => {
         </div>
       </IonContent>
 
+      {/* ── Printer & Bluetooth: everything about the connection, in one place ── */}
+      <IonModal isOpen={printerOpen} onDidDismiss={() => setPrinterOpen(false)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle style={{ fontWeight: 700 }}>ເຄື່ອງພິມ · Bluetooth</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setPrinterOpen(false)}>ປິດ</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: 16, maxWidth: 640, margin: "0 auto" }}>
+              <div style={cardStyle}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 12px", borderRadius: 12, background: "var(--app-surface-alt)",
+                  border: "1px solid var(--app-border)",
+                }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusView.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--ion-text-color)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {printer.deviceName ?? "Xprinter XP-480B"}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: statusView.color, fontWeight: 600 }}>{statusView.text}</div>
+                  </div>
+                  {printer.status === "connecting" && <IonSpinner name="crescent" style={{ width: 18, height: 18 }} />}
+                </div>
+                {printer.status === "connecting" && !printer.deviceName && (
+                  <div style={{
+                    marginTop: 8, padding: "8px 12px", borderRadius: 10,
+                    background: "var(--app-info-surface)", color: "var(--app-info)",
+                    fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.5,
+                  }}>
+                    👆 ເລືອກເຄື່ອງພິມໃນໜ້າຕ່າງນ້ອຍທີ່ Chrome ເປີດຂຶ້ນ (ມຸມຊ້າຍເທິງ ໃຕ້ແຖບທີ່ຢູ່ເວັບ) ແລ້ວກົດ "ຈັບຄູ່ / Pair"
+                  </div>
+                )}
+
+                {canPrintDirect ? (
+                  <>
+                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      {printer.deviceName ? (
+                        <IonButton fill="outline" color="medium" size="small" disabled={busy} onClick={() => forgetPrinter()} style={{ flex: 1, "--border-radius": "10px" }}>
+                          ຕັດການເຊື່ອມຕໍ່
+                        </IonButton>
+                      ) : (
+                        <IonButton size="small" disabled={busy || !canUseBluetooth()} onClick={() => handleConnect("ble")} style={{ flex: 1, "--border-radius": "10px" }}>
+                          <IonIcon slot="start" icon={bluetoothOutline} />
+                          ເຊື່ອມຕໍ່
+                        </IonButton>
+                      )}
+                      <IonButton fill="outline" size="small" disabled={busy} onClick={() => printDirect(sampleReceipt(shopName, settings))} style={{ flex: 1, "--border-radius": "10px" }}>
+                        ພິມທົດສອບ
+                      </IonButton>
+                    </div>
+                    {!printer.deviceName && !canAutoReconnect() && printer.status === "disconnected" && (
+                      <div style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55 }}>
+                        ເປີດແອັບໃໝ່ແຕ່ລະເທື່ອ ຕ້ອງກົດ "ເຊື່ອມຕໍ່" 1 ຄັ້ງ — ເຖິງວ່າຄອມ/ມືຖືຈະຈັບຄູ່ເຄື່ອງພິມໄວ້ແລ້ວ,
+                        Chrome ບໍ່ອະນຸຍາດໃຫ້ເວັບໃຊ້ Bluetooth ເອງ ຈົນກວ່າທ່ານຈະເລືອກເຄື່ອງ. ຫຼັງຈາກນັ້ນ ພິມໄດ້ຕະຫຼອດຈົນກວ່າຈະປິດແອັບ.
+                      </div>
+                    )}
+                    {canUseSerial && !printer.deviceName && (
+                      <button
+                        onClick={() => handleConnect("serial")}
+                        disabled={busy}
+                        style={{
+                          marginTop: 10, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
+                          fontFamily: "inherit", fontSize: "0.78rem", fontWeight: 600,
+                          color: "var(--ion-color-primary)", textDecoration: "underline",
+                        }}
+                      >
+                        ຫາບໍ່ເຫັນເຄື່ອງພິມ? ເຊື່ອມຕໍ່ຜ່ານ COM (Bluetooth ທີ່ຈັບຄູ່ໃນ Windows ແລ້ວ)
+                      </button>
+                    )}
+
+                    <Collapsible icon={constructOutline} label="ຕັ້ງຄ່າການເຊື່ອມຕໍ່ ແລະ ກວດສອບບັນຫາ">
+                      <label style={{ display: "block" }}>
+                        <span style={fieldLabel}>ຂະໜາດແພັກເກັດ Bluetooth (byte)</span>
+                        <select
+                          className="print-bill-input"
+                          value={settings.chunkSize}
+                          onChange={(e) => update({ chunkSize: Number(e.target.value) })}
+                        >
+                          <option value={0}>ອັດຕະໂນມັດ ({isIOS ? "iPhone: ລອງ 180, ບໍ່ໄດ້ກໍ 20" : "20"})</option>
+                          {[20, 100, 180, 244, 512].map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </label>
+                      <label style={{ display: "block", marginTop: 12 }}>
+                        <span style={fieldLabel}>ວິທີສົ່ງຂໍ້ມູນ</span>
+                        <select
+                          className="print-bill-input"
+                          value={settings.writeMode}
+                          onChange={(e) => update({ writeMode: e.target.value as WriteMode })}
+                        >
+                          <option value="auto">ອັດຕະໂນມັດ ({isIOS ? "iPhone: ຊ້າ ແຕ່ຄົບ" : "ຄອມ: ໄວ"})</option>
+                          <option value="fast">ໄວ — ບໍ່ລໍຖ້າເຄື່ອງພິມຕອບ</option>
+                          <option value="paced">ປານກາງ — ເວັ້ນຊ່ວງລະຫວ່າງແພັກເກັດ</option>
+                          <option value="reliable">ຊ້າ ແຕ່ຄົບ — ລໍຖ້າເຄື່ອງພິມຕອບທຸກແພັກເກັດ</option>
+                        </select>
+                        <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--app-text-muted)", lineHeight: 1.5 }}>
+                          ຖ້າພິມອອກມາບໍ່ຄົບ ຫຼື ຕົວໜັງສືຂາດ ໃຫ້ເລືອກ 20 ແລະ "ຊ້າ ແຕ່ຄົບ"
+                        </div>
+                      </label>
+                      <div style={{ fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55, margin: "14px 0 10px", paddingTop: 12, borderTop: "1px dashed var(--app-border)" }}>
+                        ລອງກົດທີລະປຸ່ມ ແລ້ວເບິ່ງວ່າປຸ່ມໃດເຮັດໃຫ້ເຄື່ອງພິມມີກະດາດອອກມາ.
+                        ຖ້າເຊື່ອມຕໍ່ຜ່ານ COM: Windows ສ້າງໄວ້ 2 ພອດ — ຖ້າບໍ່ອອກ ໃຫ້ຕັດການເຊື່ອມຕໍ່ ແລ້ວລອງເລືອກອີກພອດໜຶ່ງ.
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                        <IonButton fill="outline" size="small" disabled={busy} onClick={() => runTest("tspl")} style={{ "--border-radius": "10px" }}>
+                          ທົດສອບ 1 (TSPL)
+                        </IonButton>
+                        <IonButton fill="outline" size="small" disabled={busy} onClick={() => runTest("escpos")} style={{ "--border-radius": "10px" }}>
+                          ທົດສອບ 2 (ESC/POS)
+                        </IonButton>
+                      </div>
+                      {printer.transport === "ble" && printer.channels.length > 1 && (
+                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--app-border)" }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55, marginBottom: 8 }}>
+                            ເຄື່ອງພິມນີ້ມີ {printer.channels.length} ຊ່ອງຮັບຂໍ້ມູນ. ກົດປຸ່ມລຸ່ມນີ້ ແອັບຈະລອງສົ່ງທຸກຊ່ອງ —
+                            ຊ່ອງທີ່ໃຊ້ໄດ້ຈະພິມເລກຂອງມັນອອກມາ (CH1, CH2…). ແລ້ວເລືອກຊ່ອງນັ້ນໃນລາຍການ.
+                          </div>
+                          <IonButton expand="block" size="small" disabled={busy} onClick={runChannelScan} style={{ "--border-radius": "10px" }}>
+                            ຊອກຫາຊ່ອງທີ່ໃຊ້ໄດ້
+                          </IonButton>
+                          <label style={{ display: "block", marginTop: 10 }}>
+                            <span style={fieldLabel}>ຊ່ອງສົ່ງຂໍ້ມູນ</span>
+                            <select
+                              className="print-bill-input"
+                              value={printer.channel ?? ""}
+                              disabled={busy}
+                              onChange={(e) => selectChannel(e.target.value)}
+                            >
+                              {printer.channels.map((uuid, i) => (
+                                <option key={uuid} value={uuid}>CH{i + 1} · {channelShort(uuid)}</option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
+                        <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ບັນທຶກການເຮັດວຽກ</span>
+                        <IonButton fill="clear" size="small" disabled={!printer.log.length} onClick={copyLog}>ຄັດລອກ</IonButton>
+                        <IonButton fill="clear" size="small" color="medium" disabled={!printer.log.length} onClick={clearPrinterLog}>ລ້າງ</IonButton>
+                      </div>
+                      <pre style={{
+                        margin: 0, padding: "8px 10px", borderRadius: 10, maxHeight: 200, overflow: "auto",
+                        background: "var(--app-surface-alt)", border: "1px solid var(--app-border)",
+                        fontFamily: "ui-monospace, Consolas, monospace", fontSize: "0.68rem", lineHeight: 1.5,
+                        color: "var(--app-text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-all",
+                      }}>
+                        {printer.log.length ? printer.log.join("\n") : "ຍັງບໍ່ມີບັນທຶກ"}
+                      </pre>
+                    </Collapsible>
+                  </>
+                ) : (
+                  <div style={{
+                    marginTop: 12, padding: "10px 12px", borderRadius: 12,
+                    background: "var(--app-warning-surface)", color: "var(--app-warning)",
+                    fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.5,
+                  }}>
+                    {btSupport === "needs-extension" ? (
+                      <>
+                        {NEEDS_BEACIO}
+                        <div style={{ fontWeight: 500, marginTop: 4 }}>
+                          1. ຕິດຕັ້ງແອັບ beacio ຈາກ App Store · 2. ໃນ Safari ກົດປຸ່ມເມນູຂ້າງແຖບທີ່ຢູ່ເວັບ → ຈັດການສ່ວນຂະຫຍາຍ →
+                          ເປີດ beacio → "ອະນຸຍາດໃນທຸກເວັບໄຊ" · 3. ໂຫຼດໜ້ານີ້ໃໝ່. (ຫຼື ເປີດລິ້ງນີ້ໃນແອັບ Bluefy)
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        ບຣາວເຊີນີ້ເຊື່ອມຕໍ່ Bluetooth ໂດຍກົງບໍ່ໄດ້.
+                        ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows — ຫຼື ກົດ "ພິມບິນ" ເພື່ອພິມຜ່ານລະບົບ.
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+          </div>
+        </IonContent>
+      </IonModal>
+
       <IonFooter>
         <div style={{
           padding: "10px 16px max(env(safe-area-inset-bottom), 10px)",
           background: "var(--ion-item-background, #fff)",
           borderTop: "1px solid var(--ion-color-step-150, var(--app-border))",
         }}>
-          {printer.status === "printing" && (
+          {(printer.status === "printing" || !!batchProgress) && (
             <div style={{ height: 4, background: "var(--app-border)", borderRadius: 2, overflow: "hidden", margin: "0 auto 8px", maxWidth: 1100 }}>
               <div style={{ height: "100%", width: `${printer.progress}%`, background: "var(--ion-color-primary)", transition: "width 0.15s" }} />
             </div>
           )}
           <div style={{ display: "flex", gap: 10, maxWidth: 1100, margin: "0 auto" }}>
-            {canPrintDirect && (
-              <IonButton fill="outline" disabled={busy} onClick={() => (batchMode ? printBatch(true) : printSystem())} style={{ minHeight: 50, "--border-radius": "14px", flex: "0 0 auto" }}>
-                ພິມຜ່ານລະບົບ
-              </IonButton>
-            )}
             <IonButton
               expand="block"
-              disabled={busy || (!batchMode && needsSale)}
-              onClick={() => (batchMode ? printBatch(!canPrintDirect) : canPrintDirect ? printDirect(receipt) : printSystem())}
+              disabled={busy || saving || (!batchMode && needsSale)}
+              onClick={printMain}
               style={{ minHeight: 50, "--border-radius": "14px", flex: 1, fontWeight: 700 }}
             >
-              {busy ? <IonSpinner slot="start" name="crescent" style={{ width: 18, height: 18 }} /> : <IonIcon slot="start" icon={printOutline} />}
+              {busy || saving
+                ? <IonSpinner slot="start" name="crescent" style={{ width: 18, height: 18 }} />
+                : <IonIcon slot="start" icon={printOutline} />}
               {mainLabel}
             </IonButton>
           </div>
@@ -1307,13 +1437,25 @@ const PrintBill: React.FC = () => {
 
       <IonAlert
         isOpen={confirmClear}
-        header="ລ້າງລາຍການພິມທັງໝົດ?"
-        message={`${batch.length} ໃບ ຈະຖືກລຶບອອກຈາກລາຍການ`}
+        header="ເອົາໃບທີ່ພິມແລ້ວອອກຈາກລາຍການ?"
+        message={`${batch.filter((i) => i.printed).length} ໃບ — ບິນຍັງບັນທຶກຢູ່ໃນລະບົບ ແລະ ສະແກນໄດ້ຄືເກົ່າ`}
         buttons={[
           { text: "ຍົກເລີກ", role: "cancel" },
-          { text: "ລ້າງ", role: "destructive", handler: () => changeBatch(() => []) },
+          { text: "ເອົາອອກ", handler: () => { clearPrinted(); } },
         ]}
         onDidDismiss={() => setConfirmClear(false)}
+      />
+      <IonAlert
+        isOpen={!!confirmRemove}
+        header={confirmRemove?.printed ? "ເອົາບິນນີ້ອອກຈາກລາຍການ?" : "ລຶບບິນນີ້?"}
+        message={confirmRemove?.printed
+          ? "ບິນຍັງບັນທຶກຢູ່ໃນລະບົບ ແລະ ສະແກນໄດ້ຄືເກົ່າ"
+          : "ບິນນີ້ຍັງບໍ່ໄດ້ພິມ — ຈະຖືກລຶບອອກຈາກລະບົບ"}
+        buttons={[
+          { text: "ຍົກເລີກ", role: "cancel" },
+          { text: confirmRemove?.printed ? "ເອົາອອກ" : "ລຶບ", role: "destructive", handler: () => { if (confirmRemove) removeFromList(confirmRemove); } },
+        ]}
+        onDidDismiss={() => setConfirmRemove(null)}
       />
 
       <IonToast

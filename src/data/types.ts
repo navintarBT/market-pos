@@ -163,6 +163,13 @@ export interface Shipment {
   saleId?: string;
   soldAt?: Date;
   soldByName?: string;
+  /** In the print list (on every device). */
+  listed: boolean;
+  /** Times printed; 0 = saved but not printed yet. */
+  printCount: number;
+  printedAt?: Date;
+  /** The sale a sale-based template printed from. */
+  sale: Sale | null;
 }
 
 // ── Print templates ─────────────────────────────────────────────────────────

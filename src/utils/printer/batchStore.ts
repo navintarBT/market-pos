@@ -14,8 +14,10 @@ export interface BatchItem {
   printed: boolean;
   /** Products picked for a shipping label — sold when its barcode is scanned. */
   items?: SaleItem[];
-  /** The label's barcode; set once products are picked. */
+  /** The label's barcode. */
   code?: string;
+  /** Once its barcode is scanned it's sold — and can't be changed any more. */
+  status?: "pending" | "sold";
 }
 
 const key = (templateId: string) => `print-batch-v1:${templateId}`;
@@ -32,6 +34,11 @@ export function loadBatch(templateId: string): BatchItem[] {
   } catch {
     return [];
   }
+}
+
+/** The list now lives in Firestore; this device's old copy goes once it's moved up. */
+export function clearBatch(templateId: string): void {
+  try { localStorage.removeItem(key(templateId)); } catch { /* storage blocked */ }
 }
 
 export function saveBatch(templateId: string, items: BatchItem[]): void {

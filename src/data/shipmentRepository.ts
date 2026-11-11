@@ -3,39 +3,45 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  increment,
+  onSnapshot,
   query,
   runTransaction,
   Timestamp,
+  updateDoc,
   where,
+  writeBatch,
   type DocumentSnapshot,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { newScanCode, priceItemsToTotal } from "../utils/shipment";
 import { writeSaleInTransaction } from "./saleRepository";
-import type { SaleItem, Shipment } from "./types";
+import type { Sale, SaleItem, Shipment } from "./types";
 
 function shipmentsCol(shopId: string) {
   return collection(db, "shops", shopId, "shipments");
 }
 
-export interface ShipmentDraft {
-  code: string;
-  localId: string;
+/** What a label says — everything except its code and bookkeeping. */
+export interface LabelDraft {
   templateId: string;
   fields: Record<string, string>;
   customerName: string;
   phone: string;
   branch: string;
+  /** Amount collected on delivery. 0 = paid already. */
   cod: number;
   items: SaleItem[];
+  /** Only for templates that print a sale's data. */
+  sale: Sale | null;
 }
 
 /** Firestore rejects `undefined` anywhere in a document (e.g. a missing costPrice). */
 const plain = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
-function details(d: ShipmentDraft) {
+function details(d: LabelDraft) {
   return plain({
-    localId: d.localId,
     templateId: d.templateId,
     fields: d.fields,
     customerName: d.customerName,
@@ -43,55 +49,87 @@ function details(d: ShipmentDraft) {
     branch: d.branch,
     cod: d.cod,
     items: d.items,
+    sale: d.sale, // its date becomes an ISO string — read back in fromDoc
   });
 }
 
-/**
- * Registers labels before they print, so their barcodes can be scanned.
- * Printing the same entry again updates it (until it's sold). Returns each
- * entry's final code — a code already taken by another label (in the shop,
- * or earlier in this same print run) gets a new one, so no two labels ever
- * share a barcode.
- */
-export async function saveShipments(
-  shopId: string,
-  drafts: ShipmentDraft[],
-  by: { uid: string; name: string },
-): Promise<Map<string, string>> {
-  const codes = new Map<string, string>();
-  if (!drafts.length) return codes;
-  // Offline there's no way to check a new code isn't taken — and a label
-  // can't be sold by scanning offline anyway.
-  if (!navigator.onLine) throw new Error("ຕ້ອງເຊື່ອມຕໍ່ອິນເຕີເນັດ ເພື່ອສ້າງບາໂຄດທີ່ບໍ່ຊ້ຳກັນ");
-  const created = { status: "pending", createdAt: Timestamp.now(), createdByUid: by.uid, createdByName: by.name };
+const OFFLINE = "ຕ້ອງເຊື່ອມຕໍ່ອິນເຕີເນັດ ເພື່ອບັນທຶກບິນ";
 
-  await runTransaction(db, async (tx) => {
-    codes.clear();
-    const plan: { draft: ShipmentDraft; code: string; snap: DocumentSnapshot }[] = [];
-    const used = new Set<string>();
-    const taken = (code: string, snap: DocumentSnapshot, draft: ShipmentDraft) =>
-      used.has(code) || (snap.exists() && snap.data().localId !== draft.localId);
-    // Reads first (a transaction's rule) — including fresh codes for clashes.
-    for (const draft of drafts) {
-      let code = draft.code;
-      let snap = await tx.get(doc(shipmentsCol(shopId), code));
-      for (let i = 0; taken(code, snap, draft); i++) {
-        if (i === 10) throw new Error("ສ້າງບາໂຄດບໍ່ສຳເລັດ — ລອງພິມໃໝ່");
-        code = newScanCode();
-        snap = await tx.get(doc(shipmentsCol(shopId), code));
-      }
-      used.add(code);
-      plan.push({ draft, code, snap });
+/**
+ * Saves a new label: from now on it's in the print list on every device,
+ * and its code (the barcode) is taken. The code checked free inside a
+ * transaction, so no two labels ever share one — which needs a connection.
+ *
+ * `legacyId`: an entry from the old on-device list that may already be
+ * here (printed with products, under its code) — then it's just put back
+ * on the list instead of being copied.
+ */
+export async function createLabel(
+  shopId: string,
+  draft: LabelDraft,
+  opts: { code: string; by: { uid: string; name: string }; legacyId?: string; printed?: boolean },
+): Promise<string> {
+  if (!navigator.onLine) throw new Error(OFFLINE);
+  return runTransaction(db, async (tx) => {
+    let code = opts.code;
+    let snap = await tx.get(doc(shipmentsCol(shopId), code));
+    if (snap.exists() && opts.legacyId && snap.data().localId === opts.legacyId) {
+      tx.update(snap.ref, { listed: true });
+      return code;
     }
-    for (const { draft, code, snap } of plan) {
-      const ref = doc(shipmentsCol(shopId), code);
-      if (!snap.exists()) tx.set(ref, { ...details(draft), ...created });
-      else if (snap.data().status === "pending") tx.update(ref, details(draft));
-      // already sold: a reprint changes nothing
-      codes.set(draft.localId, code);
+    for (let i = 0; snap.exists(); i++) {
+      if (i === 10) throw new Error("ສ້າງບາໂຄດບໍ່ສຳເລັດ — ລອງໃໝ່");
+      code = newScanCode();
+      snap = await tx.get(doc(shipmentsCol(shopId), code));
     }
+    const now = Timestamp.now();
+    tx.set(doc(shipmentsCol(shopId), code), {
+      ...details(draft),
+      localId: code,
+      status: "pending",
+      listed: true,
+      printCount: opts.printed ? 1 : 0,
+      printedAt: opts.printed ? now : null,
+      createdAt: now,
+      createdByUid: opts.by.uid,
+      createdByName: opts.by.name,
+    });
+    return code;
   });
-  return codes;
+}
+
+/** Changes a label that isn't sold yet. */
+export async function updateLabel(shopId: string, code: string, draft: LabelDraft): Promise<void> {
+  if (!navigator.onLine) throw new Error(OFFLINE);
+  await updateDoc(doc(shipmentsCol(shopId), code), details(draft));
+}
+
+/**
+ * Bookkeeping that may lag behind (queued offline and sent later) — never
+ * awaited where it could hold up printing.
+ */
+export function markLabelPrinted(shopId: string, code: string): Promise<void> {
+  return updateDoc(doc(shipmentsCol(shopId), code), { printedAt: Timestamp.now(), printCount: increment(1) });
+}
+
+/** Off the print list. The label itself stays (and can still be scanned). */
+export async function unlistLabels(shopId: string, codes: string[]): Promise<void> {
+  const batch = writeBatch(db);
+  for (const code of codes) batch.update(doc(shipmentsCol(shopId), code), { listed: false });
+  await batch.commit();
+}
+
+/** The print list (for every template), live — oldest first. */
+export function watchListedLabels(
+  shopId: string,
+  onChange: (labels: Shipment[]) => void,
+  onError: (err: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    query(shipmentsCol(shopId), where("listed", "==", true)),
+    (snap) => onChange(snap.docs.map(fromDoc).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())),
+    onError,
+  );
 }
 
 function fromDoc(snap: DocumentSnapshot): Shipment {
@@ -113,6 +151,11 @@ function fromDoc(snap: DocumentSnapshot): Shipment {
     saleId: d.saleId,
     soldAt: d.soldAt?.toDate?.(),
     soldByName: d.soldByName,
+    listed: d.listed === true,
+    // Labels from before printing was counted were all printed.
+    printCount: typeof d.printCount === "number" ? d.printCount : 1,
+    printedAt: d.printedAt?.toDate?.(),
+    sale: d.sale ? { ...d.sale, createdAt: new Date(d.sale.createdAt) } : null,
   };
 }
 

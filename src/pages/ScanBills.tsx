@@ -233,6 +233,9 @@ function ShipmentLine({ s, right }: { s: Shipment; right?: React.ReactNode }) {
         </div>
         <div style={{ fontSize: "0.68rem", color: "var(--app-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
           {s.id}
+          {s.status === "pending" && s.printCount === 0 && (
+            <span style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--app-warning)" }}> · ຍັງບໍ່ພິມ</span>
+          )}
         </div>
       </div>
       <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -273,7 +276,8 @@ const ScanBills: React.FC = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const [p, s] = await Promise.all([getPendingShipments(shopId), getSoldShipments(shopId, today)]);
-      setPending(p);
+      // Labels without products are kept too, but there's nothing to sell on them.
+      setPending(p.filter((x) => x.items.length > 0));
       setSold(s);
     } catch (err) {
       setListError(errorText(err));

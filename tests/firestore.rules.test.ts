@@ -16,6 +16,7 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  updateDoc,
   collection,
   addDoc,
   Timestamp,
@@ -361,6 +362,15 @@ describe("shipments", () => {
   it("a different label can't take over a barcode", async () => {
     await seed(PENDING);
     await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, localId: "other", customerName: "ຄົນອື່ນ" }));
+  });
+
+  it("a sold label can still be reprinted or taken off the print list — nothing else", async () => {
+    await seed({ ...PENDING, status: "sold", saleId: "s1", listed: true, printCount: 1 });
+    const db = as("staff-a2");
+    await assertSucceeds(updateDoc(doc(db, PATH), { printCount: 2 }));
+    await assertSucceeds(updateDoc(doc(db, PATH), { listed: false }));
+    await assertFails(updateDoc(doc(db, PATH), { listed: true, cod: 1 }));
+    await assertFails(updateDoc(doc(db, PATH), { status: "pending" }));
   });
 
   it("another shop can't see or touch it", async () => {

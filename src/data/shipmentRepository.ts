@@ -7,7 +7,6 @@ import {
   runTransaction,
   Timestamp,
   where,
-  writeBatch,
   type DocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -50,7 +49,9 @@ function details(d: ShipmentDraft) {
 /**
  * Registers labels before they print, so their barcodes can be scanned.
  * Printing the same entry again updates it (until it's sold). Returns each
- * entry's final code — a code that clashes with another label gets a new one.
+ * entry's final code — a code already taken by another label (in the shop,
+ * or earlier in this same print run) gets a new one, so no two labels ever
+ * share a barcode.
  */
 export async function saveShipments(
   shopId: string,
@@ -59,31 +60,27 @@ export async function saveShipments(
 ): Promise<Map<string, string>> {
   const codes = new Map<string, string>();
   if (!drafts.length) return codes;
+  // Offline there's no way to check a new code isn't taken — and a label
+  // can't be sold by scanning offline anyway.
+  if (!navigator.onLine) throw new Error("ຕ້ອງເຊື່ອມຕໍ່ອິນເຕີເນັດ ເພື່ອສ້າງບາໂຄດທີ່ບໍ່ຊ້ຳກັນ");
   const created = { status: "pending", createdAt: Timestamp.now(), createdByUid: by.uid, createdByName: by.name };
-
-  if (!navigator.onLine) {
-    // Can't check for clashes offline. 1 in a million per label per day —
-    // queue it and let it sync.
-    const batch = writeBatch(db);
-    for (const d of drafts) {
-      batch.set(doc(shipmentsCol(shopId), d.code), { ...details(d), ...created });
-      codes.set(d.localId, d.code);
-    }
-    batch.commit().catch(() => {});
-    return codes;
-  }
 
   await runTransaction(db, async (tx) => {
     codes.clear();
     const plan: { draft: ShipmentDraft; code: string; snap: DocumentSnapshot }[] = [];
+    const used = new Set<string>();
+    const taken = (code: string, snap: DocumentSnapshot, draft: ShipmentDraft) =>
+      used.has(code) || (snap.exists() && snap.data().localId !== draft.localId);
     // Reads first (a transaction's rule) — including fresh codes for clashes.
     for (const draft of drafts) {
       let code = draft.code;
       let snap = await tx.get(doc(shipmentsCol(shopId), code));
-      for (let i = 0; snap.exists() && snap.data().localId !== draft.localId && i < 5; i++) {
+      for (let i = 0; taken(code, snap, draft); i++) {
+        if (i === 10) throw new Error("ສ້າງບາໂຄດບໍ່ສຳເລັດ — ລອງພິມໃໝ່");
         code = newScanCode();
         snap = await tx.get(doc(shipmentsCol(shopId), code));
       }
+      used.add(code);
       plan.push({ draft, code, snap });
     }
     for (const { draft, code, snap } of plan) {

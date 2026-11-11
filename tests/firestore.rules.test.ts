@@ -358,6 +358,11 @@ describe("shipments", () => {
     await assertSucceeds(deleteDoc(doc(as("owner-a"), PATH)));
   });
 
+  it("a different label can't take over a barcode", async () => {
+    await seed(PENDING);
+    await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, localId: "other", customerName: "ຄົນອື່ນ" }));
+  });
+
   it("another shop can't see or touch it", async () => {
     await seed(PENDING);
     const db = as("owner-b");

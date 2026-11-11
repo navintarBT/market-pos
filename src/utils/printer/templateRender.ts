@@ -280,7 +280,10 @@ function drawText(ctx: CanvasRenderingContext2D, el: TemplateTextElement, str: s
   // 600 vs 700 barely differ in Noto Sans Lao — thicken bold visibly.
   m.lineWidth = Math.max(1, el.fontSize / 30);
   const tx = pad + (el.align === "center" ? w / 2 : el.align === "right" ? w : 0);
-  lines.forEach((line, i) => {
+  // Spaces typed in front to push a title toward the middle would shift a
+  // centred (or right-aligned) line off-centre — only left text keeps them.
+  const shown = el.align === "left" ? lines : lines.map((l) => l.trim());
+  shown.forEach((line, i) => {
     const cy = pad + i * lh + lh / 2;
     m.fillText(line, tx, cy);
     if (el.bold) m.strokeText(line, tx, cy);

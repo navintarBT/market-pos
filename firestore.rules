@@ -250,8 +250,11 @@ service cloud.firestore {
           && request.resource.data.items is list
           && request.resource.data.cod is number
           && request.resource.data.cod >= 0;
+        // Only the label that made it (same localId) — a new label can never
+        // take over another one's barcode.
         allow update: if isTenantActive(shopId) && isShopMember(shopId)
           && resource.data.status == 'pending'
+          && request.resource.data.localId == resource.data.localId
           && request.resource.data.items is list
           && request.resource.data.cod is number
           && request.resource.data.cod >= 0

@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { isExtensionActive } from "@beacio/core/detect";
+import { hadNativeBluetooth } from "./bluetoothProbe";
 import type { WriteMode } from "./settings";
 
 /**
@@ -55,15 +57,39 @@ interface SerialApi {
 
 const nav = (typeof navigator !== "undefined" ? navigator : {}) as Navigator & { bluetooth?: BtApi; serial?: SerialApi };
 
-export const canUseBluetooth = !!nav.bluetooth;
+/**
+ * iPhone/iPad (Bluefy, Safari + beacio): iOS accepts writes-without-response
+ * far faster than a printer module drains them and silently drops the
+ * overflow — the label comes out with pieces missing. So there the default is
+ * to wait for the printer to acknowledge every packet.
+ */
+export const isIOS = typeof navigator !== "undefined"
+  && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+/**
+ * - ready: the browser's own Web Bluetooth (Chrome, Edge, Bluefy), or Safari
+ *   on iPhone with the beacio extension switched on (see main.tsx)
+ * - needs-extension: Safari on iPhone without it — the polyfill's stand-in
+ *   navigator.bluetooth can't connect to anything
+ * - none: no Bluetooth from a web page at all (Firefox, desktop Safari…)
+ * Read at call time: the extension can announce itself after page load.
+ */
+export function bluetoothSupport(): "ready" | "needs-extension" | "none" {
+  if (hadNativeBluetooth || isExtensionActive()) return "ready";
+  return isIOS ? "needs-extension" : "none";
+}
+
+export const canUseBluetooth = () => bluetoothSupport() === "ready";
 export const canUseSerial = !!nav.serial;
 /**
- * Whether this Chrome can reconnect a previously chosen printer after the
+ * Whether this browser can reconnect a previously chosen printer after the
  * app is reopened. Without it, the browser's security rules require picking
  * the printer in the chooser once per app session — Windows pairing alone
  * doesn't give a website access to the device.
  */
-export const canAutoReconnect = !!nav.bluetooth?.getDevices;
+export const canAutoReconnect = () => canUseBluetooth() && !!nav.bluetooth?.getDevices;
+
+export const NEEDS_BEACIO = "ກະລຸນາຕິດຕັ້ງ ແລະ ເປີດ extension beacio ໃນ Safari";
 
 const LAST_DEVICE_KEY = "printer-last-ble-id";
 /** Per device: the write size it's known to handle, once a bigger one failed. */
@@ -100,15 +126,6 @@ const PREFERRED_CHARS = new Set([
   "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
 ]);
 const SPP_UUID = u16("1101");
-
-/**
- * iPhone/iPad (Bluefy and similar): iOS accepts writes-without-response far
- * faster than a printer module drains them and silently drops the overflow —
- * the label comes out with pieces missing. So there the default is to wait
- * for the printer to acknowledge every packet.
- */
-export const isIOS = typeof navigator !== "undefined"
-  && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
 /** Gap between packets in "paced" mode. */
 const PACE_MS = 20;
@@ -152,6 +169,10 @@ function setState(patch: Partial<PrinterState>) {
 function subscribe(l: () => void) {
   listeners.add(l);
   return () => { listeners.delete(l); };
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beacio:extension:ready", () => listeners.forEach((l) => l()));
 }
 
 export function usePrinter(): PrinterState {
@@ -266,14 +287,19 @@ async function attachBle(device: BtDevice) {
   });
 }
 
+/** beacio rejects with a BeacioError that carries a code instead of a DOMException. */
+const beacioCode = (err: unknown) => (err && typeof err === "object" && "code" in err ? String((err as { code: unknown }).code) : "");
+
 function isUserCancel(err: unknown) {
   // Closing the chooser rejects with NotFoundError — but so does "Bluetooth
   // is off", which the user does need to hear about. Tell them apart by message.
+  if (beacioCode(err) === "USER_CANCELLED") return true;
   return err instanceof DOMException
     && (err.name === "AbortError" || (err.name === "NotFoundError" && /cancel|no port selected/i.test(err.message)));
 }
 
 function friendlyBtError(err: unknown, pickedDevice: boolean): unknown {
+  if (/^EXTENSION_NOT_(INSTALLED|ENABLED)$/.test(beacioCode(err))) return new Error(NEEDS_BEACIO);
   const msg = err instanceof Error ? err.message : "";
   if (/adapter not available|bluetooth.*(off|unavailable|disabled)/i.test(msg)) {
     return new Error("Bluetooth ຂອງອຸປະກອນນີ້ປິດຢູ່ — ເປີດ Bluetooth ກ່ອນ");
@@ -286,11 +312,18 @@ function friendlyBtError(err: unknown, pickedDevice: boolean): unknown {
 
 /** Opens the browser's Bluetooth chooser. Resolves false if the user cancelled. */
 export async function connectBluetooth(): Promise<boolean> {
-  if (!nav.bluetooth) throw new Error("ບຣາວເຊີນີ້ບໍ່ຮອງຮັບ Bluetooth — ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows");
+  const support = bluetoothSupport();
+  if (support !== "ready" || !nav.bluetooth) {
+    throw new Error(support === "needs-extension" ? NEEDS_BEACIO : "ບຣາວເຊີນີ້ບໍ່ຮອງຮັບ Bluetooth — ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows");
+  }
+  // requestDevice has to be the first thing awaited: Safari (via beacio)
+  // only honours it while still inside the tap that triggered it.
+  const picking = nav.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SERVICES });
+  picking.catch(() => {}); // handled below — just not "unhandled" while we tidy up first
   await disconnectPrinter();
   setState({ status: "connecting" });
   try {
-    const device = await nav.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SERVICES });
+    const device = await picking;
     await attachBle(device);
     try { localStorage.setItem(LAST_DEVICE_KEY, device.id); } catch { /* storage blocked */ }
     return true;

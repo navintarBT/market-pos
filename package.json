@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:https": "cross-env DEV_HTTPS=1 vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test.e2e": "cypress run",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@anouluk/laos-address-typescript": "^1.0.1",
+    "@beacio/core": "^2.2.0",
     "@capacitor/app": "8.1.0",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/core": "8.4.0",
@@ -45,6 +47,7 @@
     "@testing-library/user-event": "^14.4.3",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
     "@vitejs/plugin-legacy": "^5.0.0",
     "@vitejs/plugin-react": "^4.0.1",
     "cross-env": "^10.1.0",

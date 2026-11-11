@@ -43,6 +43,7 @@ import {
   autoReconnect,
   canAutoReconnect,
   canUseBluetooth,
+  bluetoothSupport,
   canUseSerial,
   channelShort,
   clearPrinterLog,
@@ -52,6 +53,7 @@ import {
   hasPrinter,
   isIOS,
   logLine,
+  NEEDS_BEACIO,
   scanChannels,
   selectChannel,
   sendToPrinter,
@@ -85,7 +87,6 @@ import TemplateEditor from "../components/TemplateEditor";
 import { cardStyle, fieldLabel } from "../components/printUiStyles";
 import "./PrintBill.css";
 
-const canPrintDirect = canUseBluetooth || canUseSerial;
 
 const PAYMENT_SHORT: Record<Sale["paymentType"], string> = { cash: "ສົດ", qr: "ໂອນ", cod: "COD" };
 
@@ -102,6 +103,9 @@ const PrintBill: React.FC = () => {
   const { shopId, shopProfile, role } = useAuth();
   const isOwner = role === "customer";
   const printer = usePrinter();
+  // Recomputed every render: on iPhone the beacio extension can come up after load.
+  const btSupport = bluetoothSupport();
+  const canPrintDirect = canUseBluetooth() || canUseSerial;
   const [settings, setSettings] = useState<PrintSettings>(loadSettings);
   const [date, setDate] = useState(() => dateInputStr(new Date()));
   const [sales, setSales] = useState<Sale[]>([]);
@@ -207,7 +211,7 @@ const PrintBill: React.FC = () => {
     try {
       if (!hasPrinter()) {
         // Must open the chooser first, while we still hold the tap's user activation.
-        const ok = canUseBluetooth ? await connectBluetooth() : await connectSerial();
+        const ok = canUseBluetooth() ? await connectBluetooth() : await connectSerial();
         if (!ok) { setToast({ color: "medium", text: NOT_PICKED }); return; }
       }
       const job = await buildJob();
@@ -366,7 +370,7 @@ const PrintBill: React.FC = () => {
     try {
       if (!hasPrinter()) {
         // Must open the chooser first, while we still hold the tap's user activation.
-        const ok = canUseBluetooth ? await connectBluetooth() : await connectSerial();
+        const ok = canUseBluetooth() ? await connectBluetooth() : await connectSerial();
         if (!ok) { setToast({ color: "medium", text: NOT_PICKED }); return; }
       }
       await ensureFontsLoaded();
@@ -463,7 +467,7 @@ const PrintBill: React.FC = () => {
                           ຕັດການເຊື່ອມຕໍ່
                         </IonButton>
                       ) : (
-                        <IonButton size="small" disabled={busy || !canUseBluetooth} onClick={() => handleConnect("ble")} style={{ flex: 1, "--border-radius": "10px" }}>
+                        <IonButton size="small" disabled={busy || !canUseBluetooth()} onClick={() => handleConnect("ble")} style={{ flex: 1, "--border-radius": "10px" }}>
                           <IonIcon slot="start" icon={bluetoothOutline} />
                           ເຊື່ອມຕໍ່
                         </IonButton>
@@ -472,7 +476,7 @@ const PrintBill: React.FC = () => {
                         ພິມທົດສອບ
                       </IonButton>
                     </div>
-                    {!printer.deviceName && !canAutoReconnect && printer.status === "disconnected" && (
+                    {!printer.deviceName && !canAutoReconnect() && printer.status === "disconnected" && (
                       <div style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--app-text-secondary)", lineHeight: 1.55 }}>
                         ເປີດແອັບໃໝ່ແຕ່ລະເທື່ອ ຕ້ອງກົດ "ເຊື່ອມຕໍ່" 1 ຄັ້ງ — ເຖິງວ່າຄອມ/ມືຖືຈະຈັບຄູ່ເຄື່ອງພິມໄວ້ແລ້ວ,
                         Chrome ບໍ່ອະນຸຍາດໃຫ້ເວັບໃຊ້ Bluetooth ເອງ ຈົນກວ່າທ່ານຈະເລືອກເຄື່ອງ. ຫຼັງຈາກນັ້ນ ພິມໄດ້ຕະຫຼອດຈົນກວ່າຈະປິດແອັບ.
@@ -550,8 +554,20 @@ const PrintBill: React.FC = () => {
                     background: "var(--app-warning-surface)", color: "var(--app-warning)",
                     fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.5,
                   }}>
-                    ບຣາວເຊີນີ້ເຊື່ອມຕໍ່ Bluetooth ໂດຍກົງບໍ່ໄດ້ (ເຊັ່ນ iPhone/iPad).
-                    ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows — ຫຼື ກົດ "ພິມບິນ" ເພື່ອພິມຜ່ານລະບົບ.
+                    {btSupport === "needs-extension" ? (
+                      <>
+                        {NEEDS_BEACIO}
+                        <div style={{ fontWeight: 500, marginTop: 4 }}>
+                          1. ຕິດຕັ້ງແອັບ beacio ຈາກ App Store · 2. ໃນ Safari ກົດປຸ່ມເມນູຂ້າງແຖບທີ່ຢູ່ເວັບ → ຈັດການສ່ວນຂະຫຍາຍ →
+                          ເປີດ beacio → "ອະນຸຍາດໃນທຸກເວັບໄຊ" · 3. ໂຫຼດໜ້ານີ້ໃໝ່. (ຫຼື ເປີດລິ້ງນີ້ໃນແອັບ Bluefy)
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        ບຣາວເຊີນີ້ເຊື່ອມຕໍ່ Bluetooth ໂດຍກົງບໍ່ໄດ້.
+                        ໃຊ້ Google Chrome ເທິງ Android ຫຼື Windows — ຫຼື ກົດ "ພິມບິນ" ເພື່ອພິມຜ່ານລະບົບ.
+                      </>
+                    )}
                   </div>
                 )}
               </div>

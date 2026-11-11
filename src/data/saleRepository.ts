@@ -10,6 +10,7 @@ import {
   Timestamp,
   runTransaction,
   writeBatch,
+  type Transaction,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Sale, SaleItem } from "./types";
@@ -43,6 +44,66 @@ function productsCol(shopId: string) {
   return collection(db, "shops", shopId, "products");
 }
 
+/** Stock ran out between picking the items and selling them. */
+export class StockError extends Error {
+  constructor(message: "Insufficient stock" | "Variant not found", readonly productName: string) {
+    super(message);
+  }
+}
+
+/**
+ * Checks stock, takes it off and writes the sale — all inside the caller's
+ * transaction, so a caller can bundle more writes with it (scanning a
+ * shipping label marks the label sold in the same go). Firestore wants every
+ * read before any write: do the caller's own reads first.
+ */
+export async function writeSaleInTransaction(
+  tx: Transaction,
+  shopId: string,
+  items: SaleItem[],
+  sale: { total: number; paymentType: Sale["paymentType"]; sellerUid: string; sellerName: string; shipmentId?: string },
+): Promise<string> {
+  const changes = buildStockChanges(items);
+
+  // Group stock changes by productId so each product is read exactly once
+  const byProduct = new Map<string, StockChange[]>();
+  for (const ch of changes) {
+    const arr = byProduct.get(ch.productId) ?? [];
+    arr.push(ch);
+    byProduct.set(ch.productId, arr);
+  }
+
+  // Phase 1: all reads
+  const snaps = new Map<string, any>();
+  for (const productId of byProduct.keys()) {
+    const ref = doc(productsCol(shopId), productId);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error(`Product ${productId} not found`);
+    snaps.set(productId, snap);
+  }
+
+  // Phase 2: validate + all writes
+  for (const [productId, productChanges] of byProduct) {
+    const snap = snaps.get(productId)!;
+    const ref = doc(productsCol(shopId), productId);
+    const variants: any[] = [...(snap.data().variants ?? [])];
+    const name: string = snap.data().name ?? "";
+    for (const ch of productChanges) {
+      const idx = variants.findIndex(
+        (v) => v.size === ch.size && v.color === ch.color
+      );
+      if (idx === -1) throw new StockError("Variant not found", name);
+      if (variants[idx].stock < ch.qty) throw new StockError("Insufficient stock", name);
+      variants[idx] = { ...variants[idx], stock: variants[idx].stock - ch.qty };
+    }
+    tx.update(ref, { variants });
+  }
+
+  const saleRef = doc(salesCol(shopId));
+  tx.set(saleRef, { items, ...sale, createdAt: Timestamp.now() });
+  return saleRef.id;
+}
+
 /**
  * Record a sale and decrement stock.
  * Online: uses a transaction to verify stock atomically.
@@ -65,46 +126,9 @@ export async function recordSale(
   }
 
   try {
-    return await runTransaction(db, async (tx) => {
-      const changes = buildStockChanges(items);
-
-      // Group stock changes by productId so each product is read exactly once
-      const byProduct = new Map<string, StockChange[]>();
-      for (const ch of changes) {
-        const arr = byProduct.get(ch.productId) ?? [];
-        arr.push(ch);
-        byProduct.set(ch.productId, arr);
-      }
-
-      // Phase 1: all reads
-      const snaps = new Map<string, any>();
-      for (const productId of byProduct.keys()) {
-        const ref = doc(productsCol(shopId), productId);
-        const snap = await tx.get(ref);
-        if (!snap.exists()) throw new Error(`Product ${productId} not found`);
-        snaps.set(productId, snap);
-      }
-
-      // Phase 2: validate + all writes
-      for (const [productId, productChanges] of byProduct) {
-        const snap = snaps.get(productId)!;
-        const ref = doc(productsCol(shopId), productId);
-        const variants: any[] = [...(snap.data().variants ?? [])];
-        for (const ch of productChanges) {
-          const idx = variants.findIndex(
-            (v) => v.size === ch.size && v.color === ch.color
-          );
-          if (idx === -1) throw new Error("Variant not found");
-          if (variants[idx].stock < ch.qty) throw new Error("Insufficient stock");
-          variants[idx] = { ...variants[idx], stock: variants[idx].stock - ch.qty };
-        }
-        tx.update(ref, { variants });
-      }
-
-      const saleRef = doc(salesCol(shopId));
-      tx.set(saleRef, { items, total, paymentType, sellerUid, sellerName, createdAt: Timestamp.now() });
-      return saleRef.id;
-    });
+    return await runTransaction(db, (tx) =>
+      writeSaleInTransaction(tx, shopId, items, { total, paymentType, sellerUid, sellerName })
+    );
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     // Transaction can't run offline — fall back to provisional batch write

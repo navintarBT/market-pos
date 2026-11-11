@@ -1,4 +1,4 @@
-import type { Sale } from "../../data/types";
+import type { Sale, SaleItem } from "../../data/types";
 
 /**
  * Labels queued up to print together from one template — kept in this
@@ -12,6 +12,10 @@ export interface BatchItem {
   /** Only for templates that pull in sale data. */
   sale: Sale | null;
   printed: boolean;
+  /** Products picked for a shipping label — sold when its barcode is scanned. */
+  items?: SaleItem[];
+  /** The label's barcode; set once products are picked. */
+  code?: string;
 }
 
 const key = (templateId: string) => `print-batch-v1:${templateId}`;
@@ -36,5 +40,35 @@ export function saveBatch(templateId: string, items: BatchItem[]): void {
     else localStorage.removeItem(key(templateId));
   } catch {
     // storage blocked or full — the list just won't survive a refresh
+  }
+}
+
+// ── Remembered fields ──
+// Fields that stay filled from one label to the next (and across visits):
+// the sender's name and phone, typed once. Per template, per device.
+
+const pinKey = (templateId: string) => `print-pinned-v1:${templateId}`;
+
+export interface PinnedFields {
+  /** null = never chosen: the template's sender fields. */
+  names: string[] | null;
+  values: Record<string, string>;
+}
+
+export function loadPinned(templateId: string): PinnedFields {
+  try {
+    const raw = localStorage.getItem(pinKey(templateId));
+    if (raw) return JSON.parse(raw) as PinnedFields;
+  } catch {
+    // storage blocked — nothing remembered
+  }
+  return { names: null, values: {} };
+}
+
+export function savePinned(templateId: string, pinned: PinnedFields): void {
+  try {
+    localStorage.setItem(pinKey(templateId), JSON.stringify(pinned));
+  } catch {
+    // storage blocked or full — remembered for this visit only
   }
 }

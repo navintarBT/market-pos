@@ -137,6 +137,34 @@ export interface Sale {
   sellerName?: string;
 }
 
+/**
+ * A shipping label printed with products picked. Its barcode (the id) is
+ * scanned when the parcel goes out — that's when it becomes a sale and the
+ * stock comes off.
+ */
+export interface Shipment {
+  /** 12 digits, printed as the label's barcode. */
+  id: string;
+  /** The print-list entry it came from — tells a reprint apart from a code clash. */
+  localId: string;
+  templateId: string;
+  /** Everything typed on the label, for showing it in the scan list. */
+  fields: Record<string, string>;
+  customerName: string;
+  phone: string;
+  branch: string;
+  /** Amount collected on delivery — the sale's total. 0 = paid already. */
+  cod: number;
+  items: SaleItem[];
+  status: "pending" | "sold";
+  createdAt: Date;
+  createdByUid: string;
+  createdByName: string;
+  saleId?: string;
+  soldAt?: Date;
+  soldByName?: string;
+}
+
 // ── Print templates ─────────────────────────────────────────────────────────
 // A free-form layout for the bill printer, designed by the shop owner.
 // All positions/sizes are millimetres from the paper's top-left corner.

@@ -32,7 +32,7 @@ import { deleteTemplate, saveTemplate } from "../data/printTemplateRepository";
 import type { PrintTemplate, TemplateElement } from "../data/types";
 import { ensureFontsLoaded } from "../utils/printer/receiptRender";
 import { MAX_WIDTH_MM, MIN_WIDTH_MM, PAPER_PRESETS } from "../utils/printer/settings";
-import { AUTO_FIELDS, preloadTemplateImages, renderTemplate, templateFields, type Box } from "../utils/printer/templateRender";
+import { AUTO_FIELDS, preloadTemplateImages, renderTemplate, SCAN_FIELD, templateFields, type Box } from "../utils/printer/templateRender";
 import { MmInput, RangeRow, ToggleRow } from "./printUi";
 import { cardStyle, fieldLabel } from "./printUiStyles";
 import "./TemplateEditor.css";
@@ -216,7 +216,7 @@ const TemplateEditor: React.FC<Props> = ({ isOpen, template, shopName, onDismiss
       case "line": return appendEl({ ...base, type, w: W - 8, h: 3, thickness: 3, dashed: false });
       case "rect": return appendEl({ ...base, type, w: Math.min(40, W - 8), h: 20, thickness: 3, filled: false });
       case "qr": return appendEl({ ...base, type, w: 25, h: 25, value: "" });
-      case "barcode": return appendEl({ ...base, type, w: Math.min(60, W - 8), h: 15, value: "{{ເລກບິນ}}", showText: true });
+      case "barcode": return appendEl({ ...base, type, w: Math.min(60, W - 8), h: 15, value: `{{${SCAN_FIELD}}}`, showText: true });
       case "items": return appendEl({ ...base, type, w: W - 8, h: 40, fontSize: 24 });
     }
   }

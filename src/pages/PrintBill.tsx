@@ -20,8 +20,11 @@ import {
 import {
   addOutline,
   bluetoothOutline,
+  bookmark,
+  bookmarkOutline,
   brushOutline,
   checkmarkCircle,
+  clipboardOutline,
   constructOutline,
   createOutline,
   documentTextOutline,
@@ -37,7 +40,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { getTemplates } from "../data/printTemplateRepository";
 import { getSalesByDateRange } from "../data/saleRepository";
-import type { PrintTemplate, Sale } from "../data/types";
+import { saveShipments, type ShipmentDraft } from "../data/shipmentRepository";
+import type { PrintTemplate, Sale, SaleItem } from "../data/types";
 import { dateFromInputStr, dateInputStr, fmtK, fmtTime } from "../utils/format";
 import {
   autoReconnect,
@@ -77,12 +81,15 @@ import {
   type PrintSettings,
   type WriteMode,
 } from "../utils/printer/settings";
-import { loadBatch, saveBatch, type BatchItem } from "../utils/printer/batchStore";
+import { loadBatch, loadPinned, saveBatch, savePinned, type BatchItem } from "../utils/printer/batchStore";
+import { fieldRole, fieldsByRole, isPhoneField, parseCustomerText, PHONE_MAX_DIGITS } from "../utils/printer/customerPaste";
+import { itemsSummary, itemsTotal, newScanCode } from "../utils/shipment";
 import { printViaSystem } from "../utils/printer/systemPrint";
 import { escPosTest, tsplTextTest } from "../utils/printer/testJobs";
-import { preloadTemplateImages, renderTemplate, templateFields, templateUsesSale } from "../utils/printer/templateRender";
+import { preloadTemplateImages, renderTemplate, SCAN_FIELD, templateFields, templateUsesSale, templateUsesScanCode } from "../utils/printer/templateRender";
 import { buildTsplJob, pageHeightMm } from "../utils/printer/tspl";
 import { Collapsible, MmInput, RangeRow, SectionHeading, ToggleRow } from "../components/printUi";
+import ProductPickerModal from "../components/ProductPickerModal";
 import TemplateEditor from "../components/TemplateEditor";
 import { cardStyle, fieldLabel } from "../components/printUiStyles";
 import "./PrintBill.css";
@@ -100,7 +107,7 @@ function effectiveSettings(s: PrintSettings, t: PrintTemplate | null): PrintSett
 }
 
 const PrintBill: React.FC = () => {
-  const { shopId, shopProfile, role } = useAuth();
+  const { shopId, shopProfile, role, user, displayName } = useAuth();
   const isOwner = role === "customer";
   const printer = usePrinter();
   // Recomputed every render: on iPhone the beacio extension can come up after load.
@@ -121,6 +128,15 @@ const PrintBill: React.FC = () => {
   const [batch, setBatch] = useState<BatchItem[]>([]);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  // A shipping label's products and barcode, while it's being filled in.
+  const [formItems, setFormItems] = useState<SaleItem[]>([]);
+  const [formCode, setFormCode] = useState<string | null>(null);
+  /** Set while a list entry is being edited: it keeps its id, so a reprint updates its bill instead of making a second one. */
+  const [formId, setFormId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  /** Fields kept from label to label (null = the template's sender fields). */
+  const [pinnedNames, setPinnedNames] = useState<string[] | null>(null);
   const fieldRefs = useRef<(HTMLInputElement | null)[]>([]);
   const requestIdRef = useRef(0);
 
@@ -178,13 +194,21 @@ const PrintBill: React.FC = () => {
   const usesSale = activeTemplate ? templateUsesSale(activeTemplate) : true;
   const fields = activeTemplate ? templateFields(activeTemplate) : [];
   const paper = effectiveSettings(settings, activeTemplate);
+  const roles = fieldsByRole(fields);
+  const pinnedSet = new Set(pinnedNames ?? fields.filter((f) => fieldRole(f) === "sender"));
+  /** What changes from customer to customer — everything not remembered. */
+  const customerFields = fields.some((f) => !pinnedSet.has(f)) ? fields.filter((f) => !pinnedSet.has(f)) : fields;
+  const usesScan = activeTemplate ? templateUsesScanCode(activeTemplate) : false;
+  const showProducts = !!activeTemplate && (!!roles.item || usesScan);
+  const canPaste = !!(roles.name || roles.phone || roles.branch || roles.cod);
+  const scanCode = formCode ?? undefined;
 
   /** The chosen layout — a shop template or the standard bill — as printer pages. */
   async function renderPages(data: ReceiptData): Promise<HTMLCanvasElement[]> {
     await ensureFontsLoaded();
     if (!activeTemplate) return renderReceiptPages(data, settings);
     await preloadTemplateImages(activeTemplate);
-    const r = renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues }, { offsetXMm: settings.offsetXMm });
+    const r = renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues, scanCode }, { offsetXMm: settings.offsetXMm });
     return [r.canvas];
   }
 
@@ -196,13 +220,13 @@ const PrintBill: React.FC = () => {
       if (activeTemplate) await preloadTemplateImages(activeTemplate);
       if (cancelled) return;
       const pages = activeTemplate
-        ? [renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues }, { offsetXMm: settings.offsetXMm }).canvas]
+        ? [renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues, scanCode }, { offsetXMm: settings.offsetXMm }).canvas]
         : renderReceiptPages(receipt, settings);
       setPreviewUrls(pages.map((c) => c.toDataURL("image/png")));
       setPreviewHeightMm(pageHeightMm(pages[0], effectiveSettings(settings, activeTemplate)));
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [receipt, settings, activeTemplate, selectedSale, shopName, fieldValues]);
+  }, [receipt, settings, activeTemplate, selectedSale, shopName, fieldValues, scanCode]);
 
   const NOT_PICKED = "ຍັງບໍ່ໄດ້ເລືອກເຄື່ອງພິມ — ຖ້າບໍ່ເຫັນເຄື່ອງພິມໃນລາຍການ ລອງເຊື່ອມຕໍ່ຜ່ານ COM ຫຼື ກົດ ພິມຜ່ານລະບົບ";
 
@@ -287,7 +311,16 @@ const PrintBill: React.FC = () => {
 
   // ── Several labels from one template, printed in one go ──
   const tplId = settings.templateId;
-  useEffect(() => { setBatch(tplId ? loadBatch(tplId) : []); }, [tplId]);
+  useEffect(() => {
+    setBatch(tplId ? loadBatch(tplId) : []);
+    const pinned = tplId ? loadPinned(tplId) : { names: null, values: {} };
+    setPinnedNames(pinned.names);
+    setFieldValues(pinned.values);
+    setFormItems([]);
+    setFormCode(null);
+    setFormId(null);
+    setPasteText("");
+  }, [tplId]);
 
   // Saved on every change (not from an effect, which could write a stale list back).
   const changeBatch = (fn: (b: BatchItem[]) => BatchItem[]) => {
@@ -298,13 +331,123 @@ const PrintBill: React.FC = () => {
     });
   };
 
-  const formHasData = fields.some((f) => (fieldValues[f] ?? "").trim());
+  // Remembered fields (the sender) don't make a label on their own.
+  const formHasData = formItems.length > 0 || customerFields.some((f) => (fieldValues[f] ?? "").trim());
 
   /** The filled-in form as a list item (null when it's empty). */
   function takeForm(): BatchItem | null {
     if (!formHasData) return null;
     const values = Object.fromEntries(fields.map((f) => [f, (fieldValues[f] ?? "").trim()]).filter(([, v]) => v));
-    return { id: Math.random().toString(36).slice(2, 10), fields: values, sale: usesSale ? selectedSale : null, printed: false };
+    return {
+      id: formId ?? Math.random().toString(36).slice(2, 10), fields: values, sale: usesSale ? selectedSale : null, printed: false,
+      ...(formItems.length ? { items: formItems, code: formCode ?? newScanCode() } : {}),
+    };
+  }
+
+  /** Ready for the next customer: remembered fields stay, the rest clears. */
+  function resetForm() {
+    setFieldValues((v) => Object.fromEntries(Object.entries(v).filter(([f]) => pinnedSet.has(f))));
+    setFormItems([]);
+    setFormCode(null);
+    setFormId(null);
+    setPasteText("");
+  }
+
+  const focusFirstCustomerField = () =>
+    requestAnimationFrame(() => fieldRefs.current[Math.max(0, fields.indexOf(customerFields[0]))]?.focus());
+
+  function rememberValues(names: string[], values: Record<string, string>) {
+    if (!tplId) return;
+    savePinned(tplId, { names, values: Object.fromEntries(names.filter((n) => values[n]).map((n) => [n, values[n]])) });
+  }
+
+  function setField(f: string, raw: string) {
+    let value = raw;
+    if (isPhoneField(f)) value = raw.replace(/\D/g, "").slice(0, PHONE_MAX_DIGITS);
+    else if (f === roles.cod) {
+      const digits = raw.replace(/\D/g, "");
+      value = digits ? fmtK(Number(digits)) : "";
+    }
+    const next = { ...fieldValues, [f]: value };
+    setFieldValues(next);
+    if (pinnedSet.has(f)) rememberValues([...pinnedSet], next);
+  }
+
+  function togglePin(f: string) {
+    const names = pinnedSet.has(f) ? [...pinnedSet].filter((n) => n !== f) : [...pinnedSet, f];
+    setPinnedNames(names);
+    rememberValues(names, fieldValues);
+  }
+
+  /** A customer's message from chat → name, phone, branch, COD. */
+  function applyPaste(text: string) {
+    setPasteText(text);
+    const p = parseCustomerText(text);
+    setFieldValues((v) => {
+      const next = { ...v };
+      if (p.name && roles.name) next[roles.name] = p.name;
+      if (p.phone && roles.phone) next[roles.phone] = p.phone;
+      if (p.branch && roles.branch) next[roles.branch] = p.branch;
+      if (p.cod !== undefined && roles.cod) next[roles.cod] = fmtK(p.cod);
+      return next;
+    });
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) applyPaste(text);
+    } catch {
+      setToast({ color: "medium", text: "ກົດຄ້າງໃນຊ່ອງຂໍ້ຄວາມ ແລ້ວເລືອກ ວາງ (Paste)" });
+    }
+  }
+
+  /** Products picked: they fill the item field, and the COD follows their price. */
+  function onPicked(items: SaleItem[]) {
+    setPickerOpen(false);
+    setFormItems(items);
+    setFormCode((c) => (items.length ? c ?? newScanCode() : null));
+    setFieldValues((v) => ({
+      ...v,
+      ...(roles.item ? { [roles.item]: itemsSummary(items) } : {}),
+      ...(roles.cod && items.length ? { [roles.cod]: fmtK(itemsTotal(items)) } : {}),
+    }));
+  }
+
+  /** COD as typed on the label; left empty, it's what the products cost. "0" = paid already. */
+  function codOf(item: BatchItem): number {
+    const typed = roles.cod ? (item.fields[roles.cod] ?? "").replace(/\D/g, "") : "";
+    return typed ? Number(typed) : itemsTotal(item.items ?? []);
+  }
+
+  /**
+   * Labels with products get registered before they print, so scanning their
+   * barcode can sell them. Returns the list with final codes (a clash gets a
+   * new one).
+   */
+  async function registerShipments(list: BatchItem[], template: PrintTemplate): Promise<BatchItem[]> {
+    const drafts: ShipmentDraft[] = list.filter((i) => i.items?.length && i.code).map((i) => ({
+      code: i.code!,
+      localId: i.id,
+      templateId: template.id,
+      fields: i.fields,
+      customerName: roles.name ? i.fields[roles.name] ?? "" : "",
+      phone: roles.phone ? i.fields[roles.phone] ?? "" : "",
+      branch: roles.branch ? i.fields[roles.branch] ?? "" : "",
+      cod: codOf(i),
+      items: i.items!,
+    }));
+    if (!drafts.length || !shopId || !user) return list;
+    let codes: Map<string, string>;
+    try {
+      codes = await saveShipments(shopId, drafts, { uid: user.uid, name: displayName });
+    } catch (err) {
+      throw new Error(`ບັນທຶກບິນເພື່ອສະແກນບໍ່ໄດ້ — ${errorText(err)}`);
+    }
+    if (!list.some((i) => codes.has(i.id) && codes.get(i.id) !== i.code)) return list;
+    const withCode = (i: BatchItem) => (codes.has(i.id) ? { ...i, code: codes.get(i.id) } : i);
+    changeBatch((b) => b.map(withCode));
+    return list.map(withCode);
   }
 
   function addToBatch() {
@@ -315,8 +458,8 @@ const PrintBill: React.FC = () => {
     const item = takeForm();
     if (!item) return;
     changeBatch((b) => [...b, item]);
-    setFieldValues({});
-    requestAnimationFrame(() => fieldRefs.current[0]?.focus());
+    resetForm();
+    focusFirstCustomerField();
   }
 
   function editBatchItem(item: BatchItem) {
@@ -324,8 +467,12 @@ const PrintBill: React.FC = () => {
     const current = takeForm();
     changeBatch((b) => [...b.filter((i) => i.id !== item.id), ...(current ? [current] : [])]);
     setFieldValues(item.fields);
+    setFormItems(item.items ?? []);
+    setFormCode(item.code ?? null);
+    setFormId(item.id);
+    setPasteText("");
     if (item.sale && sales.some((s) => s.id === item.sale!.id)) setSelectedId(item.sale.id);
-    requestAnimationFrame(() => fieldRefs.current[0]?.focus());
+    focusFirstCustomerField();
   }
 
   /**
@@ -345,16 +492,17 @@ const PrintBill: React.FC = () => {
     const list = pending ? [...batch, pending] : batch;
     if (pending) {
       changeBatch((b) => [...b, pending]);
-      setFieldValues({});
+      resetForm();
     }
-    const todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
+    let todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
     if (!todo.length) return;
     const pageOf = (item: BatchItem) =>
-      renderTemplate(template, { sale: item.sale, shopName, fields: item.fields }, { offsetXMm: settings.offsetXMm }).canvas;
+      renderTemplate(template, { sale: item.sale, shopName, fields: item.fields, scanCode: item.code }, { offsetXMm: settings.offsetXMm }).canvas;
     const markPrinted = (ids: string[]) => changeBatch((b) => b.map((i) => (ids.includes(i.id) ? { ...i, printed: true } : i)));
 
     if (viaSystem) {
       try {
+        todo = await registerShipments(todo, template);
         await ensureFontsLoaded();
         await preloadTemplateImages(template);
         await printViaSystem(todo.map(pageOf), paper);
@@ -373,6 +521,7 @@ const PrintBill: React.FC = () => {
         const ok = canUseBluetooth() ? await connectBluetooth() : await connectSerial();
         if (!ok) { setToast({ color: "medium", text: NOT_PICKED }); return; }
       }
+      todo = await registerShipments(todo, template);
       await ensureFontsLoaded();
       await preloadTemplateImages(template);
       for (const item of todo) {
@@ -391,7 +540,7 @@ const PrintBill: React.FC = () => {
   }
 
   const busy = printer.status === "printing" || printer.status === "connecting" || !!batchProgress;
-  const batchMode = !!activeTemplate && batch.length > 0;
+  const batchMode = !!activeTemplate && (batch.length > 0 || formItems.length > 0);
   const pendingCount = batch.filter((i) => !i.printed).length + (formHasData ? 1 : 0);
   const presetId = matchPreset(settings);
   const isLabel = settings.mode === "label";
@@ -592,7 +741,7 @@ const PrintBill: React.FC = () => {
                         <button
                           key={t.id ?? "standard"}
                           disabled={busy}
-                          onClick={() => { update({ templateId: t.id }); setFieldValues({}); }}
+                          onClick={() => update({ templateId: t.id })}
                           style={{
                             padding: "8px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
                             fontSize: "0.82rem", fontWeight: 700,
@@ -623,38 +772,120 @@ const PrintBill: React.FC = () => {
                 </div>
               )}
 
-              {activeTemplate && fields.length > 0 && (
+              {activeTemplate && (fields.length > 0 || showProducts) && (
                 <div style={cardStyle}>
                   <SectionHeading
                     icon={pencilOutline}
                     label="ກອກຂໍ້ມູນ"
                     right={
-                      <IonButton size="small" fill="clear" color="medium" onClick={() => setFieldValues({})} style={{ margin: 0 }}>
+                      <IonButton size="small" fill="clear" color="medium" onClick={resetForm} style={{ margin: 0 }}>
                         ລ້າງ
                       </IonButton>
                     }
                   />
+                  {canPaste && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ວາງຂໍ້ຄວາມລູກຄ້າ</span>
+                        <IonButton size="small" fill="outline" onClick={pasteFromClipboard} style={{ margin: 0, "--border-radius": "10px" }}>
+                          <IonIcon slot="start" icon={clipboardOutline} />
+                          ວາງ
+                        </IonButton>
+                      </div>
+                      <textarea
+                        className="print-bill-input"
+                        rows={2}
+                        value={pasteText}
+                        placeholder="ເຊັ່ນ: ຕ້າ 56945369 ສາຂາພະລານໄຊ cod1.520.000"
+                        onChange={(e) => applyPaste(e.target.value)}
+                        style={{ resize: "vertical" }}
+                      />
+                      <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--app-text-muted)", lineHeight: 1.5 }}>
+                        ກອກ ຊື່ · ເບີໂທ · ສາຂາ · COD ໃຫ້ເອງ — ເລືອກສິນຄ້າກ່ອນ ແລ້ວຈຶ່ງວາງ, COD ຈະເອົາຕາມຂໍ້ຄວາມ
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {fields.map((f, i) => (
-                      <label key={f}>
-                        <span style={fieldLabel}>{f}</span>
+                    {fields.map((f, i) => {
+                      const pinned = pinnedSet.has(f);
+                      const isItem = f === roles.item;
+                      return (
+                        <div key={f}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <label htmlFor={`pb-field-${i}`} style={{ ...fieldLabel, flex: 1 }}>{f}</label>
+                            {!isItem && (
+                              <button
+                                type="button"
+                                onClick={() => togglePin(f)}
+                                title={pinned ? "ຈື່ໄວ້ — ບໍ່ລ້າງເມື່ອເພີ່ມໃບຕໍ່ໄປ" : "ຈື່ຄ່ານີ້ໄວ້ໃຊ້ທຸກໃບ"}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 3, marginBottom: 4,
+                                  padding: "1px 8px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
+                                  fontSize: "0.68rem", fontWeight: 700,
+                                  border: `1px solid ${pinned ? "var(--ion-color-primary)" : "var(--app-border)"}`,
+                                  background: pinned ? "var(--app-accent-surface)" : "none",
+                                  color: pinned ? "var(--ion-color-primary)" : "var(--app-text-muted)",
+                                }}
+                              >
+                                <IonIcon icon={pinned ? bookmark : bookmarkOutline} />
+                                ຈື່
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            id={`pb-field-${i}`}
+                            ref={(n) => { fieldRefs.current[i] = n; }}
+                            className="print-bill-input"
+                            value={fieldValues[f] ?? ""}
+                            readOnly={isItem}
+                            placeholder={isItem ? "ກົດເພື່ອເລືອກສິນຄ້າ" : undefined}
+                            inputMode={isPhoneField(f) ? "tel" : f === roles.cod ? "numeric" : undefined}
+                            enterKeyHint={i < fields.length - 1 ? "next" : "done"}
+                            onClick={isItem ? () => setPickerOpen(true) : undefined}
+                            onChange={(e) => setField(f, e.target.value)}
+                            onKeyDown={(e) => {
+                              // Enter walks down the form; on the last field it adds the label.
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              if (i < fields.length - 1) fieldRefs.current[i + 1]?.focus();
+                              else addToBatch();
+                            }}
+                            style={isItem ? { cursor: "pointer" } : undefined}
+                          />
+                        </div>
+                      );
+                    })}
+                    {showProducts && !roles.item && (
+                      <div>
+                        <span style={fieldLabel}>ສິນຄ້າ</span>
                         <input
-                          ref={(n) => { fieldRefs.current[i] = n; }}
                           className="print-bill-input"
-                          value={fieldValues[f] ?? ""}
-                          enterKeyHint={i < fields.length - 1 ? "next" : "done"}
-                          onChange={(e) => setFieldValues((v) => ({ ...v, [f]: e.target.value }))}
-                          onKeyDown={(e) => {
-                            // Enter walks down the form; on the last field it adds the label.
-                            if (e.key !== "Enter") return;
-                            e.preventDefault();
-                            if (i < fields.length - 1) fieldRefs.current[i + 1]?.focus();
-                            else addToBatch();
-                          }}
+                          readOnly
+                          value={itemsSummary(formItems)}
+                          placeholder="ກົດເພື່ອເລືອກສິນຄ້າ"
+                          onClick={() => setPickerOpen(true)}
+                          style={{ cursor: "pointer" }}
                         />
-                      </label>
-                    ))}
+                      </div>
+                    )}
                   </div>
+                  {showProducts && formCode && (
+                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>
+                      ລະຫັດສະແກນ: <span style={{ fontFamily: "ui-monospace, Consolas, monospace" }}>{formCode}</span>
+                      {" · "}ສະແກນແລ້ວ = ຂາຍ ແລະ ຕັດສະຕັອກ
+                    </div>
+                  )}
+                  {showProducts && !formItems.length && formHasData && (
+                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.5 }}>
+                      ຍັງບໍ່ໄດ້ເລືອກສິນຄ້າ — ບິນນີ້ຈະບໍ່ມີບາໂຄດສະແກນ ແລະ ບໍ່ຕັດສະຕັອກ
+                    </div>
+                  )}
+                  {formItems.length > 0 && !usesScan && (
+                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.5 }}>
+                      ເທມເພລດນີ້ຍັງບໍ່ມີບາໂຄດສະແກນ — {isOwner ? `ກົດ "ແກ້ໄຂ" ແລ້ວເພີ່ມ ບາໂຄດ ({{${SCAN_FIELD}}})` : "ບອກເຈົ້າຂອງຮ້ານໃຫ້ເພີ່ມບາໂຄດ"}.
+                      ບິນຍັງຂາຍໄດ້ຈາກລາຍການໃນໜ້າ ສະແກນບິນ
+                    </div>
+                  )}
                   <IonButton expand="block" fill="outline" disabled={!formHasData || busy} onClick={addToBatch} style={{ marginTop: 14, "--border-radius": "12px" }}>
                     <IonIcon slot="start" icon={addOutline} />
                     ເພີ່ມໃສ່ລາຍການພິມ
@@ -685,7 +916,12 @@ const PrintBill: React.FC = () => {
                       }}>
                         <span style={{ fontWeight: 800, fontSize: "0.8rem", color: "var(--app-text-muted)", minWidth: 18 }}>{i + 1}</span>
                         <div style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {fields.map((f) => item.fields[f]).filter(Boolean).join(" · ") || "—"}
+                          {customerFields.filter((f) => f !== roles.item).map((f) => item.fields[f]).filter(Boolean).join(" · ") || "—"}
+                          {!!item.items?.length && (
+                            <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "var(--app-text-muted)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              📦 {itemsSummary(item.items)}
+                            </div>
+                          )}
                         </div>
                         {item.printed && <IonIcon icon={checkmarkCircle} aria-label="ພິມແລ້ວ" style={{ color: "var(--app-success)", fontSize: 18, flexShrink: 0 }} />}
                         <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy} onClick={() => editBatchItem(item)}>
@@ -1021,6 +1257,13 @@ const PrintBill: React.FC = () => {
           </div>
         </div>
       </IonFooter>
+
+      <ProductPickerModal
+        isOpen={pickerOpen}
+        initial={formItems}
+        onDone={onPicked}
+        onDismiss={() => setPickerOpen(false)}
+      />
 
       {isOwner && (
         <TemplateEditor

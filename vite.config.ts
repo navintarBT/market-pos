@@ -50,6 +50,8 @@ export default defineConfig({
           // Only the lazily-loaded print page uses these — keep them in its
           // chunk instead of the vendor chunk every page load pulls in.
           if (id.includes("jsbarcode") || id.includes("qrcode-generator")) return "vendor-print";
+          // The camera barcode reader — only the scan page loads it, on demand.
+          if (id.includes("@zxing")) return "vendor-scan";
           return "vendor";
         },
       },

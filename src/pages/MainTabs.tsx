@@ -21,6 +21,7 @@ import {
 import { Redirect, Route } from "react-router-dom";
 import {
   barChartOutline,
+  barcodeOutline,
   businessOutline,
   cartOutline,
   warningOutline,
@@ -48,6 +49,7 @@ const SalesHistory = lazy(() => import("./SalesHistory"));
 const ShopProfileSettings = lazy(() => import("./ShopProfileSettings"));
 const StaffSettings = lazy(() => import("./StaffSettings"));
 const PrintBill = lazy(() => import("./PrintBill"));
+const ScanBills = lazy(() => import("./ScanBills"));
 
 function RouteFallback() {
   return (
@@ -113,6 +115,7 @@ const MainTabs: React.FC = () => {
     import("./ShopProfileSettings");
     import("./StaffSettings");
     import("./PrintBill");
+    import("./ScanBills");
   }, []);
 
   return (
@@ -212,6 +215,12 @@ const MainTabs: React.FC = () => {
                   <IonItem button detail={false} routerLink="/tabs/print" style={{ "--background-hover": "var(--app-accent-surface)" }}>
                     <IonIcon slot="start" icon={printOutline} color="primary" />
                     <IonLabel style={{ fontWeight: 600 }}>ພິມບິນ</IonLabel>
+                  </IonItem>
+                </IonMenuToggle>
+                <IonMenuToggle autoHide={false}>
+                  <IonItem button detail={false} routerLink="/tabs/scan" style={{ "--background-hover": "var(--app-accent-surface)" }}>
+                    <IonIcon slot="start" icon={barcodeOutline} color="primary" />
+                    <IonLabel style={{ fontWeight: 600 }}>ສະແກນບິນ</IonLabel>
                   </IonItem>
                 </IonMenuToggle>
               </IonList>
@@ -346,6 +355,9 @@ const MainTabs: React.FC = () => {
           </Route>
           <Route exact path="/tabs/print">
             <Suspense fallback={<RouteFallback />}><PrintBill /></Suspense>
+          </Route>
+          <Route exact path="/tabs/scan">
+            <Suspense fallback={<RouteFallback />}><ScanBills /></Suspense>
           </Route>
           <Route exact path="/tabs"><Redirect to="/tabs/sell" /></Route>
         </IonRouterOutlet>

@@ -239,6 +239,33 @@ service cloud.firestore {
           ));
       }
 
+      // Shipping labels printed with products picked (PrintBill). Scanning a
+      // label's barcode (ScanBills) sells it: the sale, the stock and
+      // status 'sold' are written in one transaction, and a sold label is
+      // final — so the same parcel can't be sold twice.
+      match /shipments/{code} {
+        allow read:   if isControlAdmin() || isShopMember(shopId);
+        allow create: if isTenantActive(shopId) && isShopMember(shopId)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.items is list
+          && request.resource.data.cod is number
+          && request.resource.data.cod >= 0;
+        allow update: if isTenantActive(shopId) && isShopMember(shopId)
+          && resource.data.status == 'pending'
+          && request.resource.data.items is list
+          && request.resource.data.cod is number
+          && request.resource.data.cod >= 0
+          && (
+            request.resource.data.status == 'pending'
+            || (request.resource.data.status == 'sold' && request.resource.data.saleId is string)
+          );
+        allow delete: if isTenantActive(shopId) && resource.data.status == 'pending' && (
+          isShopOwner(shopId)
+          || hasStaffPermission(shopId, 'canDeleteSales')
+          || resource.data.createdByUid == request.auth.uid
+        );
+      }
+
       match /transfers/{transferId} {
         allow read:   if isControlAdmin() || isShopMember(shopId);
         allow create: if isTenantActive(shopId) && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canManageProducts'));

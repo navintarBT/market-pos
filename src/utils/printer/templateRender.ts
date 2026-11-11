@@ -26,6 +26,8 @@ export interface TemplateData {
   shopName: string;
   /** Values typed in for the template's own fill-in fields. */
   fields: Record<string, string>;
+  /** The label's scan code — only once products are picked for it. */
+  scanCode?: string;
 }
 
 export interface Box {
@@ -47,7 +49,9 @@ export interface TemplateRender {
 // are filled from the shop / the picked sale; any other name is a fill-in
 // field the user types at print time.
 
-export const AUTO_FIELDS = ["ຊື່ຮ້ານ", "ວັນທີ", "ເວລາ", "ເລກບິນ", "ຜູ້ຂາຍ", "ຍອດລວມ", "ຈຳນວນສິນຄ້າ", "ສ່ວນຫຼຸດ", "ການຊຳລະ"];
+/** Scanning a label's barcode with this in it sells what was picked for it. */
+export const SCAN_FIELD = "ລະຫັດສະແກນ";
+export const AUTO_FIELDS = ["ຊື່ຮ້ານ", "ວັນທີ", "ເວລາ", "ເລກບິນ", "ຜູ້ຂາຍ", "ຍອດລວມ", "ຈຳນວນສິນຄ້າ", "ສ່ວນຫຼຸດ", "ການຊຳລະ", SCAN_FIELD];
 const AUTO_SET = new Set(AUTO_FIELDS);
 const SALE_FIELDS = new Set(["ເລກບິນ", "ຜູ້ຂາຍ", "ຍອດລວມ", "ຈຳນວນສິນຄ້າ", "ສ່ວນຫຼຸດ", "ການຊຳລະ"]);
 
@@ -120,6 +124,14 @@ export function templateFields(t: PrintTemplate): string[] {
   return out;
 }
 
+/** Whether the template prints a scan code (as a barcode, QR or text). */
+export function templateUsesScanCode(t: PrintTemplate): boolean {
+  const expanded = expandBlankFields(t);
+  return t.elements.some((el) =>
+    tokenSources(el, expanded).some((src) => Array.from(src.matchAll(TOKEN_RE)).some((m) => m[1] === SCAN_FIELD))
+  );
+}
+
 /** Whether printing needs a sale picked — an item list, or a sale-only field. */
 export function templateUsesSale(t: PrintTemplate): boolean {
   const expanded = expandBlankFields(t);
@@ -149,6 +161,7 @@ function autoValue(key: string, d: TemplateData): string {
     case "ຈຳນວນສິນຄ້າ": return s ? String(s.items.reduce((n, i) => n + i.quantity, 0)) : "";
     case "ສ່ວນຫຼຸດ": return s ? fmtK(discountOf(s.items)) : "";
     case "ການຊຳລະ": return s ? PAYMENT_LABEL[s.paymentType] : "";
+    case SCAN_FIELD: return d.scanCode ?? "";
   }
   return "";
 }

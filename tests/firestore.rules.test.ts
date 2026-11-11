@@ -298,3 +298,70 @@ describe("print templates", () => {
     await assertFails(setDoc(doc(as("owner-a"), "shops/shop-a/printTemplates/t2"), TEMPLATE));
   });
 });
+
+describe("shipments", () => {
+  const PENDING = {
+    localId: "x1", templateId: "t1", fields: {}, customerName: "ຕ້າ", phone: "56945369", branch: "ພະລານໄຊ",
+    cod: 1520000, items: [], status: "pending", createdByUid: "staff-a", createdByName: "Staff",
+  };
+  const PATH = "shops/shop-a/shipments/261112000001";
+
+  async function seed(extra?: Record<string, unknown>) {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, "users/owner-a"), { role: "customer", shopId: "shop-a" });
+      await setDoc(doc(db, "users/staff-a"), { role: "staff", shopId: "shop-a" });
+      await setDoc(doc(db, "users/staff-a2"), { role: "staff", shopId: "shop-a" });
+      await setDoc(doc(db, "users/owner-b"), { role: "customer", shopId: "shop-b" });
+      if (extra) await setDoc(doc(db, PATH), extra);
+    });
+  }
+
+  const as = (uid: string) => testEnv.authenticatedContext(uid).firestore();
+
+  it("any member can register a pending label", async () => {
+    await seed();
+    await assertSucceeds(setDoc(doc(as("staff-a"), PATH), PENDING));
+  });
+
+  it("a new label must be pending with a COD amount", async () => {
+    await seed();
+    await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, status: "sold" }));
+    await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, cod: "1520000" }));
+    await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, cod: -1 }));
+  });
+
+  it("a pending label can be edited, then sold once", async () => {
+    await seed(PENDING);
+    const db = as("staff-a2");
+    await assertSucceeds(setDoc(doc(db, PATH), { ...PENDING, cod: 100000 }));
+    await assertSucceeds(setDoc(doc(db, PATH), { ...PENDING, status: "sold", saleId: "s1" }));
+  });
+
+  it("selling needs the sale's id", async () => {
+    await seed(PENDING);
+    await assertFails(setDoc(doc(as("staff-a"), PATH), { ...PENDING, status: "sold" }));
+  });
+
+  it("a sold label can't be changed or deleted", async () => {
+    await seed({ ...PENDING, status: "sold", saleId: "s1" });
+    await assertFails(setDoc(doc(as("owner-a"), PATH), { ...PENDING, status: "pending" }));
+    await assertFails(setDoc(doc(as("owner-a"), PATH), { ...PENDING, status: "sold", saleId: "s2" }));
+    await assertFails(deleteDoc(doc(as("owner-a"), PATH)));
+  });
+
+  it("a pending label is deleted by the owner or whoever made it", async () => {
+    await seed(PENDING);
+    await assertFails(deleteDoc(doc(as("staff-a2"), PATH)));
+    await assertSucceeds(deleteDoc(doc(as("staff-a"), PATH)));
+    await seed(PENDING);
+    await assertSucceeds(deleteDoc(doc(as("owner-a"), PATH)));
+  });
+
+  it("another shop can't see or touch it", async () => {
+    await seed(PENDING);
+    const db = as("owner-b");
+    await assertFails(getDoc(doc(db, PATH)));
+    await assertFails(setDoc(doc(db, PATH), { ...PENDING, status: "sold", saleId: "s1" }));
+  });
+});

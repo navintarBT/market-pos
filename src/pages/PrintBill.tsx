@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IonAlert,
   IonBackButton,
@@ -20,12 +20,14 @@ import {
   useIonViewWillEnter,
 } from "@ionic/react";
 import {
+  addCircleOutline,
   addOutline,
   bluetoothOutline,
   bookmark,
   bookmarkOutline,
   brushOutline,
   checkmarkCircle,
+  chevronForwardOutline,
   clipboardOutline,
   constructOutline,
   createOutline,
@@ -37,6 +39,7 @@ import {
   receiptOutline,
   resizeOutline,
   settingsOutline,
+  shirtOutline,
   trashOutline,
 } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
@@ -141,6 +144,10 @@ function labelDraft(templateId: string, fields: Record<string, string>, items: S
   };
 }
 
+/** The fill-in form packs label and box on one row — tighter boxes to match. */
+const COMPACT: React.CSSProperties = { padding: "7px 9px", fontSize: "0.88rem" };
+const ROW_LABEL: React.CSSProperties = { fontSize: "0.75rem", fontWeight: 700, color: "var(--app-text-secondary)", lineHeight: 1.25 };
+
 /** A template brings its own paper size; everything else stays per device. */
 function effectiveSettings(s: PrintSettings, t: PrintTemplate | null): PrintSettings {
   return t ? { ...s, widthMm: t.widthMm, heightMm: t.heightMm, mode: t.mode } : s;
@@ -183,7 +190,7 @@ const PrintBill: React.FC = () => {
   const [pasteText, setPasteText] = useState("");
   /** Fields kept from label to label (null = the template's sender fields). */
   const [pinnedNames, setPinnedNames] = useState<string[] | null>(null);
-  const fieldRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const fieldRefs = useRef<(HTMLInputElement | HTMLButtonElement | null)[]>([]);
   const requestIdRef = useRef(0);
 
   useEffect(() => { autoReconnect(); }, []);
@@ -674,6 +681,43 @@ const PrintBill: React.FC = () => {
     : needsSale ? "ເລືອກບິນກ່ອນ"
     : canPrintDirect && !printer.deviceName ? "ເຊື່ອມຕໍ່ ແລະ ພິມບິນ"
     : "ພິມບິນ";
+  /** Products are picked from the shop's list — this has to look like something to tap, not type into. */
+  function pickProductsButton(id: string, ref?: (n: HTMLButtonElement | null) => void, typed?: string) {
+    const picked = formItems.length > 0;
+    const summary = picked ? itemsSummary(formItems) : typed?.trim();
+    return (
+      <button
+        id={id}
+        ref={ref}
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        style={{
+          width: "100%", minHeight: 36, display: "flex", alignItems: "center", gap: 8, textAlign: "left",
+          padding: "5px 10px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
+          border: `1.5px ${picked ? "solid" : "dashed"} var(--ion-color-primary)`,
+          background: "var(--app-accent-surface)", color: "var(--ion-text-color)",
+        }}
+      >
+        <IonIcon icon={picked ? shirtOutline : addCircleOutline} style={{ fontSize: 20, color: "var(--ion-color-primary)", flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          {summary ? (
+            <>
+              <span style={{ display: "block", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {summary}
+              </span>
+              <span style={{ display: "block", fontSize: "0.68rem", color: "var(--app-text-muted)" }}>
+                {picked ? `${formItems.reduce((n, it) => n + it.quantity, 0)} ຊິ້ນ · ${fmtK(itemsTotal(formItems))} ກີບ · ` : ""}ກົດເພື່ອປ່ຽນ
+              </span>
+            </>
+          ) : (
+            <span style={{ display: "block", fontWeight: 800, fontSize: "0.85rem", color: "var(--ion-color-primary)" }}>ກົດເລືອກສິນຄ້າ / ຊຸດ</span>
+          )}
+        </span>
+        <IonIcon icon={chevronForwardOutline} style={{ fontSize: 16, color: "var(--ion-color-primary)", flexShrink: 0 }} />
+      </button>
+    );
+  }
+
   // Without Bluetooth/COM in this browser, the same button prints through the system dialog.
   const printMain = () => (batchMode ? printBatch(!canPrintDirect) : canPrintDirect ? printDirect(receipt) : printSystem());
 
@@ -687,9 +731,9 @@ const PrintBill: React.FC = () => {
           </IonButtons>
           <IonTitle style={{ fontWeight: 700 }}>ພິມບິນ</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={() => setPrinterOpen(true)} title="ເຄື່ອງພິມ · Bluetooth" aria-label={`ເຄື່ອງພິມ · Bluetooth — ${statusView.text}`}>
+            <IonButton onClick={() => setPrinterOpen(true)} title="ຕັ້ງຄ່າການພິມ" aria-label={`ຕັ້ງຄ່າການພິມ — ເຄື່ອງພິມ: ${statusView.text}`}>
               <span style={{ position: "relative", display: "inline-flex" }}>
-                <IonIcon icon={bluetoothOutline} style={{ fontSize: 24 }} />
+                <IonIcon icon={settingsOutline} style={{ fontSize: 24 }} />
                 <span style={{
                   position: "absolute", top: -2, right: -4, width: 10, height: 10, borderRadius: "50%",
                   background: headerDot, border: "2px solid var(--ion-toolbar-background, #c25e1e)",
@@ -767,126 +811,110 @@ const PrintBill: React.FC = () => {
               )}
 
               {activeTemplate && (fields.length > 0 || showProducts) && (
-                <div style={cardStyle}>
-                  <SectionHeading
-                    icon={pencilOutline}
-                    label={formId ? `ແກ້ໄຂບິນ ${formId}` : "ກອກຂໍ້ມູນ"}
-                    right={
-                      <IonButton size="small" fill="clear" color="medium" onClick={resetForm} style={{ margin: 0 }}>
-                        ລ້າງ
-                      </IonButton>
-                    }
-                  />
+                <div style={{ ...cardStyle, padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <IonIcon icon={pencilOutline} style={{ fontSize: 16, color: "var(--ion-color-primary)", flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: "0.88rem", flex: 1, minWidth: 0 }}>
+                      {formId ? `ແກ້ໄຂບິນ ${formId}` : "ກອກຂໍ້ມູນ"}
+                    </span>
+                    {showProducts && formCode && !formId && (
+                      <span title="ລະຫັດສະແກນ" style={{ fontSize: "0.68rem", color: "var(--app-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
+                        {formCode}
+                      </span>
+                    )}
+                    <IonButton size="small" fill="clear" color="medium" onClick={resetForm} style={{ margin: 0, height: 26 }}>
+                      ລ້າງ
+                    </IonButton>
+                  </div>
                   {canPaste && (
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ວາງຂໍ້ຄວາມລູກຄ້າ</span>
-                        <IonButton size="small" fill="outline" onClick={pasteFromClipboard} style={{ margin: 0, "--border-radius": "10px" }}>
-                          <IonIcon slot="start" icon={clipboardOutline} />
-                          ວາງ
-                        </IonButton>
-                      </div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                       <textarea
                         className="print-bill-input"
-                        rows={2}
+                        rows={1}
                         value={pasteText}
-                        placeholder="ເຊັ່ນ: ຕ້າ 56945369 ສາຂາພະລານໄຊ cod1.520.000"
+                        placeholder="ວາງຂໍ້ຄວາມລູກຄ້າ — ກອກ ຊື່ ເບີ ສາຂາ COD ໃຫ້ເອງ"
                         onChange={(e) => applyPaste(e.target.value)}
-                        style={{ resize: "vertical" }}
+                        style={{ ...COMPACT, resize: "vertical", minHeight: 36 }}
                       />
-                      <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--app-text-muted)", lineHeight: 1.5 }}>
-                        ກອກ ຊື່ · ເບີໂທ · ສາຂາ · COD ໃຫ້ເອງ — ເລືອກສິນຄ້າກ່ອນ ແລ້ວຈຶ່ງວາງ, COD ຈະເອົາຕາມຂໍ້ຄວາມ
-                      </div>
+                      <IonButton size="small" fill="outline" onClick={pasteFromClipboard} style={{ margin: 0, height: 36, flexShrink: 0, "--border-radius": "10px" }}>
+                        <IonIcon slot="start" icon={clipboardOutline} />
+                        ວາງ
+                      </IonButton>
                     </div>
                   )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "fit-content(34%) minmax(0, 1fr) auto", gap: "6px 8px", alignItems: "center" }}>
                     {fields.map((f, i) => {
                       const pinned = pinnedSet.has(f);
                       const isItem = f === roles.item;
                       return (
-                        <div key={f}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <label htmlFor={`pb-field-${i}`} style={{ ...fieldLabel, flex: 1 }}>{f}</label>
-                            {!isItem && (
+                        <Fragment key={f}>
+                          <label htmlFor={`pb-field-${i}`} style={ROW_LABEL}>{f}</label>
+                          {isItem ? (
+                            <div style={{ gridColumn: "2 / 4", minWidth: 0 }}>
+                              {pickProductsButton(`pb-field-${i}`, (n) => { fieldRefs.current[i] = n; }, fieldValues[f])}
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                id={`pb-field-${i}`}
+                                ref={(n) => { fieldRefs.current[i] = n; }}
+                                className="print-bill-input"
+                                value={fieldValues[f] ?? ""}
+                                inputMode={isPhoneField(f) ? "tel" : f === roles.cod ? "numeric" : undefined}
+                                enterKeyHint={i < fields.length - 1 ? "next" : "done"}
+                                onChange={(e) => setField(f, e.target.value)}
+                                onKeyDown={(e) => {
+                                  // Enter walks down the form; on the last field it adds the label.
+                                  if (e.key !== "Enter") return;
+                                  e.preventDefault();
+                                  if (i < fields.length - 1) fieldRefs.current[i + 1]?.focus();
+                                  else addToBatch();
+                                }}
+                                style={COMPACT}
+                              />
                               <button
                                 type="button"
+                                className="print-icon-btn"
                                 onClick={() => togglePin(f)}
+                                aria-pressed={pinned}
+                                aria-label={`ຈື່ ${f}`}
                                 title={pinned ? "ຈື່ໄວ້ — ບໍ່ລ້າງເມື່ອເພີ່ມໃບຕໍ່ໄປ" : "ຈື່ຄ່ານີ້ໄວ້ໃຊ້ທຸກໃບ"}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", gap: 3, marginBottom: 4,
-                                  padding: "1px 8px", borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
-                                  fontSize: "0.68rem", fontWeight: 700,
-                                  border: `1px solid ${pinned ? "var(--ion-color-primary)" : "var(--app-border)"}`,
-                                  background: pinned ? "var(--app-accent-surface)" : "none",
-                                  color: pinned ? "var(--ion-color-primary)" : "var(--app-text-muted)",
-                                }}
+                                style={pinned ? { color: "var(--ion-color-primary)", borderColor: "var(--ion-color-primary)", background: "var(--app-accent-surface)" } : undefined}
                               >
                                 <IonIcon icon={pinned ? bookmark : bookmarkOutline} />
-                                ຈື່
                               </button>
-                            )}
-                          </div>
-                          <input
-                            id={`pb-field-${i}`}
-                            ref={(n) => { fieldRefs.current[i] = n; }}
-                            className="print-bill-input"
-                            value={fieldValues[f] ?? ""}
-                            readOnly={isItem}
-                            placeholder={isItem ? "ກົດເພື່ອເລືອກສິນຄ້າ" : undefined}
-                            inputMode={isPhoneField(f) ? "tel" : f === roles.cod ? "numeric" : undefined}
-                            enterKeyHint={i < fields.length - 1 ? "next" : "done"}
-                            onClick={isItem ? () => setPickerOpen(true) : undefined}
-                            onChange={(e) => setField(f, e.target.value)}
-                            onKeyDown={(e) => {
-                              // Enter walks down the form; on the last field it adds the label.
-                              if (e.key !== "Enter") return;
-                              e.preventDefault();
-                              if (i < fields.length - 1) fieldRefs.current[i + 1]?.focus();
-                              else addToBatch();
-                            }}
-                            style={isItem ? { cursor: "pointer" } : undefined}
-                          />
-                        </div>
+                            </>
+                          )}
+                        </Fragment>
                       );
                     })}
                     {showProducts && !roles.item && (
-                      <div>
-                        <span style={fieldLabel}>ສິນຄ້າ</span>
-                        <input
-                          className="print-bill-input"
-                          readOnly
-                          value={itemsSummary(formItems)}
-                          placeholder="ກົດເພື່ອເລືອກສິນຄ້າ"
-                          onClick={() => setPickerOpen(true)}
-                          style={{ cursor: "pointer" }}
-                        />
-                      </div>
+                      <>
+                        <label htmlFor="pb-products" style={ROW_LABEL}>ສິນຄ້າ</label>
+                        <div style={{ gridColumn: "2 / 4", minWidth: 0 }}>{pickProductsButton("pb-products")}</div>
+                      </>
                     )}
                   </div>
-                  {showProducts && formCode && (
-                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>
-                      ລະຫັດສະແກນ: <span style={{ fontFamily: "ui-monospace, Consolas, monospace" }}>{formCode}</span>
-                      {" · "}ສະແກນແລ້ວ = ຂາຍ ແລະ ຕັດສະຕັອກ
-                    </div>
-                  )}
                   {showProducts && !formItems.length && formHasData && (
-                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.5 }}>
+                    <div style={{ marginTop: 6, fontSize: "0.7rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.45 }}>
                       ຍັງບໍ່ໄດ້ເລືອກສິນຄ້າ — ສະແກນບິນນີ້ແລ້ວຈະບໍ່ຕັດສະຕັອກ
                     </div>
                   )}
                   {formItems.length > 0 && !usesScan && (
-                    <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.5 }}>
-                      ເທມເພລດນີ້ຍັງບໍ່ມີບາໂຄດສະແກນ — {isOwner ? `ກົດ "ແກ້ໄຂ" ແລ້ວເພີ່ມ ບາໂຄດ ({{${SCAN_FIELD}}})` : "ບອກເຈົ້າຂອງຮ້ານໃຫ້ເພີ່ມບາໂຄດ"}.
-                      ບິນຍັງຂາຍໄດ້ຈາກລາຍການໃນໜ້າ ສະແກນບິນ
+                    <div style={{ marginTop: 6, fontSize: "0.7rem", color: "var(--app-warning)", fontWeight: 600, lineHeight: 1.45 }}>
+                      ເທມເພລດນີ້ຍັງບໍ່ມີບາໂຄດສະແກນ — {isOwner ? `ກົດ "ແກ້ໄຂ" ແລ້ວເພີ່ມ ບາໂຄດ ({{${SCAN_FIELD}}})` : "ບອກເຈົ້າຂອງຮ້ານໃຫ້ເພີ່ມບາໂຄດ"}
                     </div>
                   )}
-                  <IonButton expand="block" fill="outline" disabled={!formHasData || busy || saving} onClick={addToBatch} style={{ marginTop: 14, "--border-radius": "12px" }}>
+                  <IonButton
+                    expand="block"
+                    fill="outline"
+                    disabled={!formHasData || busy || saving}
+                    onClick={addToBatch}
+                    style={{ marginTop: 10, height: 38, "--border-radius": "10px" }}
+                  >
                     {saving ? <IonSpinner slot="start" name="crescent" style={{ width: 16, height: 16 }} /> : <IonIcon slot="start" icon={addOutline} />}
                     {formId ? "ບັນທຶກການແກ້ໄຂ" : "ເພີ່ມໃສ່ລາຍການພິມ"}
                   </IonButton>
-                  <div style={{ marginTop: 6, fontSize: "0.72rem", color: "var(--app-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
-                    ກົດເພີ່ມແລ້ວ ບິນຖືກບັນທຶກໄວ້ໃນລະບົບທັນທີ (ທຸກເຄື່ອງເຫັນ) · ພິມຫຼາຍໃບ: ກອກ → ເພີ່ມ → … ແລ້ວກົດ ພິມ ເທື່ອດຽວ
-                  </div>
                 </div>
               )}
 
@@ -1009,156 +1037,6 @@ const PrintBill: React.FC = () => {
               </div>
               )}
 
-              {/* ── Size & layout ── */}
-              <div style={cardStyle}>
-                <SectionHeading
-                  icon={resizeOutline}
-                  label={activeTemplate ? "ການພິມ" : "ຂະໜາດເຈ້ຍ"}
-                  right={!activeTemplate && !presetId && (
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "var(--app-accent-surface)", color: "var(--ion-color-primary)" }}>
-                      ກຳນົດເອງ
-                    </span>
-                  )}
-                />
-                {activeTemplate ? (
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-                    <div style={{ flex: 1, fontSize: "0.82rem", color: "var(--app-text-secondary)", lineHeight: 1.5 }}>
-                      ເຈ້ຍ <strong style={{ color: "var(--ion-text-color)" }}>{activeTemplate.widthMm} × {activeTemplate.heightMm} mm</strong>
-                      {" · "}{activeTemplate.mode === "label" ? "ສະຕິກເກີ" : "ມ້ວນຕໍ່ເນື່ອງ"}
-                      <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>ຂະໜາດມາຈາກເທມເພລດ</div>
-                    </div>
-                    {activeTemplate.mode === "label" && (
-                      <label style={{ width: 110 }}>
-                        <span style={fieldLabel}>ຊ່ອງຫວ່າງ (mm)</span>
-                        <MmInput value={settings.gapMm} min={0} max={10} step={0.5} onCommit={(n) => update({ gapMm: n })} />
-                      </label>
-                    )}
-                  </div>
-                ) : (
-                <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-                  {PAPER_PRESETS.map((p) => {
-                    const active = p.id === presetId;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => update({ widthMm: p.widthMm, mode: p.mode, ...(p.mode === "label" ? { heightMm: p.heightMm } : {}) })}
-                        style={{
-                          padding: "8px 4px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
-                          background: active ? "var(--app-accent-surface)" : "var(--app-surface-alt)",
-                          border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--app-border)"}`,
-                          color: active ? "var(--ion-color-primary)" : "var(--ion-text-color)",
-                        }}
-                      >
-                        <div style={{ fontWeight: 800, fontSize: "0.82rem" }}>{p.label}</div>
-                        <div style={{ fontSize: "0.62rem", color: "var(--app-text-muted)", fontWeight: 600 }}>{p.sub}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <IonSegment
-                  value={settings.mode}
-                  onIonChange={(e) => update({ mode: e.detail.value as PrintSettings["mode"] })}
-                  style={{ marginTop: 14 }}
-                >
-                  <IonSegmentButton value="label">ສະຕິກເກີ (ມີຊ່ອງຫວ່າງ)</IonSegmentButton>
-                  <IonSegmentButton value="continuous">ມ້ວນຕໍ່ເນື່ອງ</IonSegmentButton>
-                </IonSegment>
-
-                <div style={{ display: "grid", gridTemplateColumns: isLabel ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr) minmax(0, 2fr)", gap: 8, marginTop: 12 }}>
-                  <label>
-                    <span style={fieldLabel}>ກວ້າງ (mm)</span>
-                    <MmInput value={settings.widthMm} min={MIN_WIDTH_MM} max={MAX_WIDTH_MM} onCommit={(n) => update({ widthMm: n })} />
-                  </label>
-                  {isLabel ? (
-                    <>
-                      <label>
-                        <span style={fieldLabel}>ສູງ (mm)</span>
-                        <MmInput value={settings.heightMm} min={20} max={400} onCommit={(n) => update({ heightMm: n })} />
-                      </label>
-                      <label>
-                        <span style={fieldLabel}>ຊ່ອງຫວ່າງ (mm)</span>
-                        <MmInput value={settings.gapMm} min={0} max={10} step={0.5} onCommit={(n) => update({ gapMm: n })} />
-                      </label>
-                    </>
-                  ) : (
-                    <div>
-                      <span style={fieldLabel}>ຄວາມຍາວ</span>
-                      <div style={{ padding: "9px 0", fontSize: "0.82rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>
-                        ອັດຕະໂນມັດຕາມບິນ{previewHeightMm ? ` (~${previewHeightMm} mm)` : ""}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <RangeRow
-                  label="ຂະໜາດຕົວອັກສອນ" value={settings.fontScale} display={`${settings.fontScale}%`}
-                  min={60} max={200} step={5} onChange={(n) => update({ fontScale: n })}
-                />
-                </>
-                )}
-                <RangeRow
-                  label="ຄວາມເຂັ້ມການພິມ" value={settings.density} display={String(settings.density)}
-                  min={0} max={15} step={1} onChange={(n) => update({ density: n })}
-                />
-
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-                  <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ຈຳນວນສຳເນົາ</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <IonButton size="small" fill="outline" disabled={settings.copies <= 1} onClick={() => update({ copies: settings.copies - 1 })} style={{ "--border-radius": "8px", width: 36 }}>−</IonButton>
-                    <span style={{ minWidth: 28, textAlign: "center", fontWeight: 800 }}>{settings.copies}</span>
-                    <IonButton size="small" fill="outline" disabled={settings.copies >= 10} onClick={() => update({ copies: settings.copies + 1 })} style={{ "--border-radius": "8px", width: 36 }}>+</IonButton>
-                  </div>
-                </div>
-
-                {!activeTemplate && (
-                <Collapsible icon={documentTextOutline} label="ຂໍ້ຄວາມໃນບິນ">
-                  <label style={{ display: "block", marginTop: 4 }}>
-                    <span style={fieldLabel}>ຫົວບິນ (ທີ່ຢູ່, ເບີໂທ…)</span>
-                    <textarea
-                      className="print-bill-input"
-                      rows={2}
-                      value={settings.headerText}
-                      placeholder="ເຊັ່ນ: ບ້ານ…, ເມືອງ… · ໂທ 020 …"
-                      onChange={(e) => update({ headerText: e.target.value })}
-                      style={{ resize: "vertical" }}
-                    />
-                  </label>
-                  <label style={{ display: "block", marginTop: 10 }}>
-                    <span style={fieldLabel}>ທ້າຍບິນ</span>
-                    <input
-                      className="print-bill-input"
-                      value={settings.footerText}
-                      onChange={(e) => update({ footerText: e.target.value })}
-                    />
-                  </label>
-                  <ToggleRow label="ສະແດງຊື່ຜູ້ຂາຍ" checked={settings.showSeller} onChange={(v) => update({ showSeller: v })} />
-                </Collapsible>
-                )}
-
-                <Collapsible icon={settingsOutline} label="ຕັ້ງຄ່າຂັ້ນສູງ">
-                  <ToggleRow label="ໝຸນ 180°" hint="ຖ້າບິນອອກມາປີ້ນຫົວ" checked={settings.rotate180} onChange={(v) => update({ rotate180: v })} />
-                  <ToggleRow
-                    label="ໃຫ້ເຄື່ອງພິມວາດບາໂຄດເອງ"
-                    hint="ສົ່ງຂໍ້ມູນໜ້ອຍລົງຫຼາຍ ພິມໄວຂຶ້ນ — ຖ້າບາໂຄດບໍ່ອອກ ຫຼື ສະແກນບໍ່ໄດ້ ໃຫ້ປິດ"
-                    checked={settings.printerBarcodes}
-                    onChange={(v) => update({ printerBarcodes: v })}
-                  />
-                  <RangeRow
-                    label="ເລື່ອນຊ້າຍ / ຂວາ" value={settings.offsetXMm}
-                    display={`${settings.offsetXMm > 0 ? "+" : ""}${settings.offsetXMm} mm`}
-                    min={-10} max={10} step={0.5} onChange={(n) => update({ offsetXMm: n })}
-                  />
-                  <IonButton
-                    fill="clear" color="medium" size="small"
-                    onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText, templateId: settings.templateId })}
-                    style={{ marginTop: 8 }}
-                  >
-                    ຄືນຄ່າເລີ່ມຕົ້ນ
-                  </IonButton>
-                </Collapsible>
-              </div>
             </div>
 
             {/* ── Preview ── */}
@@ -1209,11 +1087,11 @@ const PrintBill: React.FC = () => {
         </div>
       </IonContent>
 
-      {/* ── Printer & Bluetooth: everything about the connection, in one place ── */}
+      {/* ── Settings: the printer connection and how labels print, out of the way of the form ── */}
       <IonModal isOpen={printerOpen} onDidDismiss={() => setPrinterOpen(false)}>
         <IonHeader>
           <IonToolbar>
-            <IonTitle style={{ fontWeight: 700 }}>ເຄື່ອງພິມ · Bluetooth</IonTitle>
+            <IonTitle style={{ fontWeight: 700 }}>ຕັ້ງຄ່າການພິມ</IonTitle>
             <IonButtons slot="end">
               <IonButton onClick={() => setPrinterOpen(false)}>ປິດ</IonButton>
             </IonButtons>
@@ -1222,6 +1100,7 @@ const PrintBill: React.FC = () => {
         <IonContent>
           <div style={{ padding: 16, maxWidth: 640, margin: "0 auto" }}>
               <div style={cardStyle}>
+                <SectionHeading icon={bluetoothOutline} label="ເຄື່ອງພິມ · Bluetooth" />
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "10px 12px", borderRadius: 12, background: "var(--app-surface-alt)",
@@ -1386,6 +1265,156 @@ const PrintBill: React.FC = () => {
                 )}
               </div>
 
+              {/* ── Size & layout ── */}
+              <div style={cardStyle}>
+                <SectionHeading
+                  icon={resizeOutline}
+                  label={activeTemplate ? "ການພິມ" : "ຂະໜາດເຈ້ຍ"}
+                  right={!activeTemplate && !presetId && (
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "var(--app-accent-surface)", color: "var(--ion-color-primary)" }}>
+                      ກຳນົດເອງ
+                    </span>
+                  )}
+                />
+                {activeTemplate ? (
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+                    <div style={{ flex: 1, fontSize: "0.82rem", color: "var(--app-text-secondary)", lineHeight: 1.5 }}>
+                      ເຈ້ຍ <strong style={{ color: "var(--ion-text-color)" }}>{activeTemplate.widthMm} × {activeTemplate.heightMm} mm</strong>
+                      {" · "}{activeTemplate.mode === "label" ? "ສະຕິກເກີ" : "ມ້ວນຕໍ່ເນື່ອງ"}
+                      <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)" }}>ຂະໜາດມາຈາກເທມເພລດ</div>
+                    </div>
+                    {activeTemplate.mode === "label" && (
+                      <label style={{ width: 110 }}>
+                        <span style={fieldLabel}>ຊ່ອງຫວ່າງ (mm)</span>
+                        <MmInput value={settings.gapMm} min={0} max={10} step={0.5} onCommit={(n) => update({ gapMm: n })} />
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                  {PAPER_PRESETS.map((p) => {
+                    const active = p.id === presetId;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => update({ widthMm: p.widthMm, mode: p.mode, ...(p.mode === "label" ? { heightMm: p.heightMm } : {}) })}
+                        style={{
+                          padding: "8px 4px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+                          background: active ? "var(--app-accent-surface)" : "var(--app-surface-alt)",
+                          border: `1.5px solid ${active ? "var(--ion-color-primary)" : "var(--app-border)"}`,
+                          color: active ? "var(--ion-color-primary)" : "var(--ion-text-color)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 800, fontSize: "0.82rem" }}>{p.label}</div>
+                        <div style={{ fontSize: "0.62rem", color: "var(--app-text-muted)", fontWeight: 600 }}>{p.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <IonSegment
+                  value={settings.mode}
+                  onIonChange={(e) => update({ mode: e.detail.value as PrintSettings["mode"] })}
+                  style={{ marginTop: 14 }}
+                >
+                  <IonSegmentButton value="label">ສະຕິກເກີ (ມີຊ່ອງຫວ່າງ)</IonSegmentButton>
+                  <IonSegmentButton value="continuous">ມ້ວນຕໍ່ເນື່ອງ</IonSegmentButton>
+                </IonSegment>
+
+                <div style={{ display: "grid", gridTemplateColumns: isLabel ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr) minmax(0, 2fr)", gap: 8, marginTop: 12 }}>
+                  <label>
+                    <span style={fieldLabel}>ກວ້າງ (mm)</span>
+                    <MmInput value={settings.widthMm} min={MIN_WIDTH_MM} max={MAX_WIDTH_MM} onCommit={(n) => update({ widthMm: n })} />
+                  </label>
+                  {isLabel ? (
+                    <>
+                      <label>
+                        <span style={fieldLabel}>ສູງ (mm)</span>
+                        <MmInput value={settings.heightMm} min={20} max={400} onCommit={(n) => update({ heightMm: n })} />
+                      </label>
+                      <label>
+                        <span style={fieldLabel}>ຊ່ອງຫວ່າງ (mm)</span>
+                        <MmInput value={settings.gapMm} min={0} max={10} step={0.5} onCommit={(n) => update({ gapMm: n })} />
+                      </label>
+                    </>
+                  ) : (
+                    <div>
+                      <span style={fieldLabel}>ຄວາມຍາວ</span>
+                      <div style={{ padding: "9px 0", fontSize: "0.82rem", color: "var(--app-text-secondary)", fontWeight: 600 }}>
+                        ອັດຕະໂນມັດຕາມບິນ{previewHeightMm ? ` (~${previewHeightMm} mm)` : ""}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <RangeRow
+                  label="ຂະໜາດຕົວອັກສອນ" value={settings.fontScale} display={`${settings.fontScale}%`}
+                  min={60} max={200} step={5} onChange={(n) => update({ fontScale: n })}
+                />
+                </>
+                )}
+                <RangeRow
+                  label="ຄວາມເຂັ້ມການພິມ" value={settings.density} display={String(settings.density)}
+                  min={0} max={15} step={1} onChange={(n) => update({ density: n })}
+                />
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+                  <span style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>ຈຳນວນສຳເນົາ</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <IonButton size="small" fill="outline" disabled={settings.copies <= 1} onClick={() => update({ copies: settings.copies - 1 })} style={{ "--border-radius": "8px", width: 36 }}>−</IonButton>
+                    <span style={{ minWidth: 28, textAlign: "center", fontWeight: 800 }}>{settings.copies}</span>
+                    <IonButton size="small" fill="outline" disabled={settings.copies >= 10} onClick={() => update({ copies: settings.copies + 1 })} style={{ "--border-radius": "8px", width: 36 }}>+</IonButton>
+                  </div>
+                </div>
+
+                {!activeTemplate && (
+                <Collapsible icon={documentTextOutline} label="ຂໍ້ຄວາມໃນບິນ">
+                  <label style={{ display: "block", marginTop: 4 }}>
+                    <span style={fieldLabel}>ຫົວບິນ (ທີ່ຢູ່, ເບີໂທ…)</span>
+                    <textarea
+                      className="print-bill-input"
+                      rows={2}
+                      value={settings.headerText}
+                      placeholder="ເຊັ່ນ: ບ້ານ…, ເມືອງ… · ໂທ 020 …"
+                      onChange={(e) => update({ headerText: e.target.value })}
+                      style={{ resize: "vertical" }}
+                    />
+                  </label>
+                  <label style={{ display: "block", marginTop: 10 }}>
+                    <span style={fieldLabel}>ທ້າຍບິນ</span>
+                    <input
+                      className="print-bill-input"
+                      value={settings.footerText}
+                      onChange={(e) => update({ footerText: e.target.value })}
+                    />
+                  </label>
+                  <ToggleRow label="ສະແດງຊື່ຜູ້ຂາຍ" checked={settings.showSeller} onChange={(v) => update({ showSeller: v })} />
+                </Collapsible>
+                )}
+
+                <Collapsible icon={settingsOutline} label="ຕັ້ງຄ່າຂັ້ນສູງ">
+                  <ToggleRow label="ໝຸນ 180°" hint="ຖ້າບິນອອກມາປີ້ນຫົວ" checked={settings.rotate180} onChange={(v) => update({ rotate180: v })} />
+                  <ToggleRow
+                    label="ໃຫ້ເຄື່ອງພິມວາດບາໂຄດເອງ"
+                    hint="ສົ່ງຂໍ້ມູນໜ້ອຍລົງຫຼາຍ ພິມໄວຂຶ້ນ — ຖ້າບາໂຄດບໍ່ອອກ ຫຼື ສະແກນບໍ່ໄດ້ ໃຫ້ປິດ"
+                    checked={settings.printerBarcodes}
+                    onChange={(v) => update({ printerBarcodes: v })}
+                  />
+                  <RangeRow
+                    label="ເລື່ອນຊ້າຍ / ຂວາ" value={settings.offsetXMm}
+                    display={`${settings.offsetXMm > 0 ? "+" : ""}${settings.offsetXMm} mm`}
+                    min={-10} max={10} step={0.5} onChange={(n) => update({ offsetXMm: n })}
+                  />
+                  <IonButton
+                    fill="clear" color="medium" size="small"
+                    onClick={() => update({ ...DEFAULT_SETTINGS, headerText: settings.headerText, footerText: settings.footerText, templateId: settings.templateId })}
+                    style={{ marginTop: 8 }}
+                  >
+                    ຄືນຄ່າເລີ່ມຕົ້ນ
+                  </IonButton>
+                </Collapsible>
+              </div>
           </div>
         </IonContent>
       </IonModal>

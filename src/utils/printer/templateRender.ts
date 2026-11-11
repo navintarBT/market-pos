@@ -274,6 +274,23 @@ function placeholder(ctx: CanvasRenderingContext2D, label: string, x: number, y:
   ctx.restore();
 }
 
+/** Leftmost and rightmost columns with any ink, or null for a blank canvas. */
+function inkSpan(c: CanvasRenderingContext2D, w: number, h: number): { x0: number; x1: number } | null {
+  const a = c.getImageData(0, 0, w, h).data;
+  let x0 = w;
+  let x1 = -1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w * 4;
+    for (let x = 0; x < x0; x++) {
+      if (a[row + x * 4 + 3] > 0) { x0 = x; break; }
+    }
+    for (let x = w - 1; x > x1; x--) {
+      if (a[row + x * 4 + 3] > 0) { x1 = x; break; }
+    }
+  }
+  return x1 < 0 ? null : { x0, x1 };
+}
+
 function drawText(ctx: CanvasRenderingContext2D, el: TemplateTextElement, str: string, x: number, y: number, w: number): number {
   const lh = lineHeight(el.fontSize);
   ctx.font = fontOf(el.fontSize, el.bold);
@@ -289,21 +306,43 @@ function drawText(ctx: CanvasRenderingContext2D, el: TemplateTextElement, str: s
   mask.width = w + pad * 2;
   mask.height = total + pad * 2;
   const m = mask.getContext("2d")!;
-  m.font = fontOf(el.fontSize, el.bold);
-  m.textAlign = el.align;
-  m.textBaseline = "middle";
-  m.fillStyle = m.strokeStyle = "#fff";
-  // 600 vs 700 barely differ in Noto Sans Lao — thicken bold visibly.
-  m.lineWidth = Math.max(1, el.fontSize / 30);
-  const tx = pad + (el.align === "center" ? w / 2 : el.align === "right" ? w : 0);
-  // Spaces typed in front to push a title toward the middle would shift a
-  // centred (or right-aligned) line off-centre — only left text keeps them.
-  const shown = el.align === "left" ? lines : lines.map((l) => l.trim());
-  shown.forEach((line, i) => {
-    const cy = pad + i * lh + lh / 2;
-    m.fillText(line, tx, cy);
-    if (el.bold) m.strokeText(line, tx, cy);
-  });
+  const style = (c: CanvasRenderingContext2D) => {
+    c.font = fontOf(el.fontSize, el.bold);
+    c.textAlign = "left";
+    c.textBaseline = "middle";
+    c.fillStyle = c.strokeStyle = "#fff";
+    // 600 vs 700 barely differ in Noto Sans Lao — thicken bold visibly.
+    c.lineWidth = Math.max(1, el.fontSize / 30);
+  };
+  const ink = (c: CanvasRenderingContext2D, line: string, x0: number, cy: number) => {
+    c.fillText(line, x0, cy);
+    if (el.bold) c.strokeText(line, x0, cy);
+  };
+
+  if (el.align === "left") {
+    style(m);
+    lines.forEach((line, i) => ink(m, line, pad, pad + i * lh + lh / 2));
+  } else {
+    // Centred / right-aligned by where the ink actually lands, not by the
+    // browser's text measurement: iPhone measures Lao text differently from
+    // a computer, which pushed centred titles sideways there. Spaces typed
+    // around a line to nudge it don't count either.
+    const lc = document.createElement("canvas");
+    lc.width = w * 2 + pad * 4;
+    lc.height = lh + pad * 2;
+    const l = lc.getContext("2d", { willReadFrequently: true })!;
+    style(l);
+    lines.forEach((raw, i) => {
+      const line = raw.trim();
+      if (!line) return;
+      l.clearRect(0, 0, lc.width, lc.height);
+      ink(l, line, pad * 2, pad + lh / 2);
+      const span = inkSpan(l, lc.width, lc.height);
+      if (!span) return;
+      const dx = el.align === "center" ? pad + w / 2 - (span.x0 + span.x1 + 1) / 2 : pad + w - (span.x1 + 1);
+      m.drawImage(lc, Math.round(dx), i * lh);
+    });
+  }
   ctx.globalCompositeOperation = "difference";
   ctx.drawImage(mask, x - pad, y - pad);
   return total;

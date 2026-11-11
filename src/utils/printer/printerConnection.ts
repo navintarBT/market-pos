@@ -33,6 +33,8 @@ interface BtServer {
   connect(): Promise<BtServer>;
   disconnect(): void;
   getPrimaryServices(): Promise<BtService[]>;
+  /** beacio only: what one write can carry on this link. */
+  getWriteLimits?(): Promise<{ mtu?: number | null; withResponse?: number | null; withoutResponse?: number | null }>;
 }
 interface BtDevice extends EventTarget {
   id: string;
@@ -130,6 +132,19 @@ const SPP_UUID = u16("1101");
 /** Gap between packets in "paced" mode. */
 const PACE_MS = 20;
 
+/**
+ * Safari on iPhone via the beacio extension: every write is one request to
+ * the extension, and it refuses bursts ("Rate limit exceeded — too many BLE
+ * requests"). There we start with a gap between writes, send as much per
+ * write as one BLE packet holds, and back off further whenever it pushes back.
+ */
+const viaBeacio = () => !hadNativeBluetooth && isExtensionActive();
+const BEACIO_GAP_MS = 30;
+const BEACIO_MAX_GAP_MS = 500;
+/** Bigger single writes hung this printer on Windows — stay well inside one packet. */
+const BEACIO_MAX_CHUNK = 180;
+const isRateLimited = (err: unknown) => /rate.?limit|too many ble/i.test(errText(err)) || /RATE/i.test(beacioCode(err));
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** A write that hasn't completed in this long means the printer isn't listening. */
@@ -213,6 +228,8 @@ function withTimeout<T>(p: Promise<T>, ms: number, message = "ເຄື່ອງ
 let bleDevice: BtDevice | null = null;
 let bleChar: BtCharacteristic | null = null;
 let bleChannels: BtCharacteristic[] = [];
+/** Bytes one BLE packet carries on the current link (beacio reports it), if known. */
+let blePacketBytes: number | null = null;
 let serialPort: SerialPortLike | null = null;
 
 function onBleDisconnected(e: Event) {
@@ -281,6 +298,16 @@ async function attachBle(device: BtDevice) {
   const saved = savedChannel(device);
   bleChar = bleChannels.find((c) => c.uuid === saved) ?? bleChannels[0];
   logLine(`ເຊື່ອມຕໍ່ສຳເລັດ · ໃຊ້ຊ່ອງ ${channelShort(bleChar.uuid)} [${propsOf(bleChar)}]`);
+  blePacketBytes = null;
+  if (device.gatt.getWriteLimits) {
+    try {
+      const lim = await device.gatt.getWriteLimits();
+      blePacketBytes = lim.mtu && lim.mtu > 23 ? lim.mtu - 3 : lim.withoutResponse && lim.withoutResponse > 20 ? lim.withoutResponse : null;
+      logLine(`MTU ${lim.mtu ?? "?"} · withResponse ${lim.withResponse ?? "?"} · withoutResponse ${lim.withoutResponse ?? "?"}`);
+    } catch {
+      // unknown — stay at 20 bytes
+    }
+  }
   setState({
     status: "connected", transport: "ble", deviceName: device.name || "Bluetooth Printer",
     channels: bleChannels.map((c) => c.uuid), channel: bleChar.uuid,
@@ -373,9 +400,15 @@ async function writeBle(data: Uint8Array, chunkSize: number, mode: WriteMode) {
   // Never retry a size this printer already choked on.
   const limit = chunkLimit(device);
   let size = Math.max(20, limit ? Math.min(chunkSize, limit) : chunkSize);
+  const beacio = viaBeacio();
+  // Fewer, fuller writes — as much as one packet carries (beacio says how much).
+  if (beacio && !limit && blePacketBytes) size = Math.max(size, Math.min(blePacketBytes, BEACIO_MAX_CHUNK));
+  /** Gap after every write, acknowledged or not — beacio's throttle. */
+  let gap = beacio ? BEACIO_GAP_MS : 0;
+  let throttled = 0;
   let nextLog = 0.25;
   const describe = () =>
-    `${size}B/ຄັ້ງ · ${noResponse ? "writeWithoutResponse" : "writeWithResponse"}${pace ? ` · ໜ່ວງ ${pace}ms` : ""}${isIOS ? " · iOS" : ""}`;
+    `${size}B/ຄັ້ງ · ${noResponse ? "writeWithoutResponse" : "writeWithResponse"}${pace ? ` · ໜ່ວງ ${pace}ms` : ""}${gap ? ` · ເວັ້ນ ${gap}ms` : ""}${beacio ? " · beacio" : isIOS ? " · iOS" : ""}`;
   logLine(`ສົ່ງ ${data.length} bytes · ${describe()}`);
 
   // A write the printer never answers stays pending inside the browser, and
@@ -395,6 +428,16 @@ async function writeBle(data: Uint8Array, chunkSize: number, mode: WriteMode) {
     try {
       await withTimeout(bleWrite(ch, slice, noResponse), offset === 0 ? FIRST_WRITE_TIMEOUT_MS : WRITE_TIMEOUT_MS);
     } catch (err) {
+      if (isRateLimited(err) && throttled < 8) {
+        // Not the printer — the extension wants fewer requests. Wait, slow
+        // down for the rest of the job, and send the same piece again.
+        throttled++;
+        gap = Math.min(Math.max(gap * 2, 60), BEACIO_MAX_GAP_MS);
+        const wait = Math.min(500 * 2 ** (throttled - 1), 8000);
+        logLine(`beacio ຈຳກັດຄວາມໄວ → ລໍຖ້າ ${wait}ms ແລ້ວສົ່ງຕໍ່ · ${describe()}`);
+        await sleep(wait);
+        continue;
+      }
       if (offset === 0 && size > 20) {
         // Too big for this link's MTU — drop to the BLE minimum.
         logLine(`ຂຽນ ${size}B ບໍ່ໄດ້ (${errText(err)}) → ເຊື່ອມຕໍ່ໃໝ່ ແລ້ວລອງ 20B`);
@@ -420,8 +463,10 @@ async function writeBle(data: Uint8Array, chunkSize: number, mode: WriteMode) {
       throw err;
     }
     offset += slice.length;
+    throttled = 0;
     reportProgress(offset / data.length);
     if (noResponse && pace) await sleep(pace);
+    if (gap) await sleep(gap);
     if (offset / data.length >= nextLog && offset < data.length) {
       logLine(`… ${Math.round(nextLog * 100)}% (${Math.round(performance.now() - started) / 1000} s)`);
       nextLog += 0.25;

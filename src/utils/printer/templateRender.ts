@@ -37,11 +37,27 @@ export interface Box {
   h: number;
 }
 
+/**
+ * A barcode left for the label printer to draw (TSPL BARCODE): a few dozen
+ * bytes instead of thousands of bitmap bytes. Page dots.
+ */
+export interface PrinterBarcode {
+  x: number;
+  y: number;
+  height: number;
+  /** Narrow bar width in dots. */
+  module: number;
+  /** TSPL "128M" content: "!105" starts code set C, then the digits. */
+  content: string;
+}
+
 export interface TemplateRender {
   canvas: HTMLCanvasElement;
   /** Where each element ended up, in mm — text height follows its content. */
   boxes: Record<string, Box>;
   heightMm: number;
+  /** Barcodes not drawn on the canvas — only with `printerBarcodes`. */
+  barcodes: PrinterBarcode[];
 }
 
 // ── Placeholders ─────────────────────────────────────────────────────────────
@@ -367,6 +383,33 @@ function drawBarcode(ctx: CanvasRenderingContext2D, el: TemplateBarcodeElement, 
   }
 }
 
+/**
+ * Scan codes (an even number of digits) as code set C — the same bars
+ * drawBarcode makes, at the same place and size — for the printer to draw.
+ * The digits under it stay in the picture: printers print 128M's
+ * human-readable line inconsistently.
+ */
+function printerBarcode(
+  ctx: CanvasRenderingContext2D, el: TemplateBarcodeElement, value: string,
+  x: number, y: number, w: number, h: number, dx: number,
+): PrinterBarcode | null {
+  if (!/^(\d\d)+$/.test(value)) return null;
+  // start C + one symbol per digit pair + check (11 modules each) + stop (13)
+  const modules = 11 * (value.length / 2 + 2) + 13;
+  const module = Math.floor(w / modules);
+  if (module < 1) return null;
+  const textSize = el.showText ? Math.max(16, Math.round(h * 0.22)) : 0;
+  const barH = Math.max(8, h - (el.showText ? textSize + 4 : 0));
+  const bx = x + Math.max(0, Math.floor((w - modules * module) / 2));
+  if (el.showText) {
+    ctx.font = `bold ${textSize}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(value, bx + (modules * module) / 2, y + barH + 4);
+  }
+  return { x: bx + dx, y, height: barH, module, content: `!105${value}` };
+}
+
 // ── Item list ────────────────────────────────────────────────────────────────
 
 interface ItemRow {
@@ -471,7 +514,7 @@ function layoutItems(ctx: CanvasRenderingContext2D, el: TemplateItemsElement, it
 export function renderTemplate(
   t: PrintTemplate,
   d: TemplateData,
-  opts: { design?: boolean; offsetXMm?: number } = {},
+  opts: { design?: boolean; offsetXMm?: number; printerBarcodes?: boolean } = {},
 ): TemplateRender {
   const design = !!opts.design;
   const width = Math.floor((t.widthMm * D) / 8) * 8;
@@ -498,6 +541,7 @@ export function renderTemplate(
 
   const expanded = expandBlankFields(t);
   const boxes: Record<string, Box> = {};
+  const barcodes: PrinterBarcode[] = [];
   for (const el of t.elements) {
     // Below the list: move down. Spanning it (a frame, a divider): stretch.
     const shift = growth && el !== itemsEl && el.y >= growFrom ? growth : 0;
@@ -540,7 +584,11 @@ export function renderTemplate(
       case "barcode": {
         // "[ເລກບິນ]" can't be a barcode — show a stand-in while designing.
         const value = design && HAS_TOKEN.test(el.value) ? "A1B2C3" : fillTokens(el.value, d, false);
-        drawBarcode(ctx, el, value, x, y, w, h);
+        const native = opts.printerBarcodes && !design
+          ? printerBarcode(ctx, el, value, x, y, w, h, dots(opts.offsetXMm ?? 0))
+          : null;
+        if (native) barcodes.push(native);
+        else drawBarcode(ctx, el, value, x, y, w, h);
         break;
       }
       case "items": {
@@ -561,5 +609,5 @@ export function renderTemplate(
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   threshold(ctx, width, height);
-  return { canvas, boxes, heightMm: height / D };
+  return { canvas, boxes, heightMm: height / D, barcodes };
 }

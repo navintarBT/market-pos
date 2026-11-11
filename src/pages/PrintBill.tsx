@@ -86,7 +86,15 @@ import { fieldRole, fieldsByRole, isPhoneField, parseCustomerText, PHONE_MAX_DIG
 import { itemsSummary, itemsTotal, newScanCode } from "../utils/shipment";
 import { printViaSystem } from "../utils/printer/systemPrint";
 import { escPosTest, tsplTextTest } from "../utils/printer/testJobs";
-import { preloadTemplateImages, renderTemplate, SCAN_FIELD, templateFields, templateUsesSale, templateUsesScanCode } from "../utils/printer/templateRender";
+import {
+  preloadTemplateImages,
+  renderTemplate,
+  SCAN_FIELD,
+  templateFields,
+  templateUsesSale,
+  templateUsesScanCode,
+  type PrinterBarcode,
+} from "../utils/printer/templateRender";
 import { buildTsplJob, pageHeightMm } from "../utils/printer/tspl";
 import { Collapsible, MmInput, RangeRow, SectionHeading, ToggleRow } from "../components/printUi";
 import ProductPickerModal from "../components/ProductPickerModal";
@@ -203,13 +211,20 @@ const PrintBill: React.FC = () => {
   const canPaste = !!(roles.name || roles.phone || roles.branch || roles.cod);
   const scanCode = formCode ?? undefined;
 
-  /** The chosen layout — a shop template or the standard bill — as printer pages. */
-  async function renderPages(data: ReceiptData): Promise<HTMLCanvasElement[]> {
+  /**
+   * The chosen layout — a shop template or the standard bill — as pages.
+   * For the label printer, its barcodes come separately: it draws them itself.
+   */
+  async function renderPages(data: ReceiptData, forPrinter = false): Promise<{ pages: HTMLCanvasElement[]; barcodes?: PrinterBarcode[][] }> {
     await ensureFontsLoaded();
-    if (!activeTemplate) return renderReceiptPages(data, settings);
+    if (!activeTemplate) return { pages: renderReceiptPages(data, settings) };
     await preloadTemplateImages(activeTemplate);
-    const r = renderTemplate(activeTemplate, { sale: selectedSale, shopName, fields: fieldValues, scanCode }, { offsetXMm: settings.offsetXMm });
-    return [r.canvas];
+    const r = renderTemplate(
+      activeTemplate,
+      { sale: selectedSale, shopName, fields: fieldValues, scanCode },
+      { offsetXMm: settings.offsetXMm, printerBarcodes: forPrinter && settings.printerBarcodes },
+    );
+    return { pages: [r.canvas], barcodes: [r.barcodes] };
   }
 
   // Re-render the preview shortly after the last change (sliders fire a lot).
@@ -249,7 +264,10 @@ const PrintBill: React.FC = () => {
   }
 
   function printDirect(data: ReceiptData) {
-    return send(async () => buildTsplJob(await renderPages(data), paper), settings, "ສົ່ງໄປພິມແລ້ວ");
+    return send(async () => {
+      const { pages, barcodes } = await renderPages(data, true);
+      return buildTsplJob(pages, paper, barcodes);
+    }, settings, "ສົ່ງໄປພິມແລ້ວ");
   }
 
   /** Tiny jobs sent 20 bytes at a time — rules out transfer-size problems. */
@@ -272,7 +290,7 @@ const PrintBill: React.FC = () => {
 
   async function printSystem() {
     try {
-      await printViaSystem(await renderPages(receipt), paper);
+      await printViaSystem((await renderPages(receipt)).pages, paper);
     } catch (err) {
       setToast({ color: "danger", text: errorText(err) });
     }
@@ -496,8 +514,11 @@ const PrintBill: React.FC = () => {
     }
     let todo = list.some((i) => !i.printed) ? list.filter((i) => !i.printed) : list;
     if (!todo.length) return;
-    const pageOf = (item: BatchItem) =>
-      renderTemplate(template, { sale: item.sale, shopName, fields: item.fields, scanCode: item.code }, { offsetXMm: settings.offsetXMm }).canvas;
+    const render = (item: BatchItem, forPrinter: boolean) => renderTemplate(
+      template,
+      { sale: item.sale, shopName, fields: item.fields, scanCode: item.code },
+      { offsetXMm: settings.offsetXMm, printerBarcodes: forPrinter && settings.printerBarcodes },
+    );
     const markPrinted = (ids: string[]) => changeBatch((b) => b.map((i) => (ids.includes(i.id) ? { ...i, printed: true } : i)));
 
     if (viaSystem) {
@@ -505,7 +526,7 @@ const PrintBill: React.FC = () => {
         todo = await registerShipments(todo, template);
         await ensureFontsLoaded();
         await preloadTemplateImages(template);
-        await printViaSystem(todo.map(pageOf), paper);
+        await printViaSystem(todo.map((i) => render(i, false).canvas), paper);
         markPrinted(todo.map((i) => i.id));
       } catch (err) {
         setToast({ color: "danger", text: errorText(err) });
@@ -526,7 +547,8 @@ const PrintBill: React.FC = () => {
       await preloadTemplateImages(template);
       for (const item of todo) {
         setBatchProgress({ done, total: todo.length });
-        await sendToPrinter(buildTsplJob([pageOf(item)], paper), settings);
+        const page = render(item, true);
+        await sendToPrinter(buildTsplJob([page.canvas], paper, [page.barcodes]), settings);
         markPrinted([item.id]);
         done++;
       }
@@ -1138,6 +1160,12 @@ const PrintBill: React.FC = () => {
 
                 <Collapsible icon={settingsOutline} label="ຕັ້ງຄ່າຂັ້ນສູງ">
                   <ToggleRow label="ໝຸນ 180°" hint="ຖ້າບິນອອກມາປີ້ນຫົວ" checked={settings.rotate180} onChange={(v) => update({ rotate180: v })} />
+                  <ToggleRow
+                    label="ໃຫ້ເຄື່ອງພິມວາດບາໂຄດເອງ"
+                    hint="ສົ່ງຂໍ້ມູນໜ້ອຍລົງຫຼາຍ ພິມໄວຂຶ້ນ — ຖ້າບາໂຄດບໍ່ອອກ ຫຼື ສະແກນບໍ່ໄດ້ ໃຫ້ປິດ"
+                    checked={settings.printerBarcodes}
+                    onChange={(v) => update({ printerBarcodes: v })}
+                  />
                   <RangeRow
                     label="ເລື່ອນຊ້າຍ / ຂວາ" value={settings.offsetXMm}
                     display={`${settings.offsetXMm > 0 ? "+" : ""}${settings.offsetXMm} mm`}
@@ -1150,6 +1178,7 @@ const PrintBill: React.FC = () => {
                       value={settings.chunkSize}
                       onChange={(e) => update({ chunkSize: Number(e.target.value) })}
                     >
+                      <option value={0}>ອັດຕະໂນມັດ ({isIOS ? "iPhone: ລອງ 180, ບໍ່ໄດ້ກໍ 20" : "20"})</option>
                       {[20, 100, 180, 244, 512].map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </label>

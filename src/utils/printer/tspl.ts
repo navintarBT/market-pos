@@ -1,4 +1,5 @@
 import { DOTS_PER_MM, type PrintSettings } from "./settings";
+import type { PrinterBarcode } from "./templateRender";
 
 /**
  * Builds a TSPL job (the command language of the Xprinter XP-480B and
@@ -79,7 +80,8 @@ export function pageHeightMm(canvas: HTMLCanvasElement, s: PrintSettings): numbe
   return s.mode === "label" ? s.heightMm : Math.ceil(canvas.height / DOTS_PER_MM);
 }
 
-export function buildTsplJob(pages: HTMLCanvasElement[], s: PrintSettings): Uint8Array {
+/** `barcodes[i]`: barcodes the printer draws on page i, over its picture. */
+export function buildTsplJob(pages: HTMLCanvasElement[], s: PrintSettings, barcodes?: PrinterBarcode[][]): Uint8Array {
   const enc = new TextEncoder();
   const parts: Uint8Array[] = [];
   const cmd = (line: string) => parts.push(enc.encode(line + "\r\n"));
@@ -105,6 +107,10 @@ export function buildTsplJob(pages: HTMLCanvasElement[], s: PrintSettings): Uint
         parts.push(enc.encode(`BITMAP ${b.x},${b.y},${b.widthBytes},${b.rows},0,`));
         parts.push(b.data);
         parts.push(enc.encode("\r\n"));
+      }
+      // After the bitmaps: BITMAP mode 0 also writes white, so it would wipe them.
+      for (const b of barcodes?.[i] ?? []) {
+        cmd(`BARCODE ${b.x},${b.y},"128M",${b.height},0,0,${b.module},${b.module},"${b.content}"`);
       }
       cmd(`PRINT 1,${perPrint}`);
     });

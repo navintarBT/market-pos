@@ -51,7 +51,7 @@ export default defineConfig({
           // chunk instead of the vendor chunk every page load pulls in.
           if (id.includes("jsbarcode") || id.includes("qrcode-generator")) return "vendor-print";
           // The camera barcode reader — only the scan page loads it, on demand.
-          if (id.includes("@zxing")) return "vendor-scan";
+          if (id.includes("barcode-detector") || id.includes("zxing-wasm")) return "vendor-scan";
           return "vendor";
         },
       },

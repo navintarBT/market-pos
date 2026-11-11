@@ -39,10 +39,13 @@ export interface PrintSettings {
   showSeller: boolean;
   /**
    * BLE write size. 20 bytes fits every Bluetooth link; bigger is faster
-   * but only works if the printer negotiated a larger MTU.
+   * but only works if the printer negotiated a larger MTU. 0 = auto: 20 on
+   * computers/Android, on iPhone try bigger and fall back to 20.
    */
   chunkSize: number;
   writeMode: WriteMode;
+  /** Barcodes go to the label printer as a BARCODE command instead of a picture — far less to send. */
+  printerBarcodes: boolean;
   /** Shop print template in use on this device; null = the standard bill. */
   templateId: string | null;
 }
@@ -60,8 +63,9 @@ export const DEFAULT_SETTINGS: PrintSettings = {
   headerText: "",
   footerText: "ຂອບໃຈທີ່ມາອຸດໜູນ",
   showSeller: true,
-  chunkSize: 20,
+  chunkSize: 0,
   writeMode: "auto",
+  printerBarcodes: true,
   templateId: null,
 };
 
@@ -90,7 +94,9 @@ export function matchPreset(s: PrintSettings): string | null {
   return p?.id ?? null;
 }
 
-const STORAGE_KEY = "print-settings-v3";
+const STORAGE_KEY = "print-settings-v4";
+/** v3 stored 20 as the default write size; in v4 the default is "auto" (0). */
+const V3_KEY = "print-settings-v3";
 /** Older saves may hold chunkSize 180 / fastMode off, which hangs small-MTU printers. */
 const LEGACY_KEYS = ["print-settings-v2", "print-settings-v1"];
 
@@ -100,6 +106,13 @@ export function loadSettings(): PrintSettings {
     if (raw) {
       const saved = JSON.parse(raw);
       delete saved.fastMode; // replaced by writeMode
+      return { ...DEFAULT_SETTINGS, ...saved };
+    }
+    const v3 = localStorage.getItem(V3_KEY);
+    if (v3) {
+      const saved = JSON.parse(v3);
+      delete saved.fastMode;
+      if (saved.chunkSize === 20) saved.chunkSize = 0;
       return { ...DEFAULT_SETTINGS, ...saved };
     }
     const legacy = LEGACY_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);

@@ -99,6 +99,39 @@ function cameraErrorText(err: unknown): string {
   return `ເປີດກ້ອງບໍ່ໄດ້ — ${errorText(err)}`;
 }
 
+interface Detector {
+  detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
+}
+
+/**
+ * The phone's own barcode reader where there is one (Chrome on Android),
+ * else ZXing-C++ compiled to WebAssembly — loaded only when the camera
+ * opens. Labels carry Code 128 only; looking for nothing else is faster.
+ */
+async function makeDetector(): Promise<Detector> {
+  const Native = (window as unknown as { BarcodeDetector?: {
+    new (o: { formats: string[] }): Detector;
+    getSupportedFormats(): Promise<string[]>;
+  } }).BarcodeDetector;
+  if (Native) {
+    try {
+      if ((await Native.getSupportedFormats()).includes("code_128")) return new Native({ formats: ["code_128"] });
+    } catch {
+      // fall through to the WebAssembly reader
+    }
+  }
+  const [{ BarcodeDetector, prepareZXingModule }, { default: wasmUrl }] = await Promise.all([
+    import("barcode-detector/ponyfill"),
+    import("zxing-wasm/reader/zxing_reader.wasm?url"),
+  ]);
+  // Served from this site, not a CDN.
+  prepareZXingModule({ overrides: { locateFile: (path: string, prefix: string) => (path.endsWith(".wasm") ? wasmUrl : prefix + path) } });
+  return new BarcodeDetector({ formats: ["code_128"] });
+}
+
+/** Share of the frame's height around the aiming line that gets read. */
+const BAND = 0.4;
+
 /** The back camera, reading barcodes until it's closed. */
 function CameraScanner({ onCode, onError }: { onCode: (text: string) => void; onError: (msg: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,32 +141,59 @@ function CameraScanner({ onCode, onError }: { onCode: (text: string) => void; on
   onErrorRef.current = onError;
 
   useEffect(() => {
-    let stop: (() => void) | null = null;
-    let cancelled = false;
+    let stream: MediaStream | null = null;
+    let stopped = false;
+    let timer = 0;
     (async () => {
       try {
-        // Only this page needs the decoder — load it on first use.
-        const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
-          import("@zxing/browser"),
-          import("@zxing/library"),
+        const [detector, media] = await Promise.all([
+          makeDetector(),
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          }),
         ]);
-        const hints = new Map<number, unknown>([
-          [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_128, BarcodeFormat.QR_CODE]],
-          [DecodeHintType.TRY_HARDER, true],
-        ]);
-        const reader = new BrowserMultiFormatReader(hints as never, { delayBetweenScanAttempts: 150 });
-        const controls = await reader.decodeFromConstraints(
-          { audio: false, video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
-          videoRef.current!,
-          (result) => { if (result) onCodeRef.current(result.getText()); },
-        );
-        if (cancelled) controls.stop();
-        else stop = () => controls.stop();
+        stream = media;
+        if (stopped) return;
+        const video = videoRef.current!;
+        video.srcObject = media;
+        await video.play();
+        // Keep refocusing as the label moves closer (where the camera allows it).
+        media.getVideoTracks()[0]?.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => {});
+
+        // Read only the strip around the aiming line, at most 1280 px wide:
+        // a fraction of the frame, so each try takes a few milliseconds.
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+        const tick = async () => {
+          if (stopped) return;
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (vw && vh) {
+            const bandH = Math.round(vh * BAND);
+            const scale = Math.min(1, 1280 / vw);
+            canvas.width = Math.round(vw * scale);
+            canvas.height = Math.round(bandH * scale);
+            ctx.drawImage(video, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, canvas.width, canvas.height);
+            try {
+              const hit = (await detector.detect(canvas)).find((b) => b.rawValue);
+              if (hit && !stopped) onCodeRef.current(hit.rawValue);
+            } catch {
+              // a bad frame — try the next one
+            }
+          }
+          if (!stopped) timer = window.setTimeout(tick, 40);
+        };
+        tick();
       } catch (err) {
-        if (!cancelled) onErrorRef.current(cameraErrorText(err));
+        if (!stopped) onErrorRef.current(cameraErrorText(err));
       }
     })();
-    return () => { cancelled = true; stop?.(); };
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
   }, []);
 
   return (
@@ -144,7 +204,11 @@ function CameraScanner({ onCode, onError }: { onCode: (text: string) => void; on
         muted
         style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: 12, background: "#000" }}
       />
-      {/* aiming guide */}
+      {/* aiming guide: the strip that gets read, and its middle line */}
+      <div style={{
+        position: "absolute", left: "6%", right: "6%", top: "50%", height: "34%", transform: "translateY(-50%)",
+        border: "2px solid rgba(255,255,255,0.75)", borderRadius: 10, pointerEvents: "none",
+      }} />
       <div style={{
         position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, transform: "translateY(-50%)",
         background: "rgba(239,68,68,0.85)", boxShadow: "0 0 6px rgba(239,68,68,0.9)", pointerEvents: "none",
@@ -342,7 +406,7 @@ const ScanBills: React.FC = () => {
               <div style={{ marginTop: 12 }}>
                 <CameraScanner onCode={onCameraRead} onError={(msg) => { setCameraError(msg); setCameraOn(false); }} />
                 <div style={{ marginTop: 6, fontSize: "0.72rem", color: "var(--app-text-muted)", textAlign: "center" }}>
-                  ສ່ອງບາໂຄດໃຫ້ຢູ່ກາງເສັ້ນແດງ — ສະແກນຕໍ່ກັນໄດ້ເລີຍ
+                  ສ່ອງບາໂຄດໃຫ້ຢູ່ໃນກອບ ຕາມເສັ້ນແດງ — ສະແກນຕໍ່ກັນໄດ້ເລີຍ
                 </div>
               </div>
             )}

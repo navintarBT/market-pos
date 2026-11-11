@@ -141,8 +141,12 @@ const PACE_MS = 20;
 const viaBeacio = () => !hadNativeBluetooth && isExtensionActive();
 const BEACIO_GAP_MS = 30;
 const BEACIO_MAX_GAP_MS = 500;
-/** Bigger single writes hung this printer on Windows — stay well inside one packet. */
-const BEACIO_MAX_CHUNK = 180;
+/**
+ * iPhone, chunk size "auto": try writes this big (far fewer round trips). If
+ * the first one fails it drops to 20 and remembers that for the printer.
+ * Bigger single writes hung this printer on Windows, so not more than this.
+ */
+const IOS_TRY_CHUNK = 180;
 const isRateLimited = (err: unknown) => /rate.?limit|too many ble/i.test(errText(err)) || /RATE/i.test(beacioCode(err));
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -399,10 +403,11 @@ async function writeBle(data: Uint8Array, chunkSize: number, mode: WriteMode) {
   let { noResponse, pace } = writePlan(mode, ch, device);
   // Never retry a size this printer already choked on.
   const limit = chunkLimit(device);
-  let size = Math.max(20, limit ? Math.min(chunkSize, limit) : chunkSize);
+  // "auto" (0): 20 bytes, except on iPhone — there, as much as one packet
+  // holds (beacio says how much; via Bluefy we just try).
+  const wanted = chunkSize > 0 ? chunkSize : isIOS ? Math.min(blePacketBytes ?? IOS_TRY_CHUNK, IOS_TRY_CHUNK) : 20;
+  let size = Math.max(20, limit ? Math.min(wanted, limit) : wanted);
   const beacio = viaBeacio();
-  // Fewer, fuller writes — as much as one packet carries (beacio says how much).
-  if (beacio && !limit && blePacketBytes) size = Math.max(size, Math.min(blePacketBytes, BEACIO_MAX_CHUNK));
   /** Gap after every write, acknowledged or not — beacio's throttle. */
   let gap = beacio ? BEACIO_GAP_MS : 0;
   let throttled = 0;

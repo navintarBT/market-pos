@@ -62,7 +62,13 @@ export async function writeSaleInTransaction(
   shopId: string,
   items: SaleItem[],
   sale: { total: number; paymentType: Sale["paymentType"]; sellerUid: string; sellerName: string; shipmentId?: string },
+  saleId = newSaleId(shopId),
 ): Promise<string> {
+  // Already saved under this id (a second tap, a retry after a hang): it's
+  // one sale — don't take the stock off again.
+  const saleRef = doc(salesCol(shopId), saleId);
+  if ((await tx.get(saleRef)).exists()) return saleId;
+
   const changes = buildStockChanges(items);
 
   // Group stock changes by productId so each product is read exactly once
@@ -99,9 +105,17 @@ export async function writeSaleInTransaction(
     tx.update(ref, { variants });
   }
 
-  const saleRef = doc(salesCol(shopId));
   tx.set(saleRef, { items, ...sale, createdAt: Timestamp.now() });
-  return saleRef.id;
+  return saleId;
+}
+
+/**
+ * A sale's id, made before it's saved. Saving with the same id again records
+ * nothing new — so a checkout keeps one id per cart, and a double tap or a
+ * retry can't sell (and take stock off) twice.
+ */
+export function newSaleId(shopId: string): string {
+  return doc(salesCol(shopId)).id;
 }
 
 /**
@@ -115,25 +129,27 @@ export async function recordSale(
   total: number,
   paymentType: Sale["paymentType"],
   sellerUid: string,
-  sellerName: string
+  sellerName: string,
+  /** From newSaleId — the same id twice records the sale once. */
+  saleId = newSaleId(shopId),
 ): Promise<string> {
   // Check connectivity up front — a transaction attempted with zero network
   // (e.g. airplane mode) doesn't reliably reject, it can hang indefinitely
   // waiting for a connection that isn't coming, leaving the UI stuck on a
   // spinner forever instead of ever reaching the catch block below.
   if (!navigator.onLine) {
-    return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName);
+    return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName, saleId);
   }
 
   try {
     return await runTransaction(db, (tx) =>
-      writeSaleInTransaction(tx, shopId, items, { total, paymentType, sellerUid, sellerName })
+      writeSaleInTransaction(tx, shopId, items, { total, paymentType, sellerUid, sellerName }, saleId)
     );
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     // Transaction can't run offline — fall back to provisional batch write
     if (code === "unavailable" || code === "failed-precondition" || !navigator.onLine) {
-      return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName);
+      return recordSaleProvisional(shopId, items, total, paymentType, sellerUid, sellerName, saleId);
     }
     throw err;
   }
@@ -146,8 +162,17 @@ async function recordSaleProvisional(
   total: number,
   paymentType: Sale["paymentType"],
   sellerUid: string,
-  sellerName: string
+  sellerName: string,
+  saleId: string,
 ): Promise<string> {
+  const saleRef = doc(salesCol(shopId), saleId);
+  try {
+    // Saved already (on this device, waiting to sync) — don't take the stock off twice.
+    if ((await getDocFromCache(saleRef)).exists()) return saleId;
+  } catch {
+    // not in the local cache — not saved yet
+  }
+
   const batch = writeBatch(db);
   const changes = buildStockChanges(items);
 
@@ -182,7 +207,6 @@ async function recordSaleProvisional(
     }
   }
 
-  const saleRef = doc(salesCol(shopId));
   batch.set(saleRef, {
     items,
     total,

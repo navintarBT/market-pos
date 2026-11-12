@@ -453,6 +453,7 @@ const ShopProfileSettings: React.FC<Props> = ({ onShopUpdated }) => {
                   </div>
 
                   <ImagePicker
+                    round
                     currentUrl={profileUrl}
                     onImage={setPendingImage}
                     onRemove={() => {

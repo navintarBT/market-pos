@@ -12,6 +12,7 @@ import {
   IonTitle,
   IonToolbar,
   useIonViewWillEnter,
+  useIonViewWillLeave,
 } from "@ionic/react";
 import { barcodeOutline, cameraOutline, checkmarkDoneOutline, closeOutline, timeOutline, trashOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
@@ -289,8 +290,17 @@ const ScanBills: React.FC = () => {
   useEffect(() => { loadLists(); }, [loadLists]);
   useIonViewWillEnter(() => {
     loadLists();
-    if (!touch) setTimeout(() => inputRef.current?.focus(), 300);
+    if (touch) {
+      // A phone: straight into scanning with the camera.
+      setCameraError(null);
+      setCameraOn(true);
+    } else {
+      // A computer: ready for the barcode gun.
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
   }, [loadLists]);
+  // Ionic keeps this page alive behind the next one — let go of the camera.
+  useIonViewWillLeave(() => setCameraOn(false));
 
   async function sell(code: string) {
     if (!shopId || !user || busyRef.current) return;
@@ -374,7 +384,8 @@ const ScanBills: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
+      {/* Sound needs a first touch on iPhone — the camera now opens without one. */}
+      <IonContent onPointerDown={unlockAudio}>
         <div style={{ padding: "16px 16px 28px", maxWidth: 720, margin: "0 auto" }}>
           <div style={cardStyle}>
             <SectionHeading icon={barcodeOutline} label="ສະແກນເພື່ອຂາຍ ແລະ ຕັດສະຕັອກ" />

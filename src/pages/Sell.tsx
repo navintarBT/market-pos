@@ -288,6 +288,12 @@ const Sell: React.FC = () => {
           </button>
         </div>
 
+        {/* Tabs + categories stay pinned to the top while the grid scrolls under them. */}
+        <div style={{
+          position: "sticky", top: 0, zIndex: 5,
+          background: "var(--ion-background-color)",
+          boxShadow: "0 6px 8px -8px rgba(0,0,0,0.25)",
+        }}>
         {/* Tab: ສິນຄ້າ / ຊຸດ */}
         <div style={{ display: "flex", padding: "10px 12px 4px", gap: 8 }}>
           {(["products", "bundles"] as const).map((tab) => {
@@ -316,8 +322,6 @@ const Sell: React.FC = () => {
           <div style={{
             display: "flex", gap: 8, overflowX: "auto", padding: "4px 12px 6px",
             scrollbarWidth: "none",
-            position: "sticky", top: 0, zIndex: 5,
-            background: "var(--ion-background-color)",
           }}>
             {["all", ...categories].map((cat) => {
               const isActive = activeCategory === cat;
@@ -343,6 +347,7 @@ const Sell: React.FC = () => {
             })}
           </div>
         )}
+        </div>
 
         {loading && (
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>

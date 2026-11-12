@@ -64,6 +64,7 @@ const MyProfileModal: React.FC<Props> = ({ isOpen, onDismiss }) => {
       <IonContent>
         <div style={{ padding: "16px 16px 32px" }}>
           <ImagePicker
+            round
             currentUrl={profileUrl}
             uploading={saving && !!pendingImage}
             onImage={setPendingImage}

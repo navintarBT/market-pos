@@ -52,6 +52,8 @@ export default defineConfig({
           if (id.includes("jsbarcode") || id.includes("qrcode-generator")) return "vendor-print";
           // The camera barcode reader — only the scan page loads it, on demand.
           if (id.includes("barcode-detector") || id.includes("zxing-wasm")) return "vendor-scan";
+          // Photo cropping — only the picture pickers use it.
+          if (id.includes("react-easy-crop") || id.includes("normalize-wheel")) return "vendor-crop";
           return "vendor";
         },
       },

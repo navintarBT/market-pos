@@ -13,7 +13,6 @@ import {
 } from "@ionic/react";
 import { addOutline, removeOutline, createOutline } from "ionicons/icons";
 import { useAuth } from "../context/AuthContext";
-import NumInput from "./NumInput";
 import type { Product, ProductVariant } from "../data/types";
 import { fmtK } from "../utils/format";
 
@@ -39,9 +38,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
   const { permissions } = useAuth();
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [price, setPriceState] = useState(0);
-  const [editingPrice, setEditingPrice] = useState(false);
-  const [draftPrice, setDraftPrice] = useState(0);
-  const [pendingPrice, setPendingPrice] = useState<number | null>(null);
+  /** Selling below cost asks first. */
+  const [confirmLow, setConfirmLow] = useState(false);
 
   function handleOpen() {
     setQtys({});
@@ -58,6 +56,16 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
 
   function handleAdd() {
     if (!product) return;
+    const cost = product.costPrice ?? 0;
+    if (cost > 0 && price < cost) {
+      setConfirmLow(true);
+      return;
+    }
+    addToCart();
+  }
+
+  function addToCart() {
+    if (!product) return;
     const items = product.variants
       .filter((v) => (qtys[variantKey(v)] ?? 0) > 0)
       .map((v) => ({ variant: v, quantity: qtys[variantKey(v)], unitPrice: price }));
@@ -70,6 +78,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
 
   const totalQty = Object.values(qtys).reduce((s, q) => s + q, 0);
   const totalPrice = product.variants.reduce((s, v) => s + (qtys[variantKey(v)] ?? 0) * price, 0);
+  const canEditPrice = permissions.canEditCartPrice && allowPriceEdit;
+  const priceChanged = price !== product.price;
 
   return (
     <>
@@ -90,24 +100,8 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
       </IonHeader>
 
       <IonContent>
-        <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--ion-color-primary)" }}>
-              {fmtK(price)} ກີບ / ຊິ້ນ
-            </span>
-            {permissions.canEditCartPrice && allowPriceEdit && (
-              <IonButton
-                fill="clear" size="small"
-                onClick={() => { setDraftPrice(price); setEditingPrice(true); }}
-                style={{ minHeight: 28, minWidth: 28, margin: 0, "--padding-start": "4px", "--padding-end": "4px" }}
-              >
-                <IonIcon slot="icon-only" icon={createOutline} style={{ fontSize: 18 }} />
-              </IonButton>
-            )}
-          </span>
-          <span style={{ fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
-            ເລືອກໄດ້ຫຼາຍ variant
-          </span>
+        <div style={{ padding: "12px 16px 0", fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
+          ເລືອກໄດ້ຫຼາຍ ໄຊສ໌ / ສີ
         </div>
 
         <div style={{ padding: "8px 16px 16px" }}>
@@ -219,6 +213,53 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
 
       <IonFooter>
         <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ion-text-color)" }}>ລາຄາ / ຊິ້ນ</div>
+              {priceChanged ? (
+                <div style={{ fontSize: "0.72rem", color: "var(--app-text-secondary)", marginTop: 2 }}>
+                  ເດີມ <span style={{ textDecoration: "line-through" }}>{fmtK(product.price)}</span>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => setPriceState(product.price)}
+                    style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: "inherit", fontWeight: 700, color: "var(--ion-color-primary)", cursor: "pointer" }}
+                  >
+                    ຄືນລາຄາເດີມ
+                  </button>
+                </div>
+              ) : canEditPrice ? (
+                <div style={{ fontSize: "0.72rem", color: "var(--app-text-muted)", marginTop: 2 }}>ແຕະເພື່ອປ່ຽນລາຄາ</div>
+              ) : null}
+            </div>
+            {canEditPrice ? (
+              <label style={{
+                display: "flex", alignItems: "center", gap: 6, flexShrink: 0, width: 190,
+                padding: "0 12px", height: 48, borderRadius: 14, cursor: "text",
+                border: `2px solid ${priceChanged ? "var(--app-warning)" : "var(--ion-color-primary)"}`,
+                background: priceChanged ? "var(--app-warning-surface)" : "var(--app-accent-surface)",
+              }}>
+                <IonIcon icon={createOutline} style={{ fontSize: 18, color: priceChanged ? "var(--app-warning)" : "var(--ion-color-primary)", flexShrink: 0 }} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  aria-label="ລາຄາ / ຊິ້ນ"
+                  value={price > 0 ? fmtK(price) : ""}
+                  placeholder="0"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setPriceState(parseInt(e.target.value.replace(/[^0-9]/g, "")) || 0)}
+                  style={{
+                    flex: 1, minWidth: 0, width: "100%", border: "none", outline: "none", background: "transparent",
+                    textAlign: "right", fontFamily: "inherit", fontSize: "1.25rem", fontWeight: 800,
+                    color: priceChanged ? "var(--app-warning)" : "var(--ion-color-primary)",
+                  }}
+                />
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--app-text-secondary)", flexShrink: 0 }}>ກີບ</span>
+              </label>
+            ) : (
+              <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--ion-color-primary)", flexShrink: 0 }}>{fmtK(price)} ກີບ</span>
+            )}
+          </div>
           {totalQty > 0 && (
             <div style={{
               display: "flex", justifyContent: "space-between",
@@ -232,94 +273,29 @@ const VariantPicker: React.FC<Props> = ({ product, isOpen, onAdd, onDismiss, all
           )}
           <IonButton
             expand="block"
-            disabled={totalQty === 0}
+            disabled={totalQty === 0 || price <= 0}
             onClick={handleAdd}
             style={{ minHeight: 52, "--border-radius": "14px" }}
           >
             {totalQty === 0
               ? "ເລືອກສິນຄ້າກ່ອນ"
-              : `ເພີ່ມໃສ່ກະຕ່າ (${totalQty} ລາຍການ)`}
-          </IonButton>
-        </div>
-      </IonFooter>
-    </IonModal>
-
-    <IonModal
-      isOpen={editingPrice}
-      onDidDismiss={() => setEditingPrice(false)}
-      initialBreakpoint={1}
-      breakpoints={[0, 1]}
-    >
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle style={{ fontSize: "1rem" }}>ແກ້ໄຂລາຄາ</IonTitle>
-          <IonButtons slot="end">
-            <IonButton onClick={() => setEditingPrice(false)}>ຍົກເລີກ</IonButton>
-          </IonButtons>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent>
-        <div style={{ padding: "20px 20px 16px" }}>
-          <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "1rem", color: "var(--ion-text-color)" }}>
-            {product.name}
-          </p>
-          <p style={{ margin: "0 0 20px", fontSize: "0.8rem", color: "var(--app-text-secondary)" }}>
-            ລາຄາເດີມ {fmtK(product.price)} ກີບ
-          </p>
-          <p style={{ margin: "0 0 8px", fontSize: "0.82rem", fontWeight: 600, color: "var(--app-text-secondary)" }}>
-            ລາຄາໃໝ່ (ກີບ)
-          </p>
-          <NumInput
-            value={draftPrice}
-            onChange={setDraftPrice}
-            placeholder="ລາຄາໃໝ່"
-            style={{
-              width: "100%", padding: "14px 16px", fontSize: "1.2rem", fontWeight: 700,
-              border: "1.5px solid var(--app-border)", borderRadius: 12, outline: "none",
-              background: "var(--ion-item-background, #fff)",
-              color: "var(--ion-text-color, var(--ion-text-color))",
-            }}
-          />
-        </div>
-      </IonContent>
-      <IonFooter>
-        <div style={{ padding: "12px 16px 28px", background: "var(--ion-item-background, #fff)", borderTop: "1px solid var(--ion-color-step-150, var(--app-border))" }}>
-          <IonButton
-            expand="block"
-            disabled={draftPrice <= 0}
-            onClick={() => {
-              const costPrice = product.costPrice ?? 0;
-              if (costPrice > 0 && draftPrice < costPrice) {
-                setPendingPrice(draftPrice);
-              } else {
-                setPriceState(draftPrice);
-              }
-              setEditingPrice(false);
-            }}
-            style={{ minHeight: 52, "--border-radius": "14px" }}
-          >
-            ຢືນຢັນ
+              : price <= 0
+                ? "ໃສ່ລາຄາກ່ອນ"
+                : `ເພີ່ມໃສ່ກະຕ່າ (${totalQty} ລາຍການ)`}
           </IonButton>
         </div>
       </IonFooter>
     </IonModal>
 
     <IonAlert
-      isOpen={pendingPrice !== null}
+      isOpen={confirmLow}
       header="⚠ ລາຄາຕໍ່າກວ່າຕົ້ນທຶນ"
-      message="ລາຄາຂາຍຕໍ່າກວ່າລາຄາຕົ້ນທຶນ ທ່ານຕ້ອງການດຳເນີນຕໍ່ຫຼືບໍ່?"
+      message={`ລາຄາຂາຍ ${fmtK(price)} ຕໍ່າກວ່າຕົ້ນທຶນ ${fmtK(product.costPrice ?? 0)} ກີບ — ຕ້ອງການເພີ່ມໃສ່ກະຕ່າບໍ່?`}
       buttons={[
-        { text: "ຍົກເລີກ", role: "cancel", handler: () => setPendingPrice(null) },
-        {
-          text: "ຢືນຢັນ",
-          cssClass: "alert-button-confirm",
-          handler: () => {
-            if (pendingPrice !== null) setPriceState(pendingPrice);
-            setPendingPrice(null);
-          },
-        },
+        { text: "ຍົກເລີກ", role: "cancel" },
+        { text: "ຢືນຢັນ", cssClass: "alert-button-confirm", handler: () => { addToCart(); } },
       ]}
-      onDidDismiss={() => setPendingPrice(null)}
+      onDidDismiss={() => setConfirmLow(false)}
     />
     </>
   );

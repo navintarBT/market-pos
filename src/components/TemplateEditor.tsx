@@ -18,6 +18,7 @@ import {
   arrowUpOutline,
   barcodeOutline,
   copyOutline,
+  cropOutline,
   imageOutline,
   listOutline,
   qrCodeOutline,
@@ -33,6 +34,7 @@ import type { PrintTemplate, TemplateElement } from "../data/types";
 import { ensureFontsLoaded } from "../utils/printer/receiptRender";
 import { MAX_WIDTH_MM, MIN_WIDTH_MM, PAPER_PRESETS } from "../utils/printer/settings";
 import { AUTO_FIELDS, preloadTemplateImages, renderTemplate, SCAN_FIELD, templateFields, type Box } from "../utils/printer/templateRender";
+import ImageCropModal, { type CropAspect } from "./ImageCropModal";
 import { MmInput, RangeRow, ToggleRow } from "./printUi";
 import { cardStyle, fieldLabel } from "./printUiStyles";
 import "./TemplateEditor.css";
@@ -78,31 +80,15 @@ function blankTemplate(): PrintTemplate {
 }
 
 /** Downscales a picked image so the template document stays small. */
-async function imageFileToDataUrl(file: File): Promise<{ src: string; aspect: number }> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const scale = Math.min(1, 480 / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.max(1, Math.round(img.naturalWidth * scale));
-    const h = Math.max(1, Math.round(img.naturalHeight * scale));
-    const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
-    const ctx = c.getContext("2d")!;
-    // Keep transparency for logos; photos go to JPEG on white — much smaller.
-    const keepAlpha = /png|gif|svg|webp/.test(file.type);
-    if (!keepAlpha) {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, w, h);
-    }
-    ctx.drawImage(img, 0, 0, w, h);
-    return { src: keepAlpha ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.85), aspect: h / w };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+/** Frame shapes for a picture on a bill — "ເດີມ" keeps the picture's own. */
+const IMAGE_ASPECTS: CropAspect[] = [
+  { label: "ເດີມ", value: 0 },
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "3:4", value: 3 / 4 },
+  { label: "16:9", value: 16 / 9 },
+  { label: "3:1", value: 3 },
+];
 
 function elementSummary(el: TemplateElement): string {
   if (el.type === "text") return el.text.split("\n")[0] || "—";
@@ -141,6 +127,11 @@ const TemplateEditor: React.FC<Props> = ({ isOpen, template, shopName, onDismiss
     caret.current = { start: e.currentTarget.selectionStart ?? 0, end: e.currentTarget.selectionEnd ?? 0 };
   };
   const replaceImageId = useRef<string | null>(null);
+  /** The picture being placed in the crop window (null = closed). */
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  // Logos keep their transparency (PNG); photos go to JPEG on white — much smaller.
+  const cropAlpha = useRef(false);
+  const cropFileUrl = useRef<string | null>(null);
   const drag = useRef<{
     id: string; type: ElementType; mode: "move" | "resize";
     sx: number; sy: number; orig: { x: number; y: number; w: number; h: number };
@@ -221,20 +212,26 @@ const TemplateEditor: React.FC<Props> = ({ isOpen, template, shopName, onDismiss
     }
   }
 
-  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+  function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    try {
-      const { src, aspect } = await imageFileToDataUrl(file);
-      if (replaceImageId.current) {
-        updateEl(replaceImageId.current, { src });
-      } else {
-        const w = Math.min(30, draft.widthMm - 8);
-        appendEl({ id: newId(), type: "image", x: 4, y: 4, w, h: snap(w * aspect), src });
-      }
-    } catch {
-      setError("ເປີດຮູບນີ້ບໍ່ໄດ້");
+    cropAlpha.current = /png|gif|svg|webp/.test(file.type);
+    if (cropFileUrl.current) URL.revokeObjectURL(cropFileUrl.current);
+    cropFileUrl.current = URL.createObjectURL(file);
+    setCropSrc(cropFileUrl.current);
+  }
+
+  /** Placed: a new picture element, or the picture swapped/re-framed in place (same width). */
+  function onCropped({ dataUrl, aspect }: { dataUrl: string; aspect: number }) {
+    setCropSrc(null);
+    const id = replaceImageId.current;
+    const existing = id ? draft.elements.find((el) => el.id === id) : null;
+    if (existing) {
+      updateEl(existing.id, { src: dataUrl, h: snap(existing.w * aspect) });
+    } else {
+      const w = Math.min(30, draft.widthMm - 8);
+      appendEl({ id: newId(), type: "image", x: 4, y: 4, w, h: snap(w * aspect), src: dataUrl });
     }
   }
 
@@ -517,11 +514,19 @@ const TemplateEditor: React.FC<Props> = ({ isOpen, template, shopName, onDismiss
         )}
 
         {el.type === "image" && (
-          <IonButton size="small" fill="outline" onClick={() => { replaceImageId.current = el.id; fileRef.current?.click(); }}
-            style={{ marginTop: 12, "--border-radius": "10px" }}>
-            <IonIcon slot="start" icon={imageOutline} />
-            ປ່ຽນຮູບ
-          </IonButton>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <IonButton size="small" fill="outline"
+              onClick={() => { replaceImageId.current = el.id; cropAlpha.current = el.src.startsWith("data:image/png"); setCropSrc(el.src); }}
+              style={{ "--border-radius": "10px", margin: 0 }}>
+              <IonIcon slot="start" icon={cropOutline} />
+              ປັບຮູບ
+            </IonButton>
+            <IonButton size="small" fill="outline" onClick={() => { replaceImageId.current = el.id; fileRef.current?.click(); }}
+              style={{ "--border-radius": "10px", margin: 0 }}>
+              <IonIcon slot="start" icon={imageOutline} />
+              ປ່ຽນຮູບ
+            </IonButton>
+          </div>
         )}
 
         {el.type === "items" && (
@@ -703,6 +708,16 @@ const TemplateEditor: React.FC<Props> = ({ isOpen, template, shopName, onDismiss
           { text: "ລຶບ", role: "destructive", handler: () => { handleDelete(); } },
         ]}
         onDidDismiss={() => setConfirm(null)}
+      />
+
+      <ImageCropModal
+        src={cropSrc}
+        aspects={IMAGE_ASPECTS}
+        output={cropAlpha.current
+          ? { maxSize: 480, type: "image/png" }
+          : { maxSize: 480, type: "image/jpeg", quality: 0.85, background: "#fff" }}
+        onDone={onCropped}
+        onCancel={() => setCropSrc(null)}
       />
     </IonModal>
   );

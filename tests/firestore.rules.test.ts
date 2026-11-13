@@ -373,6 +373,34 @@ describe("shipments", () => {
     await assertFails(updateDoc(doc(db, PATH), { status: "pending" }));
   });
 
+  it("a sold label is taken back only by someone who may cancel sales", async () => {
+    const SOLD = { ...PENDING, status: "sold", saleId: "s1" };
+    const RETURNED = { status: "returned", returnedAt: Timestamp.now(), returnedByUid: "x", returnedByName: "X" };
+    await seed(SOLD);
+    await assertFails(updateDoc(doc(as("staff-a"), PATH), RETURNED));
+    await assertSucceeds(updateDoc(doc(as("owner-a"), PATH), RETURNED));
+    // returned is final
+    await assertFails(updateDoc(doc(as("owner-a"), PATH), { status: "sold" }));
+    await assertFails(updateDoc(doc(as("owner-a"), PATH), { status: "pending" }));
+
+    await seed(SOLD);
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "shops/shop-a/users/staff-a2"), { permissions: { canDeleteSales: true } });
+    });
+    await assertSucceeds(updateDoc(doc(as("staff-a2"), PATH), RETURNED));
+  });
+
+  it("taking back can't change anything else on the label", async () => {
+    await seed({ ...PENDING, status: "sold", saleId: "s1" });
+    await assertFails(updateDoc(doc(as("owner-a"), PATH), { status: "returned", returnedAt: Timestamp.now(), cod: 1 }));
+  });
+
+  it("a sold label takes the shipping company's barcode", async () => {
+    await seed({ ...PENDING, status: "sold", saleId: "s1" });
+    await assertSucceeds(updateDoc(doc(as("staff-a"), PATH), { carrierCode: "8263158209237" }));
+    await assertFails(updateDoc(doc(as("staff-a"), PATH), { carrierCode: "1", cod: 5 }));
+  });
+
   it("another shop can't see or touch it", async () => {
     await seed(PENDING);
     const db = as("owner-b");

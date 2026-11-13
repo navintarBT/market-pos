@@ -16,8 +16,8 @@ export interface BatchItem {
   items?: SaleItem[];
   /** The label's barcode. */
   code?: string;
-  /** Once its barcode is scanned it's sold — and can't be changed any more. */
-  status?: "pending" | "sold";
+  /** Once its barcode is scanned it's sold — and can't be changed any more (nor once returned). */
+  status?: "pending" | "sold" | "returned";
 }
 
 const key = (templateId: string) => `print-batch-v1:${templateId}`;

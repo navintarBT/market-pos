@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 import type { SaleItem } from "../data/types";
-import { itemsSummary, newScanCode, priceItemsToTotal, scanCodeFromInput } from "./shipment";
+import { carrierCodeFromInput, itemsSummary, newScanCode, priceItemsToTotal, scanCodeFromInput } from "./shipment";
 
 const item = (name: string, price: number, quantity: number, size = "", color = ""): SaleItem => ({
   productId: name, productName: name, variant: { size, color, stock: 9 }, quantity, originalPrice: price, unitPrice: price,
@@ -23,6 +23,23 @@ describe("scanCodeFromInput", () => {
   });
   it("maps the Thai layout too", () => {
     expect(scanCodeFromInput("/ุๅๅๅ/จจภถ/ๅ")).toBe("261112004521");
+  });
+});
+
+describe("carrierCodeFromInput", () => {
+  it("drops letters in front of and after the number", () => {
+    expect(carrierCodeFromInput("LA123456789TH")).toBe("123456789");
+    expect(carrierCodeFromInput("AN8263158209237")).toBe("8263158209237");
+    expect(carrierCodeFromInput("8263158209237X")).toBe("8263158209237");
+    expect(carrierCodeFromInput(" 8263158209237\n")).toBe("8263158209237");
+  });
+  it("reads a gun typing on the Lao layout (letters become Lao, digits map back)", () => {
+    // "AN" on the Lao layout types ັ ື, then 8 2 6 3 1 5 8 2 0 9 2 3 7
+    expect(carrierCodeFromInput("ັືຕຟູໂຢຸຕຟຂຈຟໂຄ")).toBe("8263158209237");
+  });
+  it("isn't a parcel number when too short", () => {
+    expect(carrierCodeFromInput("AB12")).toBeNull();
+    expect(carrierCodeFromInput("")).toBeNull();
   });
 });
 

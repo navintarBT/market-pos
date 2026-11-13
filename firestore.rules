@@ -266,8 +266,18 @@ service cloud.firestore {
             )
           )
           // The print list's bookkeeping — printed again, taken off the
-          // list — also once it's sold. Nothing else changes after a sale.
-          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listed', 'printedAt', 'printCount'])
+          // list — and the shipping company's barcode, also once it's sold.
+          // Nothing else changes after a sale.
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listed', 'printedAt', 'printCount', 'carrierCode'])
+          // The parcel came back (ScanBills, return mode): sold → returned,
+          // once, by whoever may cancel sales — the sale is deleted and the
+          // stock restored in the same transaction.
+          || (
+            resource.data.status == 'sold'
+            && request.resource.data.status == 'returned'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'returnedAt', 'returnedByUid', 'returnedByName'])
+            && (isShopOwner(shopId) || hasStaffPermission(shopId, 'canDeleteSales'))
+          )
         );
         allow delete: if isTenantActive(shopId) && resource.data.status == 'pending' && (
           isShopOwner(shopId)

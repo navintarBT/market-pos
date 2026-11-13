@@ -29,6 +29,20 @@ export function scanCodeFromInput(input: string): string {
   return out;
 }
 
+/** Fewer digits than this isn't a parcel number — a stray key, a misread. */
+export const MIN_CARRIER_DIGITS = 6;
+
+/**
+ * A shipping company's barcode, as we keep it: just the digits. Some carriers
+ * put letters before or after the number ("LA123456789TH") — they go, so a
+ * camera read and a barcode gun (on any keyboard layout) give the same code.
+ * Null when there aren't enough digits to be a parcel number.
+ */
+export function carrierCodeFromInput(input: string): string | null {
+  const digits = scanCodeFromInput(input);
+  return digits.length >= MIN_CARRIER_DIGITS ? digits : null;
+}
+
 /**
  * Spreads the COD over the items in proportion to their prices, so the
  * sale's lines add up to what was actually collected.

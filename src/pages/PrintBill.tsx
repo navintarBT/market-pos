@@ -542,8 +542,8 @@ const PrintBill: React.FC = () => {
   }
 
   async function editBatchItem(item: BatchItem) {
-    if (item.status === "sold") {
-      setToast({ color: "medium", text: "ບິນນີ້ຂາຍແລ້ວ (ສະແກນແລ້ວ) — ແກ້ໄຂບໍ່ໄດ້" });
+    if (item.status === "sold" || item.status === "returned") {
+      setToast({ color: "medium", text: item.status === "sold" ? "ບິນນີ້ຂາຍແລ້ວ (ສະແກນແລ້ວ) — ແກ້ໄຂບໍ່ໄດ້" : "ບິນນີ້ຄືນເຄື່ອງແລ້ວ — ແກ້ໄຂບໍ່ໄດ້" });
       return;
     }
     // Whatever is half-typed goes into the list first, so it isn't lost.
@@ -561,7 +561,7 @@ const PrintBill: React.FC = () => {
   async function removeFromList(item: BatchItem) {
     if (!shopId) return;
     try {
-      if (!item.printed && item.status !== "sold") await deleteShipment(shopId, item.id);
+      if (!item.printed && item.status === "pending") await deleteShipment(shopId, item.id);
       else await unlistLabels(shopId, [item.id]);
       if (formId === item.id) resetForm();
     } catch (err) {
@@ -933,6 +933,7 @@ const PrintBill: React.FC = () => {
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 340, overflowY: "auto" }}>
                     {batch.map((item, i) => {
                       const sold = item.status === "sold";
+                      const returned = item.status === "returned";
                       return (
                         <div key={item.id} style={{
                           display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 10px", borderRadius: 12,
@@ -947,12 +948,12 @@ const PrintBill: React.FC = () => {
                                 📦 {itemsSummary(item.items)}
                               </div>
                             )}
-                            <div style={{ fontSize: "0.66rem", fontWeight: 600, color: sold ? "var(--app-success)" : item.printed ? "var(--app-text-secondary)" : "var(--app-warning)" }}>
-                              {item.code} · {sold ? "ຂາຍແລ້ວ (ສະແກນແລ້ວ)" : item.printed ? "ພິມແລ້ວ" : "ຍັງບໍ່ພິມ"}
+                            <div style={{ fontSize: "0.66rem", fontWeight: 600, color: returned ? "var(--app-danger)" : sold ? "var(--app-success)" : item.printed ? "var(--app-text-secondary)" : "var(--app-warning)" }}>
+                              {item.code} · {returned ? "ຄືນເຄື່ອງແລ້ວ" : sold ? "ຂາຍແລ້ວ (ສະແກນແລ້ວ)" : item.printed ? "ພິມແລ້ວ" : "ຍັງບໍ່ພິມ"}
                             </div>
                           </div>
                           {item.printed && <IonIcon icon={checkmarkCircle} aria-label="ພິມແລ້ວ" style={{ color: "var(--app-success)", fontSize: 18, flexShrink: 0 }} />}
-                          <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy || saving || sold} onClick={() => editBatchItem(item)}>
+                          <button className="print-icon-btn" title="ແກ້ໄຂ" disabled={busy || saving || sold || returned} onClick={() => editBatchItem(item)}>
                             <IonIcon icon={createOutline} />
                           </button>
                           <button className="print-icon-btn is-danger" title={item.printed ? "ເອົາອອກຈາກລາຍການ" : "ລຶບ"} disabled={busy || saving} onClick={() => setConfirmRemove(item)}>

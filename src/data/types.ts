@@ -156,13 +156,18 @@ export interface Shipment {
   /** Amount collected on delivery — the sale's total. 0 = paid already. */
   cod: number;
   items: SaleItem[];
-  status: "pending" | "sold";
+  /** returned: sold, then the parcel came back — stock restored, sale cancelled. */
+  status: "pending" | "sold" | "returned";
   createdAt: Date;
   createdByUid: string;
   createdByName: string;
   saleId?: string;
   soldAt?: Date;
   soldByName?: string;
+  returnedAt?: Date;
+  returnedByName?: string;
+  /** The shipping company's own barcode on the parcel — digits only. Scans for a return too. */
+  carrierCode?: string;
   /** In the print list (on every device). */
   listed: boolean;
   /** Times printed; 0 = saved but not printed yet. */

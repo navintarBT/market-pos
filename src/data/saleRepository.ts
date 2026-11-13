@@ -279,29 +279,36 @@ export async function deleteSale(shopId: string, sale: Sale, restoreStock = true
     // concurrent edit (e.g. removeItemFromSale) already restored and removed.
     const saleSnap = await tx.get(saleRef);
     if (!saleSnap.exists()) return; // already deleted by someone else — nothing to do
-    const freshItems = (saleSnap.data().items ?? []) as SaleItem[];
-    const changes = buildStockChanges(freshItems);
+    const restore = await prepareStockRestore(tx, shopId, (saleSnap.data().items ?? []) as SaleItem[]);
+    restore();
+    tx.delete(saleRef);
+  });
+}
 
-    const byProduct = new Map<string, StockChange[]>();
-    for (const ch of changes) {
-      const arr = byProduct.get(ch.productId) ?? [];
-      arr.push(ch);
-      byProduct.set(ch.productId, arr);
-    }
+/**
+ * Putting a sale's items back on the shelf, inside the caller's transaction:
+ * reads the products now (Firestore wants every read before any write) and
+ * returns the step that writes the stock back — call it after your own reads.
+ * Products deleted since are skipped.
+ */
+export async function prepareStockRestore(tx: Transaction, shopId: string, items: SaleItem[]): Promise<() => void> {
+  const byProduct = new Map<string, StockChange[]>();
+  for (const ch of buildStockChanges(items)) {
+    const arr = byProduct.get(ch.productId) ?? [];
+    arr.push(ch);
+    byProduct.set(ch.productId, arr);
+  }
 
-    // Phase 1: all reads
-    const snaps = new Map<string, any>();
-    for (const productId of byProduct.keys()) {
-      const ref = doc(productsCol(shopId), productId);
-      const snap = await tx.get(ref);
-      if (snap.exists()) snaps.set(productId, snap);
-    }
+  const snaps = new Map<string, any>();
+  for (const productId of byProduct.keys()) {
+    const snap = await tx.get(doc(productsCol(shopId), productId));
+    if (snap.exists()) snaps.set(productId, snap);
+  }
 
-    // Phase 2: restore stock (skip products that no longer exist) + delete the sale
+  return () => {
     for (const [productId, productChanges] of byProduct) {
       const snap = snaps.get(productId);
       if (!snap) continue;
-      const ref = doc(productsCol(shopId), productId);
       const variants: any[] = [...(snap.data().variants ?? [])];
       for (const ch of productChanges) {
         const idx = variants.findIndex((v) => v.size === ch.size && v.color === ch.color);
@@ -309,11 +316,9 @@ export async function deleteSale(shopId: string, sale: Sale, restoreStock = true
           variants[idx] = { ...variants[idx], stock: variants[idx].stock + ch.qty };
         }
       }
-      tx.update(ref, { variants });
+      tx.update(doc(productsCol(shopId), productId), { variants });
     }
-
-    tx.delete(saleRef);
-  });
+  };
 }
 
 /**

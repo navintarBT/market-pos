@@ -1,7 +1,9 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
+  getDoc,
   getDocs,
   increment,
   onSnapshot,
@@ -16,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { newScanCode, priceItemsToTotal } from "../utils/shipment";
-import { writeSaleInTransaction } from "./saleRepository";
+import { prepareStockRestore, writeSaleInTransaction } from "./saleRepository";
 import type { Sale, SaleItem, Shipment } from "./types";
 
 function shipmentsCol(shopId: string) {
@@ -151,6 +153,9 @@ function fromDoc(snap: DocumentSnapshot): Shipment {
     saleId: d.saleId,
     soldAt: d.soldAt?.toDate?.(),
     soldByName: d.soldByName,
+    returnedAt: d.returnedAt?.toDate?.(),
+    returnedByName: d.returnedByName,
+    carrierCode: d.carrierCode,
     listed: d.listed === true,
     // Labels from before printing was counted were all printed.
     printCount: typeof d.printCount === "number" ? d.printCount : 1,
@@ -161,7 +166,9 @@ function fromDoc(snap: DocumentSnapshot): Shipment {
 
 export type ScanOutcome =
   | { kind: "sold"; shipment: Shipment; saleId: string }
-  | { kind: "already"; shipment: Shipment };
+  | { kind: "already"; shipment: Shipment }
+  /** Sold once and taken back — it doesn't sell again (print a new label). */
+  | { kind: "returned"; shipment: Shipment };
 
 export class ScanError extends Error {
   constructor(readonly reason: "not-found" | "no-items" | "no-amount" | "offline") {
@@ -183,6 +190,7 @@ export async function sellShipment(shopId: string, code: string, by: { uid: stri
     if (!snap.exists()) throw new ScanError("not-found");
     const shipment = fromDoc(snap);
     if (shipment.status === "sold") return { kind: "already", shipment };
+    if (shipment.status === "returned") return { kind: "returned", shipment };
     if (!shipment.items.length) throw new ScanError("no-items");
 
     const itemsTotal = shipment.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
@@ -209,10 +217,69 @@ export async function getPendingShipments(shopId: string): Promise<Shipment[]> {
   return snap.docs.map(fromDoc).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-/** Labels scanned since `since`, newest first. */
-export async function getSoldShipments(shopId: string, since: Date): Promise<Shipment[]> {
-  const snap = await getDocs(query(shipmentsCol(shopId), where("soldAt", ">=", Timestamp.fromDate(since))));
+/** Labels scanned out from `from` up to (not including) `until`, newest first — taken-back ones too. */
+export async function getSoldShipments(shopId: string, from: Date, until: Date): Promise<Shipment[]> {
+  const snap = await getDocs(query(
+    shipmentsCol(shopId),
+    where("soldAt", ">=", Timestamp.fromDate(from)),
+    where("soldAt", "<", Timestamp.fromDate(until)),
+  ));
   return snap.docs.map(fromDoc).sort((a, b) => (b.soldAt?.getTime() ?? 0) - (a.soldAt?.getTime() ?? 0));
+}
+
+/** One label, as it is now — null if there's no such code. */
+export async function getShipment(shopId: string, code: string): Promise<Shipment | null> {
+  const snap = await getDoc(doc(shipmentsCol(shopId), code));
+  return snap.exists() ? fromDoc(snap) : null;
+}
+
+export type ReturnOutcome =
+  | { kind: "returned"; shipment: Shipment }
+  | { kind: "already"; shipment: Shipment }
+  | { kind: "not-sold"; shipment: Shipment };
+
+/**
+ * The parcel came back: what sold on it goes back into stock and the sale is
+ * cancelled — the same as "ຍົກເລີກການຂາຍ (ຄືນສະຕັອກ)" in the sales history —
+ * and the label is marked returned. One transaction, so it can't happen twice.
+ * If the sale was already cancelled in the history (stock back then), only
+ * the label is marked.
+ */
+export async function returnShipment(shopId: string, code: string, by: { uid: string; name: string }): Promise<ReturnOutcome> {
+  if (!navigator.onLine) throw new ScanError("offline");
+  return runTransaction(db, async (tx): Promise<ReturnOutcome> => {
+    const ref = doc(shipmentsCol(shopId), code);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new ScanError("not-found");
+    const shipment = fromDoc(snap);
+    if (shipment.status === "returned") return { kind: "already", shipment };
+    if (shipment.status !== "sold") return { kind: "not-sold", shipment };
+
+    const saleRef = shipment.saleId ? doc(db, "shops", shopId, "sales", shipment.saleId) : null;
+    const saleSnap = saleRef ? await tx.get(saleRef) : null;
+    const restore = saleSnap?.exists()
+      ? await prepareStockRestore(tx, shopId, (saleSnap.data().items ?? []) as SaleItem[])
+      : null;
+
+    restore?.();
+    if (saleRef && saleSnap?.exists()) tx.delete(saleRef);
+    const returnedAt = Timestamp.now();
+    tx.update(ref, { status: "returned", returnedAt, returnedByUid: by.uid, returnedByName: by.name });
+    return { kind: "returned", shipment: { ...shipment, status: "returned", returnedAt: returnedAt.toDate(), returnedByName: by.name } };
+  });
+}
+
+/** The shipping company's barcode on the parcel (digits only), or null to clear it. */
+export async function setCarrierCode(shopId: string, code: string, carrierCode: string | null): Promise<void> {
+  await updateDoc(doc(shipmentsCol(shopId), code), { carrierCode: carrierCode ?? deleteField() });
+}
+
+/** Labels carrying this shipping-company barcode, sold ones first, newest first. */
+export async function findByCarrierCode(shopId: string, carrierCode: string): Promise<Shipment[]> {
+  const snap = await getDocs(query(shipmentsCol(shopId), where("carrierCode", "==", carrierCode)));
+  const rank = (s: Shipment) => (s.status === "sold" ? 0 : s.status === "pending" ? 1 : 2);
+  return snap.docs.map(fromDoc).sort((a, b) =>
+    rank(a) - rank(b) || (b.soldAt ?? b.createdAt).getTime() - (a.soldAt ?? a.createdAt).getTime());
 }
 
 export async function deleteShipment(shopId: string, code: string): Promise<void> {
